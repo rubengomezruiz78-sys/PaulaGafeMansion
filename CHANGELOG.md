@@ -1,5 +1,14 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.3.2 (versionCode 7) — 2026-07-23 · CORRECCIÓN IMPORTANTE
+- **Arreglado: el botón "Entrar en la mansión" quedaba fuera de pantalla** en
+  móviles apaisados de poca altura (p. ej. Redmi Note 15 ≈ 852×393 px CSS). El
+  bloque de título usaba tamaños de escritorio y no cabía en 393 px de alto, así
+  que el botón se recortaba abajo (`overflow:hidden`) y no se podía empezar.
+- Se compacta la pantalla de título y el selector Tablet/Móvil en apaisado corto
+  (`@media max-height:680px landscape`) y se hace desplazable como red de
+  seguridad. Verificado a 852×393: selector, "Entrar" y conmutador visibles.
+
 ## v1.3.1 (versionCode 6) — 2026-07-23
 - **Conmutador Tablet/Móvil siempre visible** en la cabecera del juego: se puede
   cambiar de modo en cualquier momento durante la partida (antes solo existía un

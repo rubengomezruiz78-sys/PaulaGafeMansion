@@ -293,6 +293,25 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--copper-brig
   .ai-panel { bottom:124px; }.modal-scrim { padding:12px; overflow:auto; }.puzzle-card,.journal { max-height:calc(100dvh - 24px); overflow:auto; padding:24px 30px; }
   .formula { min-height:82px; margin:14px 0; padding:14px; }
   .paula { width:94px; height:184px; }.gafe-companion { width:88px; height:92px; }.ines-companion { width:64px; height:158px; }
+  /* Pantalla de titulo y selector: compactar para que el boton "Entrar" quepa en apaisado corto */
+  .title-screen { place-items:center; overflow-y:auto; }
+  .title-card { position:relative; inset:auto; left:auto; width:min(620px,86vw); padding:12px 22px 18px; }
+  .title-card h1 { margin:6px 0 6px; }
+  .title-card h1 .title-names { font-size:clamp(28px,5vw,46px); }
+  .title-card h1 small { margin:4px 0 3px; font-size:10px; }
+  .title-card h1 em { font-size:clamp(18px,2.8vw,28px); }
+  .title-rule { margin:4px auto; }
+  .title-card h2 { font-size:12px; margin:6px 0 6px; }
+  .title-card > p:not(.eyebrow) { font-size:12.5px; line-height:1.38; margin-bottom:4px; }
+  .start-button { min-width:220px; margin:10px 0 6px; padding:12px 22px; }
+  .replay-story, .new-game-button { margin:3px 0; }
+  .title-card > small { margin-top:5px; }
+  .device-switch { margin-top:7px; }
+  .device-title { font-size:18px; margin:2px 0 5px; }
+  .device-chooser .title-card > p:not(.eyebrow) { margin-bottom:2px; }
+  .device-options { margin:10px 0 2px; gap:12px; }
+  .device-options button { min-width:140px; padding:12px 16px; }
+  .device-options button i { font-size:30px; }
 }
 
 @media (hover: none) {
