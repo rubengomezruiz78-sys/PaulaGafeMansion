@@ -341,3 +341,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--copper-brig
 :root[data-device="phone"] .mic { min-height:52px; }
 :root[data-device="phone"] .submit-answer { padding:16px; font-size:13px; }
 :root[data-device="phone"] .device-options button { min-width:150px; padding:18px 16px; }
+
+/* Conmutador de dispositivo siempre visible en la cabecera */
+.header-actions .device-toggle { border-color:rgba(225,182,111,.34); color:var(--copper-bright); }
+.header-actions .device-toggle:hover { background:rgba(183,134,77,.12); }
+:root[data-device="phone"] .header-actions .device-toggle { border-color:var(--copper-bright); }

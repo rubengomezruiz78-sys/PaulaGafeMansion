@@ -1375,7 +1375,7 @@ export function MansionGame() {
           {flags.has("prologo_visto") && <button className="replay-story" onClick={replayStory}>Volver a ver el prólogo</button>}
           {(inventory.length > 0 || solved.size > 0 || flags.has("prologo_visto")) && <button className="new-game-button" onClick={() => setResetConfirm(true)}>Nueva partida desde el principio</button>}
           <small>Partida guardada automáticamente · Auriculares recomendados</small>
-          <button className="device-switch" onClick={() => setDevice(null)}>Modo: {device === "phone" ? "Móvil" : "Tablet"} · cambiar</button>
+          <button className="device-switch" onClick={() => chooseDevice(device === "phone" ? "tablet" : "phone")}>Modo actual: {device === "phone" ? "Móvil" : "Tablet"} · tocar para cambiar a {device === "phone" ? "Tablet" : "Móvil"}</button>
         </section>
         {resetConfirm && <div className="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="reset-title">
           <section className="reset-card">
@@ -1399,6 +1399,7 @@ export function MansionGame() {
           <button className={gafeSense ? "active" : ""} onClick={askGafe} title="Activar el sentido felino de Gafe">🐾 <span>Gafe</span></button>
           <button onClick={() => setJournalOpen(true)}>▤ <span>Cuaderno</span></button>
           <button className={aiOpen ? "active" : ""} onClick={() => setAiOpen((old) => !old)}>✦ <span>ECO · Pistas</span></button>
+          <button className="device-toggle" onClick={() => chooseDevice(device === "phone" ? "tablet" : "phone")} title="Cambiar entre tablet y móvil">{device === "phone" ? "📱" : "▭"} <span>{device === "phone" ? "Móvil" : "Tablet"}</span></button>
         </div>
       </header>
 

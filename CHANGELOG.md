@@ -1,5 +1,13 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.3.1 (versionCode 6) — 2026-07-23
+- **Conmutador Tablet/Móvil siempre visible** en la cabecera del juego: se puede
+  cambiar de modo en cualquier momento durante la partida (antes solo existía un
+  enlace poco visible en el título, difícil de encontrar en móvil).
+- Botón del título más claro: "Modo actual: … · tocar para cambiar a …".
+- Ambos conmutadores alternan y guardan el modo directamente (sin volver a
+  preguntar).
+
 ## v1.3 (versionCode 5) — 2026-07-23
 - **Selector Tablet / Móvil al primer arranque**: pregunta "¿Dónde vas a jugar?"
   y ajusta los controles. La elección se guarda (`mansion-paula-device`) y se
