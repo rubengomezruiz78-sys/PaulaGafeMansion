@@ -1,5 +1,18 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.2.1 (versionCode 4) — 2026-07-23
+Correcciones tras escrutinio exhaustivo del código:
+- **"Hablar" más indulgente**: en galería, observatorio, desván y túneles el
+  objetivo de conversación ya se cumple hablando con cualquiera de la sala
+  **o** con Gafe (antes exigía específicamente el botón 🐾 Gafe). El flag pasa a
+  ser genérico `<escena>_talked`, que fijan tanto `speak()` como `askGafe()`.
+- **Menos permisos**: eliminado `android.permission.INTERNET` del manifest
+  (el juego es 100% offline; solo queda `RECORD_AUDIO` para la voz).
+- **Guardado limpio**: la clave de guardado sube a `mansion-paula-v4` para no
+  arrastrar partidas con el esquema de flags antiguo.
+- **Dependencias**: `npm audit` a **0 vulnerabilidades** (Vite 8.1.5, solo
+  desarrollo; no viaja en el APK). `tsc --noEmit` limpio.
+
 ## v1.2 (versionCode 3) — 2026-07-23
 Hibridación: se aplicaron sobre la versión Claude las soluciones del diagnóstico
 de ChatGPT/Codex, aprovechando la solución ya implementada.

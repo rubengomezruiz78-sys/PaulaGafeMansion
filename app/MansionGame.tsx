@@ -49,7 +49,7 @@ type AndroidVoiceWindow = typeof window & {
   __onAndroidBack?: () => "handled" | "exit";
 };
 
-const SAVE_KEY = "mansion-paula-v3";
+const SAVE_KEY = "mansion-paula-v4";
 
 const interactionPositions: Record<string, number> = {
   retrato: 74, escalera: 45, carta: 84, campanilla: 79, baul: 61, paraguero: 76, huellas: 28,
@@ -125,18 +125,18 @@ const roomConnections: Record<SceneId, { left?: SceneId; right?: SceneId }> = {
 };
 
 const roomBriefs: Record<SceneId, { mission: string; talk: string; talkFlag: string; clue: string; clueFlag: string; puzzle?: PuzzleId }> = {
-  vestibulo: { mission: "Descubre qué puerta dice la verdad", talk: "Habla con Gafe o Basilio", talkFlag: "gafe_consultado", clue: "Guarda dos hallazgos", clueFlag: "sello_encontrado" },
-  biblioteca: { mission: "Consigue el engranaje del reloj", talk: "Interroga a Doña Elvira", talkFlag: "biblioteca_elvira_talked", clue: "Recoge la página del escritorio", clueFlag: "nota_elvira", puzzle: "reloj" },
-  cocina: { mission: "Devuelve la presión a la caldera", talk: "Escucha la versión de Tomás", talkFlag: "cocina_tomas_talked", clue: "Recoge la receta quemada", clueFlag: "receta_carbon", puzzle: "presion" },
-  archivo: { mission: "Rompe el pacto de la puerta sellada", talk: "Responde a la voz de Inés", talkFlag: "archivo_ines_talked", clue: "Recoge el registro oculto", clueFlag: "registro_ines", puzzle: "sello" },
-  invernadero: { mission: "Prepara el antídoto de luna", talk: "Habla con la señora Bruma", talkFlag: "invernadero_bruma_talked", clue: "Recoge semillas de luna", clueFlag: "semillas_luna", puzzle: "flora" },
-  galeria: { mission: "Devuelve los retratos a su historia", talk: "Pide a Gafe que detecte el cuadro falso", talkFlag: "galeria_gafe_talked", clue: "Recoge una esquirla de espejo", clueFlag: "esquirla_espejo", puzzle: "retratos" },
-  dormitorio: { mission: "Termina el juego que dejó Inés", talk: "Pregunta al eco de Inés", talkFlag: "dormitorio_ines_talked", clue: "Recoge la canica azul", clueFlag: "canica_azul", puzzle: "caja" },
-  observatorio: { mission: "Reconstruye el cielo de la mansión", talk: "Consulta a Gafe bajo las estrellas", talkFlag: "observatorio_gafe_talked", clue: "Guarda la lente agrietada", clueFlag: "lente_agrietada", puzzle: "estrellas" },
-  musica: { mission: "Haz que la casa recuerde la melodía", talk: "Convence a Baltasar para que cante", talkFlag: "musica_baltasar_talked", clue: "Recoge el cilindro de cera", clueFlag: "cilindro_cera", puzzle: "melodia" },
-  desvan: { mission: "Encuentra el plano entre los baúles", talk: "Deja que Gafe rastree las sábanas", talkFlag: "desvan_gafe_talked", clue: "Recupera la fotografía de Inés", clueFlag: "foto_ines", puzzle: "baules" },
-  tuneles: { mission: "Abre un camino sin inundar el archivo", talk: "Pregunta a Gafe por el olor del agua", talkFlag: "tuneles_gafe_talked", clue: "Borra la flecha de tiza falsa", clueFlag: "flecha_tiza", puzzle: "compuertas" },
-  torre: { mission: "Libera a Inés sin tocar la campana", talk: "Escucha a Inés una última vez", talkFlag: "torre_ines_talked", clue: "Recoge la cinta roja", clueFlag: "cinta_roja", puzzle: "campana" },
+  vestibulo: { mission: "Descubre qué puerta dice la verdad", talk: "Habla con Gafe o Basilio", talkFlag: "vestibulo_talked", clue: "Guarda dos hallazgos", clueFlag: "sello_encontrado" },
+  biblioteca: { mission: "Consigue el engranaje del reloj", talk: "Interroga a Doña Elvira", talkFlag: "biblioteca_talked", clue: "Recoge la página del escritorio", clueFlag: "nota_elvira", puzzle: "reloj" },
+  cocina: { mission: "Devuelve la presión a la caldera", talk: "Escucha la versión de Tomás", talkFlag: "cocina_talked", clue: "Recoge la receta quemada", clueFlag: "receta_carbon", puzzle: "presion" },
+  archivo: { mission: "Rompe el pacto de la puerta sellada", talk: "Responde a la voz de Inés", talkFlag: "archivo_talked", clue: "Recoge el registro oculto", clueFlag: "registro_ines", puzzle: "sello" },
+  invernadero: { mission: "Prepara el antídoto de luna", talk: "Habla con la señora Bruma", talkFlag: "invernadero_talked", clue: "Recoge semillas de luna", clueFlag: "semillas_luna", puzzle: "flora" },
+  galeria: { mission: "Devuelve los retratos a su historia", talk: "Pide a Gafe que detecte el cuadro falso", talkFlag: "galeria_talked", clue: "Recoge una esquirla de espejo", clueFlag: "esquirla_espejo", puzzle: "retratos" },
+  dormitorio: { mission: "Termina el juego que dejó Inés", talk: "Pregunta al eco de Inés", talkFlag: "dormitorio_talked", clue: "Recoge la canica azul", clueFlag: "canica_azul", puzzle: "caja" },
+  observatorio: { mission: "Reconstruye el cielo de la mansión", talk: "Consulta a Gafe bajo las estrellas", talkFlag: "observatorio_talked", clue: "Guarda la lente agrietada", clueFlag: "lente_agrietada", puzzle: "estrellas" },
+  musica: { mission: "Haz que la casa recuerde la melodía", talk: "Convence a Baltasar para que cante", talkFlag: "musica_talked", clue: "Recoge el cilindro de cera", clueFlag: "cilindro_cera", puzzle: "melodia" },
+  desvan: { mission: "Encuentra el plano entre los baúles", talk: "Deja que Gafe rastree las sábanas", talkFlag: "desvan_talked", clue: "Recupera la fotografía de Inés", clueFlag: "foto_ines", puzzle: "baules" },
+  tuneles: { mission: "Abre un camino sin inundar el archivo", talk: "Pregunta a Gafe por el olor del agua", talkFlag: "tuneles_talked", clue: "Borra la flecha de tiza falsa", clueFlag: "flecha_tiza", puzzle: "compuertas" },
+  torre: { mission: "Libera a Inés sin tocar la campana", talk: "Escucha a Inés una última vez", talkFlag: "torre_talked", clue: "Recoge la cinta roja", clueFlag: "cinta_roja", puzzle: "campana" },
 };
 
 const sceneObjects: Record<SceneId, SceneObject[]> = {
@@ -789,12 +789,13 @@ export function MansionGame() {
     setDialogue(npcDialogue[id]);
     setDialogueLine(0);
     setFlags((old) => new Set(old)
+      .add(`${scene}_talked`)
       .add(`${scene}_${id}_talked`)
       .add(id === "basilio" ? "basilio_interrogado" : `${id}_interrogado`));
   };
 
   const askGafe = () => {
-    setFlags((old) => new Set(old).add("gafe_consultado").add(`${scene}_gafe_talked`));
+    setFlags((old) => new Set(old).add("gafe_consultado").add(`${scene}_talked`).add(`${scene}_gafe_talked`));
     setGafeSense((old) => !old);
     const hints: Record<SceneId, string> = {
       vestibulo: "Gafe olfatea el retrato de Aurelia y araña suavemente el marco.", biblioteca: "Gafe sigue con la mirada las tres agujas del reloj.", cocina: "Gafe escucha la tubería marcada con cobre.", archivo: "Gafe se sienta frente a la puerta; faltan dos piezas en su cerradura.",
