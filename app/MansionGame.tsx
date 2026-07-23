@@ -11,10 +11,23 @@ type Dialogue = { speaker: string; role?: string; lines: string[]; portrait?: st
 type SceneNpc = { id: keyof typeof npcDialogue; label: string; cls: string; letter: string; image?: string };
 type SceneObject = { id: string; label: string; x: number; y: number; width?: number; height?: number; item?: string; flag: string; look: string; take?: string; requiresTake?: boolean };
 type SavedGame = {
+  version?: number;
   scene: SceneId;
   inventory: string[];
   solved: PuzzleId[];
   flags: string[];
+};
+type InventoryCombination = {
+  items: [string, string];
+  result: string;
+  flag: string;
+  text: string;
+};
+type PuzzleTool = {
+  room: SceneId;
+  item: string;
+  prior?: PuzzleId[];
+  readyText: string;
 };
 
 type SpeechRecognitionEventLike = { results: ArrayLike<{ 0: { transcript: string } }> };
@@ -33,6 +46,7 @@ type AndroidVoiceWindow = typeof window & {
   AndroidVoice?: { startListening: () => void; cancelListening: () => void };
   __onAndroidVoiceResult?: (text: string) => void;
   __onAndroidVoiceError?: (message: string) => void;
+  __onAndroidBack?: () => "handled" | "exit";
 };
 
 const SAVE_KEY = "mansion-paula-v3";
@@ -93,14 +107,14 @@ const scenes: Record<SceneId, { name: string; chapter: string; position: string;
     position: "100% 100%",
     description: "Aquí termina la escalera y comienza la promesa que la familia de Paula olvidó cumplir.",
   },
-  invernadero: { name: "Invernadero de luna", chapter: "Capítulo II · El jardín que escucha", position: "0% 0%", atlas: 2, description: "Las flores solo abren cuando oyen la verdad. Gafe ve huellas entre las macetas." },
-  galeria: { name: "Galería de los borrados", chapter: "Capítulo II · El jardín que escucha", position: "100% 0%", atlas: 2, description: "Los retratos cambian de sitio cuando Paula aparta la mirada." },
-  dormitorio: { name: "Dormitorio de Inés", chapter: "Capítulo III · Los juegos que quedaron", position: "0% 100%", atlas: 2, description: "La habitación lleva trece años esperando que alguien termine una partida." },
-  observatorio: { name: "Observatorio Valcárcel", chapter: "Capítulo III · Los juegos que quedaron", position: "100% 100%", atlas: 2, description: "El cielo está despejado, aunque fuera la tormenta no ha cesado." },
-  musica: { name: "Salón de música", chapter: "Capítulo IV · La casa canta", position: "0% 0%", atlas: 3, description: "El piano toca una nota cada vez que la casa pronuncia un nombre." },
-  desvan: { name: "Desván de las sombras", chapter: "Capítulo IV · La casa canta", position: "100% 0%", atlas: 3, description: "Gafe arquea el lomo. Bajo las sábanas hay menos muebles que siluetas." },
-  tuneles: { name: "Túneles del aljibe", chapter: "Capítulo V · La cuenta final", position: "0% 100%", atlas: 3, description: "El agua refleja una mansión distinta, con todas sus ventanas encendidas." },
-  torre: { name: "Torre de las trece", chapter: "Capítulo V · La cuenta final", position: "100% 100%", atlas: 3, description: "La campana espera. Nadie debe golpearla; la respuesta correcta bastará." },
+  invernadero: { name: "Invernadero de luna", chapter: "Capítulo V · El jardín que escucha", position: "0% 0%", atlas: 2, description: "Las flores solo abren cuando oyen la verdad. Gafe ve huellas entre las macetas." },
+  galeria: { name: "Galería de los borrados", chapter: "Capítulo VI · Los rostros que mienten", position: "100% 0%", atlas: 2, description: "Los retratos cambian de sitio cuando Paula aparta la mirada." },
+  dormitorio: { name: "Dormitorio de Inés", chapter: "Capítulo VII · Los juegos que quedaron", position: "0% 100%", atlas: 2, description: "La habitación lleva trece años esperando que alguien termine una partida." },
+  observatorio: { name: "Observatorio Valcárcel", chapter: "Capítulo VIII · El cielo equivocado", position: "100% 100%", atlas: 2, description: "El cielo está despejado, aunque fuera la tormenta no ha cesado." },
+  musica: { name: "Salón de música", chapter: "Capítulo IX · La casa canta", position: "0% 0%", atlas: 3, description: "El piano toca una nota cada vez que la casa pronuncia un nombre." },
+  desvan: { name: "Desván de las sombras", chapter: "Capítulo X · Lo que duerme arriba", position: "100% 0%", atlas: 3, description: "Gafe arquea el lomo. Bajo las sábanas hay menos muebles que siluetas." },
+  tuneles: { name: "Túneles del aljibe", chapter: "Capítulo XI · El camino del agua", position: "0% 100%", atlas: 3, description: "El agua refleja una mansión distinta, con todas sus ventanas encendidas." },
+  torre: { name: "Torre de las trece", chapter: "Capítulo XII · La cuenta final", position: "100% 100%", atlas: 3, description: "La campana espera. Nadie debe golpearla; la respuesta correcta bastará." },
 };
 
 const roomConnections: Record<SceneId, { left?: SceneId; right?: SceneId }> = {
@@ -110,33 +124,33 @@ const roomConnections: Record<SceneId, { left?: SceneId; right?: SceneId }> = {
   desvan: { left:"musica", right:"tuneles" }, tuneles: { left:"desvan", right:"torre" }, torre: { left:"tuneles" },
 };
 
-const roomBriefs: Record<SceneId, { mission: string; talk: string; clue: string; clueFlag: string; puzzle?: PuzzleId }> = {
-  vestibulo: { mission: "Descubre qué puerta dice la verdad", talk: "Habla con Gafe o Basilio", clue: "Guarda dos hallazgos", clueFlag: "sello_encontrado" },
-  biblioteca: { mission: "Consigue el engranaje del reloj", talk: "Interroga a Doña Elvira", clue: "Examina las notas del escritorio", clueFlag: "nota_elvira", puzzle: "reloj" },
-  cocina: { mission: "Devuelve la presión a la caldera", talk: "Escucha la versión de Tomás", clue: "Encuentra la receta quemada", clueFlag: "receta_carbon", puzzle: "presion" },
-  archivo: { mission: "Rompe el pacto de la puerta sellada", talk: "Responde a la voz de Inés", clue: "Lee el registro oculto", clueFlag: "registro_ines", puzzle: "sello" },
-  invernadero: { mission: "Prepara el antídoto de luna", talk: "Habla con la señora Bruma", clue: "Recoge semillas de luna", clueFlag: "semillas_luna", puzzle: "flora" },
-  galeria: { mission: "Devuelve los retratos a su historia", talk: "Pide a Gafe que detecte el cuadro falso", clue: "Recoge una esquirla de espejo", clueFlag: "esquirla_espejo", puzzle: "retratos" },
-  dormitorio: { mission: "Termina el juego que dejó Inés", talk: "Pregunta al eco de Inés", clue: "Encuentra la canica azul", clueFlag: "canica_azul", puzzle: "caja" },
-  observatorio: { mission: "Reconstruye el cielo de la mansión", talk: "Consulta a Gafe bajo las estrellas", clue: "Guarda la lente agrietada", clueFlag: "lente_agrietada", puzzle: "estrellas" },
-  musica: { mission: "Haz que la casa recuerde la melodía", talk: "Convence a Baltasar para que cante", clue: "Recoge el cilindro de cera", clueFlag: "cilindro_cera", puzzle: "melodia" },
-  desvan: { mission: "Encuentra el plano entre los baúles", talk: "Deja que Gafe rastree las sábanas", clue: "Recupera la fotografía de Inés", clueFlag: "foto_ines", puzzle: "baules" },
-  tuneles: { mission: "Abre un camino sin inundar el archivo", talk: "Pregunta a Gafe por el olor del agua", clue: "Examina la flecha de tiza", clueFlag: "flecha_tiza", puzzle: "compuertas" },
-  torre: { mission: "Libera a Inés sin tocar la campana", talk: "Escucha a Inés una última vez", clue: "Recoge la cinta roja", clueFlag: "cinta_roja", puzzle: "campana" },
+const roomBriefs: Record<SceneId, { mission: string; talk: string; talkFlag: string; clue: string; clueFlag: string; puzzle?: PuzzleId }> = {
+  vestibulo: { mission: "Descubre qué puerta dice la verdad", talk: "Habla con Gafe o Basilio", talkFlag: "gafe_consultado", clue: "Guarda dos hallazgos", clueFlag: "sello_encontrado" },
+  biblioteca: { mission: "Consigue el engranaje del reloj", talk: "Interroga a Doña Elvira", talkFlag: "biblioteca_elvira_talked", clue: "Recoge la página del escritorio", clueFlag: "nota_elvira", puzzle: "reloj" },
+  cocina: { mission: "Devuelve la presión a la caldera", talk: "Escucha la versión de Tomás", talkFlag: "cocina_tomas_talked", clue: "Recoge la receta quemada", clueFlag: "receta_carbon", puzzle: "presion" },
+  archivo: { mission: "Rompe el pacto de la puerta sellada", talk: "Responde a la voz de Inés", talkFlag: "archivo_ines_talked", clue: "Recoge el registro oculto", clueFlag: "registro_ines", puzzle: "sello" },
+  invernadero: { mission: "Prepara el antídoto de luna", talk: "Habla con la señora Bruma", talkFlag: "invernadero_bruma_talked", clue: "Recoge semillas de luna", clueFlag: "semillas_luna", puzzle: "flora" },
+  galeria: { mission: "Devuelve los retratos a su historia", talk: "Pide a Gafe que detecte el cuadro falso", talkFlag: "galeria_gafe_talked", clue: "Recoge una esquirla de espejo", clueFlag: "esquirla_espejo", puzzle: "retratos" },
+  dormitorio: { mission: "Termina el juego que dejó Inés", talk: "Pregunta al eco de Inés", talkFlag: "dormitorio_ines_talked", clue: "Recoge la canica azul", clueFlag: "canica_azul", puzzle: "caja" },
+  observatorio: { mission: "Reconstruye el cielo de la mansión", talk: "Consulta a Gafe bajo las estrellas", talkFlag: "observatorio_gafe_talked", clue: "Guarda la lente agrietada", clueFlag: "lente_agrietada", puzzle: "estrellas" },
+  musica: { mission: "Haz que la casa recuerde la melodía", talk: "Convence a Baltasar para que cante", talkFlag: "musica_baltasar_talked", clue: "Recoge el cilindro de cera", clueFlag: "cilindro_cera", puzzle: "melodia" },
+  desvan: { mission: "Encuentra el plano entre los baúles", talk: "Deja que Gafe rastree las sábanas", talkFlag: "desvan_gafe_talked", clue: "Recupera la fotografía de Inés", clueFlag: "foto_ines", puzzle: "baules" },
+  tuneles: { mission: "Abre un camino sin inundar el archivo", talk: "Pregunta a Gafe por el olor del agua", talkFlag: "tuneles_gafe_talked", clue: "Borra la flecha de tiza falsa", clueFlag: "flecha_tiza", puzzle: "compuertas" },
+  torre: { mission: "Libera a Inés sin tocar la campana", talk: "Escucha a Inés una última vez", talkFlag: "torre_ines_talked", clue: "Recoge la cinta roja", clueFlag: "cinta_roja", puzzle: "campana" },
 };
 
 const sceneObjects: Record<SceneId, SceneObject[]> = {
   vestibulo: [],
   biblioteca: [
-    { id:"nota_elvira", label:"Página arrancada", x:31, y:16, width:12, height:13, item:"Página de Elvira", flag:"nota_elvira", look:"Una cuenta escrita al revés: 7 × 9. Debajo, Elvira anotó «el reloj empieza por la noche»." , take:"Paula guarda la página. En el reverso hay una huella de dedo hecha con tinta fresca." },
+    { id:"nota_elvira", label:"Página arrancada", x:31, y:16, width:12, height:13, item:"Página de Elvira", flag:"nota_elvira", look:"Una cuenta escrita al revés: 7 × 9. Debajo, Elvira anotó «el reloj empieza por la noche»." , take:"Paula guarda la página. En el reverso hay una huella de dedo hecha con tinta fresca.", requiresTake:true },
     { id:"libro_rojo", label:"Libro rojo que bosteza", x:63, y:35, width:12, height:24, item:"Marcapáginas del 13", flag:"libro_rojo", look:"El libro bosteza y dice que la respuesta del reloj es 13. Gafe opina que los libros rojos son unos dramáticos.", take:"El libro se niega a caber en la mochila, pero deja caer un marcapáginas. Puede ser pista… o una broma." },
   ],
   cocina: [
-    { id:"receta_carbon", label:"Receta chamuscada", x:72, y:21, width:13, height:15, item:"Receta de carbón", flag:"receta_carbon", look:"La receta mezcla presión y cocina: «96 pulsos, 8 tubos, 7 vueltas». Tomás dejó aquí la fórmula.", take:"Paula guarda la receta; aún huele a canela y humo." },
+    { id:"receta_carbon", label:"Receta chamuscada", x:72, y:21, width:13, height:15, item:"Receta de carbón", flag:"receta_carbon", look:"La receta mezcla presión y cocina: «96 pulsos, 8 tubos, 7 vueltas». Tomás dejó aquí la fórmula.", take:"Paula guarda la receta; aún huele a canela y humo.", requiresTake:true },
     { id:"salero_bromista", label:"Salero parlanchín", x:59, y:18, width:9, height:14, item:"Sal negra", flag:"salero_bromista", look:"El salero asegura que la caldera funciona con 400 cucharadas. Luego estornuda. Es una pista falsa bastante salada.", take:"Paula guarda una pizca de sal negra. El salero murmura: «Yo habría cogido la pimienta»." },
   ],
   archivo: [
-    { id:"registro_ines", label:"Registro cosido", x:40, y:20, width:14, height:15, item:"Página del registro", flag:"registro_ines", look:"Trece nombres están cosidos con hilo. El de Inés no figura entre quienes salieron.", take:"Paula separa con cuidado la página de Inés y la guarda para devolvérsela." },
+    { id:"registro_ines", label:"Registro cosido", x:40, y:20, width:14, height:15, item:"Página del registro", flag:"registro_ines", look:"Trece nombres están cosidos con hilo. El de Inés no figura entre quienes salieron.", take:"Paula separa con cuidado la página de Inés y la guarda para devolvérsela.", requiresTake:true },
     { id:"llave_capilla", label:"Llave de porcelana", x:21, y:28, width:9, height:14, item:"Llave de porcelana", flag:"llave_capilla", look:"Parece una llave perfecta, salvo por un pequeño detalle: es de porcelana y no tiene dientes.", take:"La llave se parte en dos al tocarla. Don Basilio se ríe desde algún lugar: otra pista falsa." },
   ],
   invernadero: [
@@ -148,7 +162,7 @@ const sceneObjects: Record<SceneId, SceneObject[]> = {
     { id:"retrato_perro", label:"Retrato del barón Pelusa", x:76, y:42, width:12, height:27, item:"Medalla de Pelusa", flag:"retrato_perro", look:"Un perro con peluca afirma ser el fundador de la familia. Gafe no tolera semejante falta de rigor histórico.", take:"El barón Pelusa entrega su medalla a cambio de que Paula no cuente que en realidad era el perro del jardinero." },
   ],
   dormitorio: [
-    { id:"canica_azul", label:"Canica azul", x:31, y:12, width:9, height:12, item:"Canica azul", flag:"canica_azul", look:"Dentro de la canica hay una habitación diminuta donde el mismo juego aún no ha terminado.", take:"La canica rueda cuesta arriba hasta la mano de Paula. Inés la estaba esperando." },
+    { id:"canica_azul", label:"Canica azul", x:31, y:12, width:9, height:12, item:"Canica azul", flag:"canica_azul", look:"Dentro de la canica hay una habitación diminuta donde el mismo juego aún no ha terminado.", take:"La canica rueda cuesta arriba hasta la mano de Paula. Inés la estaba esperando.", requiresTake:true },
     { id:"muneca_susurra", label:"Muñeca que susurra", x:72, y:23, width:12, height:27, item:"Botón de nácar", flag:"muneca_susurra", look:"La muñeca susurra «3, 6, 12, 25». Gafe le arranca un botón: el último número es una mentira.", take:"La muñeca no cabe, pero su botón de nácar sí. Al guardarlo deja de susurrar respuestas falsas." },
   ],
   observatorio: [
@@ -165,7 +179,7 @@ const sceneObjects: Record<SceneId, SceneObject[]> = {
   ],
   tuneles: [
     { id:"moneda_pozo", label:"Moneda del aljibe", x:28, y:12, width:10, height:12, item:"Moneda del aljibe", flag:"moneda_pozo", look:"La moneda tiene dos caras iguales: ambas muestran una compuerta cerrada.", take:"El agua intenta recuperar la moneda, pero Paula es más rápida." },
-    { id:"flecha_tiza", label:"Flecha de tiza", x:68, y:25, width:15, height:18, item:"Trozo de tiza blanca", flag:"flecha_tiza", look:"Una flecha señala la segunda compuerta. Gafe olfatea la marca: la dibujó Don Basilio hace menos de una hora.", take:"Paula borra la flecha falsa y guarda la tiza. Ahora Basilio tendrá que inventar otra trampa." },
+    { id:"flecha_tiza", label:"Flecha de tiza", x:68, y:25, width:15, height:18, item:"Trozo de tiza blanca", flag:"flecha_tiza", look:"Una flecha señala la segunda compuerta. Gafe olfatea la marca: la dibujó Don Basilio hace menos de una hora.", take:"Paula borra la flecha falsa y guarda la tiza. Ahora Basilio tendrá que inventar otra trampa.", requiresTake:true },
   ],
   torre: [
     { id:"cinta_roja", label:"Cinta roja", x:37, y:16, width:11, height:15, item:"Cinta roja de Inés", flag:"cinta_roja", look:"La cinta está atada lejos de la campana, como una advertencia: la respuesta no necesita golpes.", take:"Paula anuda la cinta a su muñeca. La voz de Inés se vuelve más nítida.", requiresTake:true },
@@ -237,6 +251,88 @@ const puzzleBank: Record<PuzzleId, { title: string; story: string; questions: { 
     { prompt: "Última pregunta: ¿quién ha acompañado a Paula incluso cuando la casa mentía?", answer: "gafe", hint: "Tiene cuatro patas y ojos de color ámbar." },
   ]},
 };
+
+const inventoryCombinations: InventoryCombination[] = [
+  {
+    items: ["Engranaje de marfil", "Llave de servicio"],
+    result: "Mecanismo del archivo",
+    flag: "mecanismo_archivo_montado",
+    text: "Paula encaja la llave en el eje del engranaje. Las dos piezas forman el mecanismo que falta en la puerta del archivo.",
+  },
+  {
+    items: ["Mapa del ala norte", "Cinta de Inés"],
+    result: "Ruta bordada de Inés",
+    flag: "ruta_ines_bordada",
+    text: "La cinta encaja sobre el mapa como un camino. Sus estrellas señalan el dormitorio de Inés.",
+  },
+  {
+    items: ["Lente de tinta lunar", "Mapa estelar"],
+    result: "Mapa celeste revelado",
+    flag: "mapa_celeste_revelado",
+    text: "Al mirar el mapa con la lente lunar aparece una constelación que antes no estaba allí.",
+  },
+  {
+    items: ["Partitura invisible", "Diapasón de cobre"],
+    result: "Clave de resonancia",
+    flag: "clave_resonancia_creada",
+    text: "El diapasón hace visible una línea nueva en la partitura: es la frecuencia que abre el aljibe sin romperlo.",
+  },
+  {
+    items: ["Plano de los túneles", "Tiza azul"],
+    result: "Plano marcado por Gafe",
+    flag: "plano_gafe_marcado",
+    text: "Gafe apoya la pata en el plano mientras Paula marca con tiza azul los caminos que no huelen a trampa.",
+  },
+  {
+    items: ["Plano marcado por Gafe", "Clave de resonancia"],
+    result: "Ruta segura del aljibe",
+    flag: "ruta_aljibe_preparada",
+    text: "La frecuencia de la partitura coincide con tres marcas del plano. Paula ya sabe qué compuertas tocar y en qué orden.",
+  },
+  {
+    items: ["Cuerda de la campana", "Cinta roja de Inés"],
+    result: "Nudo silencioso",
+    flag: "nudo_silencioso_preparado",
+    text: "Paula ata la cinta de Inés alrededor de la cuerda. Ahora puede inmovilizar la campana sin hacerla sonar.",
+  },
+];
+
+const puzzleTools: Record<PuzzleId, PuzzleTool> = {
+  reloj: { room:"biblioteca", item:"Sello de Aurelia", readyText:"Selecciona el sello de Aurelia en la mochila y úsalo en el reloj." },
+  presion: { room:"cocina", item:"Receta de carbón", readyText:"Selecciona la receta de carbón y úsala junto a la caldera." },
+  sello: { room:"archivo", item:"Mecanismo del archivo", prior:["reloj","presion"], readyText:"Combina el engranaje con la llave y usa el mecanismo resultante en la puerta." },
+  flora: { room:"invernadero", item:"Semillas de luna", prior:["sello"], readyText:"Selecciona las semillas de luna y úsalas en el herbario." },
+  retratos: { room:"galeria", item:"Esquirla de espejo", prior:["sello"], readyText:"Selecciona la esquirla y úsala frente a los retratos." },
+  caja: { room:"dormitorio", item:"Ruta bordada de Inés", prior:["flora","retratos"], readyText:"Combina el mapa del ala norte con la cinta de Inés y úsalo en la caja." },
+  estrellas: { room:"observatorio", item:"Mapa celeste revelado", prior:["caja"], readyText:"Combina la lente lunar con el mapa estelar y úsalo en el planetario." },
+  melodia: { room:"musica", item:"Cilindro de cera", prior:["estrellas"], readyText:"Selecciona el cilindro de cera y úsalo en el piano." },
+  baules: { room:"desvan", item:"Fotografía de Inés", prior:["estrellas"], readyText:"Selecciona la fotografía de Inés y úsala para identificar el baúl." },
+  compuertas: { room:"tuneles", item:"Ruta segura del aljibe", prior:["melodia","baules"], readyText:"Combina las pistas de música y el plano marcado; después usa la ruta segura en las compuertas." },
+  campana: { room:"torre", item:"Nudo silencioso", prior:["compuertas"], readyText:"Combina la cuerda con la cinta roja de Inés y usa el nudo en la campana." },
+};
+
+const endingCards = [
+  {
+    kicker: "EL REGRESO",
+    title: "El vestíbulo dejó de contar",
+    text: "Cuando Paula, Gafe e Inés cruzan la última puerta, todos los relojes de la mansión se detienen a la vez. No se rompen: por primera vez, descansan.",
+  },
+  {
+    kicker: "UNA VERDAD DE BASILIO",
+    title: "El mayordomo se quitó el sombrero",
+    text: "Don Basilio les indica la salida y, tras trece años de bromas, dice una verdad completa: «Inés nunca estuvo olvidada. Solo necesitaba que alguien la escuchara hasta el final».",
+  },
+  {
+    kicker: "AMANECER",
+    title: "La puerta se abrió hacia casa",
+    text: "Fuera ya no llueve. Inés aprieta la mano de Paula y Gafe sale primero, muy digno, fingiendo que no ha tenido miedo ni una sola vez.",
+  },
+  {
+    kicker: "MISTERIO RESUELTO",
+    title: "Paula, Gafe y la decimotercera voz",
+    text: "La mansión sigue en pie, pero ha perdido el poder de mentir. En el bolsillo de Paula, la brújula de Aurelia vuelve a moverse y señala una nueva aventura.",
+  },
+];
 
 const numberWords: Record<string, number> = {
   tres: 3, siete: 7, ocho: 8, doce: 12, quince: 15, dieciocho: 18, veintiuno: 21, veinticuatro: 24, treinta: 30, treinta_y_nueve: 39, cuarenta: 40, "cuarenta y dos": 42, "cuarenta y cinco": 45, cuarenta_y_ocho: 48, sesenta: 60,
@@ -390,15 +486,30 @@ const sceneNpcsByRoom: Record<SceneId, SceneNpc[]> = {
   torre: [{ id: "ines", label: "Inés", cls: "npc ghost ines", letter: "I" }],
 };
 
-function objectiveFor(solved: Set<PuzzleId>, flags: Set<string>) {
+function objectiveFor(solved: Set<PuzzleId>, flags: Set<string>, inventory: string[]) {
+  const has = (item: string) => inventory.includes(item);
+  if (flags.has("epilogo_visto")) return "El misterio está resuelto. Puedes revisar el cuaderno o comenzar una partida nueva.";
   if (solved.has("campana")) return "Volver al vestíbulo con Inés y despedirse de la mansión.";
-  if (solved.has("compuertas")) return "Subir a la torre y responder a la campana sin hacerla sonar.";
-  if (solved.has("melodia") && solved.has("baules")) return "Usar el plano de Gafe para atravesar los túneles del aljibe.";
+  if (solved.has("compuertas")) return has("Nudo silencioso")
+    ? "Usar el nudo silencioso en la campana y escuchar a Inés."
+    : "Recoger la cinta roja de Inés y combinarla con la cuerda de la campana.";
+  if (solved.has("melodia") && solved.has("baules")) {
+    if (!has("Clave de resonancia")) return "Combinar la partitura invisible con el diapasón de cobre.";
+    if (!has("Plano marcado por Gafe")) return "Combinar el plano de los túneles con la tiza azul del vestíbulo.";
+    if (!has("Ruta segura del aljibe")) return "Combinar el plano marcado con la clave de resonancia.";
+    return "Usar la ruta segura de Gafe en las compuertas del aljibe.";
+  }
   if (solved.has("estrellas")) return "Explorar el salón de música y el desván; sus pistas forman una sola canción.";
-  if (solved.has("caja")) return "Llevar el mapa de estrellas al observatorio.";
-  if (solved.has("flora") && solved.has("retratos")) return "Entrar en el dormitorio de Inés y reparar su caja de música.";
+  if (solved.has("caja")) return has("Mapa celeste revelado")
+    ? "Usar el mapa celeste revelado en el observatorio."
+    : "Combinar la lente de tinta lunar con el mapa estelar.";
+  if (solved.has("flora") && solved.has("retratos")) return has("Ruta bordada de Inés")
+    ? "Usar la ruta bordada en la caja de música del dormitorio."
+    : "Combinar el mapa del ala norte con la cinta de Inés.";
   if (solved.has("sello")) return "Explorar el invernadero y la galería; Gafe detecta dos pistas de Inés.";
-  if (solved.has("reloj") && solved.has("presion")) return "Bajar al archivo y romper el pacto familiar.";
+  if (solved.has("reloj") && solved.has("presion")) return has("Mecanismo del archivo")
+    ? "Usar el mecanismo montado en la puerta del archivo y escuchar a Inés."
+    : "Combinar el engranaje de marfil con la llave de servicio.";
   if (!solved.has("reloj")) return flags.has("sello_encontrado")
     ? "Cruza la puerta izquierda, interroga a Elvira y usa el sello en el reloj."
     : "Explora el vestíbulo, reúne pistas y encuentra el sello oculto de Aurelia.";
@@ -410,6 +521,7 @@ export function MansionGame() {
   const [scene, setScene] = useState<SceneId>("vestibulo");
   const [verb, setVerb] = useState<Verb>("mirar");
   const [inventory, setInventory] = useState<string[]>([]);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [solved, setSolved] = useState<Set<PuzzleId>>(new Set());
   const [flags, setFlags] = useState<Set<string>>(new Set());
   const [dialogue, setDialogue] = useState<Dialogue | null>(null);
@@ -430,6 +542,9 @@ export function MansionGame() {
   const [gafeSense, setGafeSense] = useState(false);
   const [scare, setScare] = useState<string | null>(null);
   const [storyStep, setStoryStep] = useState<number | null>(null);
+  const [storyReplay, setStoryReplay] = useState(false);
+  const [endingStep, setEndingStep] = useState<number | null>(null);
+  const [resetConfirm, setResetConfirm] = useState(false);
   const [roomTransition, setRoomTransition] = useState<{ label: string; direction: "left" | "right" } | null>(null);
   const [paulaX, setPaulaX] = useState(43);
   const [paulaFacing, setPaulaFacing] = useState<"left" | "right">("right");
@@ -437,12 +552,12 @@ export function MansionGame() {
   const [gafeFacing, setGafeFacing] = useState<"left" | "right">("right");
   const [walkDuration, setWalkDuration] = useState(620);
   const [walking, setWalking] = useState(false);
-  const audioRef = useRef<{ ctx: AudioContext; nodes: OscillatorNode[] } | null>(null);
+  const audioRef = useRef<{ ctx: AudioContext; nodes: AudioScheduledSourceNode[]; master: GainNode } | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const walkTimerRef = useRef<number | null>(null);
   const transitionTimerRef = useRef<number[]>([]);
 
-  const objective = objectiveFor(solved, flags);
+  const objective = objectiveFor(solved, flags, inventory);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -463,7 +578,7 @@ export function MansionGame() {
 
   useEffect(() => {
     if (!started) return;
-    const save: SavedGame = { scene, inventory, solved: [...solved], flags: [...flags] };
+    const save: SavedGame = { version: 4, scene, inventory, solved: [...solved], flags: [...flags] };
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(save));
     } catch {
@@ -484,6 +599,7 @@ export function MansionGame() {
   }, []);
 
   const begin = () => {
+    setStoryReplay(false);
     setStarted(true);
     if (!flags.has("prologo_visto")) setStoryStep(0);
     else if (!flags.has("intro_vista")) {
@@ -500,6 +616,11 @@ export function MansionGame() {
       return;
     }
     setStoryStep(null);
+    if (storyReplay) {
+      setStoryReplay(false);
+      setStarted(false);
+      return;
+    }
     setFlags((old) => new Set(old).add("prologo_visto").add("intro_vista"));
     setDialogue(openingDialogue);
     setDialogueLine(0);
@@ -507,9 +628,35 @@ export function MansionGame() {
   };
 
   const replayStory = () => {
+    setStoryReplay(true);
     setStarted(true);
-    setScene("vestibulo");
     setDialogue(null);
+    setStoryStep(0);
+  };
+
+  const startNewGame = () => {
+    try { localStorage.removeItem(SAVE_KEY); } catch { /* Storage may be unavailable. */ }
+    setScene("vestibulo");
+    setVerb("mirar");
+    setInventory([]);
+    setSelectedItem(null);
+    setSolved(new Set());
+    setFlags(new Set());
+    setDialogue(null);
+    setDialogueLine(0);
+    setToast("La tormenta ha borrado el camino de vuelta.");
+    setPuzzle(null);
+    setQuestionIndex(0);
+    setAnswer("");
+    setMistakes(0);
+    setAiMessages(["Soy ECO, el asistente de pistas de la mansión. Puedo recordar lo que Paula ya ha descubierto."]);
+    setJournalOpen(false);
+    setAiOpen(false);
+    setGafeSense(false);
+    setStoryReplay(false);
+    setEndingStep(null);
+    setResetConfirm(false);
+    setStarted(true);
     setStoryStep(0);
   };
 
@@ -524,42 +671,130 @@ export function MansionGame() {
     const AudioContextClass = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) { setToast("Este dispositivo no permite activar el ambiente sonoro."); return; }
     const ctx = new AudioContextClass();
-    const gain = ctx.createGain();
-    gain.gain.value = 0.018;
-    gain.connect(ctx.destination);
-    const nodes = [43, 64.5].map((frequency) => {
+    const master = ctx.createGain();
+    master.gain.value = 0.11;
+    master.connect(ctx.destination);
+    const padGain = ctx.createGain();
+    padGain.gain.value = 0.055;
+    const padFilter = ctx.createBiquadFilter();
+    padFilter.type = "lowpass";
+    padFilter.frequency.value = 520;
+    padGain.connect(padFilter);
+    padFilter.connect(master);
+    const nodes: AudioScheduledSourceNode[] = [86, 129, 173].map((frequency, index) => {
       const osc = ctx.createOscillator();
-      osc.type = "sine";
+      osc.type = index === 1 ? "triangle" : "sine";
       osc.frequency.value = frequency;
-      osc.connect(gain);
+      osc.detune.value = index * 4 - 4;
+      osc.connect(padGain);
       osc.start();
       return osc;
     });
+    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    let brown = 0;
+    for (let index = 0; index < noiseData.length; index += 1) {
+      const white = Math.random() * 2 - 1;
+      brown = (brown + 0.02 * white) / 1.02;
+      noiseData[index] = brown * 2.4;
+    }
+    const wind = ctx.createBufferSource();
+    const windFilter = ctx.createBiquadFilter();
+    const windGain = ctx.createGain();
+    wind.buffer = noiseBuffer;
+    wind.loop = true;
+    windFilter.type = "bandpass";
+    windFilter.frequency.value = 420;
+    windFilter.Q.value = .35;
+    windGain.gain.value = .055;
+    wind.connect(windFilter);
+    windFilter.connect(windGain);
+    windGain.connect(master);
+    wind.start();
+    nodes.push(wind);
     const lfo = ctx.createOscillator();
     const lfoDepth = ctx.createGain();
     lfo.type = "sine";
-    lfo.frequency.value = 0.11;
-    lfoDepth.gain.value = 0.006;
+    lfo.frequency.value = 0.09;
+    lfoDepth.gain.value = 0.018;
     lfo.connect(lfoDepth);
-    lfoDepth.connect(gain.gain);
+    lfoDepth.connect(padGain.gain);
     lfo.start();
     nodes.push(lfo);
-    audioRef.current = { ctx, nodes };
+    audioRef.current = { ctx, nodes, master };
     setAudioOn(true);
+    setToast("La mansión despierta. El sonido está pensado para escucharse a volumen moderado.");
+  };
+
+  const playFx = (kind: "item" | "door" | "correct" | "wrong" | "combine") => {
+    const engine = audioRef.current;
+    if (!engine) return;
+    const { ctx, master } = engine;
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, now);
+    gain.gain.exponentialRampToValueAtTime(kind === "wrong" ? .11 : .075, now + .018);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + (kind === "door" ? .8 : .42));
+    gain.connect(master);
+    const frequencies: Record<typeof kind, [number, number]> = {
+      item: [520, 780],
+      combine: [392, 784],
+      correct: [440, 660],
+      wrong: [122, 82],
+      door: [74, 48],
+    };
+    frequencies[kind].forEach((frequency, index) => {
+      const osc = ctx.createOscillator();
+      osc.type = kind === "wrong" || kind === "door" ? "sawtooth" : "sine";
+      osc.frequency.setValueAtTime(frequency, now + index * .055);
+      if (kind === "door") osc.frequency.exponentialRampToValueAtTime(frequency * .55, now + .72);
+      osc.connect(gain);
+      osc.start(now + index * .055);
+      osc.stop(now + (kind === "door" ? .82 : .46));
+    });
   };
 
   const addItem = useCallback((item: string) => {
     setInventory((old) => old.includes(item) ? old : [...old, item]);
   }, []);
 
+  const selectInventoryItem = (item: string) => {
+    if (selectedItem === item) {
+      setSelectedItem(null);
+      setToast(`${item} vuelve a la mochila.`);
+      return;
+    }
+    if (selectedItem) {
+      const combination = inventoryCombinations.find(({ items }) =>
+        items.includes(selectedItem) && items.includes(item),
+      );
+      if (combination) {
+        addItem(combination.result);
+        setFlags((old) => new Set(old).add(combination.flag));
+        setSelectedItem(combination.result);
+        setVerb("usar");
+        playFx("combine");
+        setToast(`${combination.text} «${combination.result}» queda seleccionado.`);
+        return;
+      }
+      setToast(`${selectedItem} y ${item.toLowerCase()} no encajan. Paula guarda el primero y prepara ${item.toLowerCase()}.`);
+    } else {
+      setToast(`${item} seleccionado. Ahora toca el lugar donde quieras usarlo, o elige otro objeto para combinarlos.`);
+    }
+    setSelectedItem(item);
+    setVerb("usar");
+  };
+
   const speak = (id: keyof typeof npcDialogue) => {
     setDialogue(npcDialogue[id]);
     setDialogueLine(0);
-    setFlags((old) => new Set(old).add(`${scene}_talked`).add(id === "basilio" ? "basilio_interrogado" : `${id}_interrogado`));
+    setFlags((old) => new Set(old)
+      .add(`${scene}_${id}_talked`)
+      .add(id === "basilio" ? "basilio_interrogado" : `${id}_interrogado`));
   };
 
   const askGafe = () => {
-    setFlags((old) => new Set(old).add("gafe_consultado").add(`${scene}_talked`));
+    setFlags((old) => new Set(old).add("gafe_consultado").add(`${scene}_gafe_talked`));
     setGafeSense((old) => !old);
     const hints: Record<SceneId, string> = {
       vestibulo: "Gafe olfatea el retrato de Aurelia y araña suavemente el marco.", biblioteca: "Gafe sigue con la mirada las tres agujas del reloj.", cocina: "Gafe escucha la tubería marcada con cobre.", archivo: "Gafe se sienta frente a la puerta; faltan dos piezas en su cerradura.",
@@ -600,14 +835,31 @@ export function MansionGame() {
   };
 
   const playPaulaScream = () => {
-    if (!audioOn || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const cry = new SpeechSynthesisUtterance("¡Aaah!");
-    cry.lang = "es-ES";
-    cry.pitch = 1.65;
-    cry.rate = 1.35;
-    cry.volume = .72;
-    window.speechSynthesis.speak(cry);
+    const engine = audioRef.current;
+    if (!audioOn || !engine) return;
+    const { ctx } = engine;
+    const now = ctx.currentTime;
+    const cryGain = ctx.createGain();
+    const cryFilter = ctx.createBiquadFilter();
+    cryFilter.type = "bandpass";
+    cryFilter.frequency.value = 1250;
+    cryFilter.Q.value = 2.2;
+    cryGain.gain.setValueAtTime(.0001, now);
+    cryGain.gain.exponentialRampToValueAtTime(.18, now + .025);
+    cryGain.gain.exponentialRampToValueAtTime(.07, now + .24);
+    cryGain.gain.exponentialRampToValueAtTime(.0001, now + .72);
+    cryFilter.connect(cryGain);
+    cryGain.connect(ctx.destination);
+    [620, 930].forEach((frequency, index) => {
+      const voice = ctx.createOscillator();
+      voice.type = index === 0 ? "sawtooth" : "triangle";
+      voice.frequency.setValueAtTime(frequency, now);
+      voice.frequency.exponentialRampToValueAtTime(frequency * 1.38, now + .19);
+      voice.frequency.exponentialRampToValueAtTime(frequency * .72, now + .68);
+      voice.connect(cryFilter);
+      voice.start(now);
+      voice.stop(now + .74);
+    });
   };
 
   const openPuzzle = (id: PuzzleId) => {
@@ -615,10 +867,65 @@ export function MansionGame() {
       setToast("El mecanismo ya está resuelto. Solo queda un eco satisfecho.");
       return;
     }
+    const tool = puzzleTools[id];
+    const roomBrief = roomBriefs[tool.room];
+    const missingPrior = tool.prior?.find((prior) => !solved.has(prior));
+    if (missingPrior) {
+      setToast(`Antes hace falta resolver «${puzzleBank[missingPrior].title}». La mansión no permite saltarse esa parte de la historia.`);
+      playFx("wrong");
+      return;
+    }
+    if (!flags.has(roomBrief.talkFlag)) {
+      setToast(`Primero: ${roomBrief.talk.toLowerCase()}. Puede conocer la condición que el mecanismo intenta ocultar.`);
+      return;
+    }
+    if (!flags.has(roomBrief.clueFlag)) {
+      setToast(`Todavía falta una pista física: ${roomBrief.clue.toLowerCase()}. Usa COGER para guardarla.`);
+      return;
+    }
+    if (!inventory.includes(tool.item)) {
+      setToast(tool.readyText);
+      return;
+    }
+    if (verb !== "usar" || !selectedItem) {
+      setToast(tool.readyText);
+      return;
+    }
+    if (selectedItem !== tool.item) {
+      const falseClueResponses: Record<string, string> = {
+        "Campanilla muda": "La campanilla suelta un sonido diminuto. Todas las sombras de la habitación giran hacia Paula. Era exactamente la reacción que esperaba la casa.",
+        "Llave de latón doblada": "La llave se dobla un poco más y Don Basilio aplaude desde la pared. Pista falsa confirmada.",
+        "Marcapáginas del 13": "El mecanismo escupe el marcapáginas. El número 13 era demasiado evidente para ser una respuesta.",
+        "Sal negra": "El mecanismo estornuda una nube oscura. Gafe mira a Paula como si esto hubiera sido idea de otra persona.",
+        "Llave de porcelana": "La llave de porcelana se parte con un tintineo. Tomás tenía razón: Basilio volvió a mentir.",
+        "Pétalo burlón": "El pétalo imita la voz de Inés y da una respuesta imposible. La flor embustera sigue intentando ayudar a la casa.",
+        "Medalla de Pelusa": "El barón Pelusa ladra desde el retrato. La medalla solo abre el armario de las galletas.",
+        "Botón de nácar": "El botón susurra un número equivocado y luego finge estar dormido.",
+        "Estrella de papel": "La estrella gira cinco veces y termina señalando el suelo. Insiste en que eso también es el norte.",
+        "Partitura en blanco": "El papel interpreta un silencio muy largo. Baltasar lo califica de «atrevido, pero inútil».",
+        "Mapa equivocado": "El mapa conduce otra vez a una heladería inexistente. Gafe se siente personalmente ofendido.",
+        "Moneda del aljibe": "La moneda cae de canto: sus dos caras siguen indicando una compuerta cerrada.",
+        "Tornillo dorado": "El tornillo activa un golpe seco dentro del muro. La casa había preparado otra trampa demasiado brillante.",
+      };
+      const response = falseClueResponses[selectedItem] ?? `${selectedItem} no encaja aquí. La pista correcta tiene relación directa con esta habitación.`;
+      const falseFlag = `pista_falsa_usada_${normalizeText(selectedItem).replace(/\s+/g, "_")}`;
+      const firstAttempt = !flags.has(falseFlag);
+      setFlags((old) => new Set(old).add(falseFlag));
+      setToast(response);
+      playFx("wrong");
+      if (firstAttempt && selectedItem !== "Mapa equivocado") {
+        setScare("La casa reacciona a la pista falsa.");
+        const falseScareTimer = window.setTimeout(() => setScare(null), 900);
+        transitionTimerRef.current.push(falseScareTimer);
+      }
+      return;
+    }
+    setSelectedItem(null);
     setPuzzle(id);
     setQuestionIndex(0);
     setMistakes(0);
     setAnswer("");
+    playFx("combine");
   };
 
   const resolveInteraction = (target: string) => {
@@ -626,10 +933,13 @@ export function MansionGame() {
     const roomObject = sceneObjects[scene].find((candidate) => candidate.id === target);
     if (roomObject) {
       const alreadyCollected = roomObject.item ? inventory.includes(roomObject.item) : false;
-      if (!roomObject.requiresTake || verb === "coger") setFlags((old) => new Set(old).add(roomObject.flag));
       if (verb === "coger" && roomObject.item) {
+        setFlags((old) => new Set(old).add(roomObject.flag));
         addItem(roomObject.item);
+        if (!alreadyCollected) playFx("item");
         setToast(alreadyCollected ? `${roomObject.item} ya está a salvo en la mochila.` : (roomObject.take ?? `Paula guarda ${roomObject.item.toLowerCase()} en la mochila.`));
+      } else if (verb === "usar" && selectedItem) {
+        setToast(`${selectedItem} no tiene una función clara sobre ${roomObject.label.toLowerCase()}. Prueba a observarlo o combinar el objeto con otra cosa de la mochila.`);
       } else if (verb === "hablar") {
         setToast(`Paula pregunta a ${roomObject.label.toLowerCase()}. ${roomObject.look}`);
       } else {
@@ -640,9 +950,19 @@ export function MansionGame() {
     if (target === "gafe") return speak("gafe");
     if (target === "basilio") return speak("basilio");
     if (target === "retrato") {
-      if (!flags.has("sello_encontrado") && (verb === "coger" || verb === "usar")) {
+      if (!flags.has("sello_encontrado") && verb === "coger") {
+        const previousFinds = inventory.filter((item) => ["Media carta empapada", "Campanilla muda", "Llave de latón doblada", "Tiza azul"].includes(item)).length;
+        if (!flags.has("retrato_examinado")) {
+          setToast("Antes de mover un retrato tan antiguo conviene MIRAR el marco. Gafe no quiere que Paula active otra trampa.");
+          return;
+        }
+        if (previousFinds < 2) {
+          setToast("El marco tiene dos cierres ocultos. Las pistas del vestíbulo explican cómo soltarlos: guarda al menos dos hallazgos y vuelve.");
+          return;
+        }
         setFlags((old) => new Set(old).add("sello_encontrado"));
         addItem("Sello de Aurelia");
+        playFx("item");
         setToast("Paula separa el marco de la pared. Detrás: el sello de Aurelia y una fecha raspada, 13·11·1913.");
       } else if (verb === "hablar") {
         setToast("El retrato susurra: «La puerta verde es segura». Gafe eriza los bigotes; la voz no era la de Aurelia.");
@@ -656,6 +976,7 @@ export function MansionGame() {
       if (verb === "coger") {
         addItem("Media carta empapada");
         setFlags((old) => new Set(old).add("carta_recogida"));
+        playFx("item");
         setToast("La tinta está corrida, pero se lee: «…la puerta que huele a papel, no la que presume de su color…»");
       } else lookOnly("Media carta empapada. El sello roto coincide con el dibujo de la brújula de Paula.");
       return;
@@ -664,6 +985,7 @@ export function MansionGame() {
       if (verb === "coger") {
         addItem("Campanilla muda");
         setFlags((old) => new Set(old).add("campanilla_recogida"));
+        playFx("item");
         setToast("Parece importante, pero no suena. En la base alguien grabó: «Las cosas brillantes también hacen perder el tiempo».");
       } else lookOnly("Una campanilla de latón en mitad de la alfombra. Demasiado limpia para llevar años aquí.");
       return;
@@ -672,6 +994,7 @@ export function MansionGame() {
       if (verb === "coger") {
         addItem("Llave de latón doblada");
         setFlags((old) => new Set(old).add("llave_falsa"));
+        playFx("item");
         setToast("Dentro del baúl solo hay una llave doblada. Don Basilio sonríe demasiado: probablemente es una pista falsa.");
       } else lookOnly("Un baúl de viaje con las iniciales I. V. La cerradura ya estaba forzada desde dentro.");
       return;
@@ -680,6 +1003,7 @@ export function MansionGame() {
       if (verb === "coger") {
         addItem("Tiza azul");
         setFlags((old) => new Set(old).add("tiza_recogida"));
+        playFx("item");
         setToast("Paula guarda una tiza azul. Gafe cree que servirá para marcar puertas que cambian de sitio.");
       } else lookOnly("Tres paraguas secos y una tiza azul húmeda. Alguien la usó esta misma noche.");
       return;
@@ -687,10 +1011,7 @@ export function MansionGame() {
     if (target === "huellas") return lookOnly("Huellas pequeñas entran desde la puerta principal y terminan bajo el retrato. No son las de Paula.");
     if (target === "escalera") return lookOnly("Los peldaños superiores terminan en una pared. La arquitectura también miente; una corriente de aire baja desde la puerta izquierda.");
     if (target === "elvira") return speak("elvira");
-    if (target === "reloj") {
-      if (!flags.has("sello_encontrado")) return setToast("El reloj tiene una cavidad con la forma del sello de Aurelia.");
-      return openPuzzle("reloj");
-    }
+    if (target === "reloj") return openPuzzle("reloj");
     if (target === "tomas") return speak("tomas");
     if (target === "caldera") return openPuzzle("presion");
     if (target === "ines") return speak("ines");
@@ -704,10 +1025,7 @@ export function MansionGame() {
     if (target === "baules") return openPuzzle("baules");
     if (target === "compuertas") return openPuzzle("compuertas");
     if (target === "campana") return openPuzzle("campana");
-    if (target === "puerta") {
-      if (!solved.has("reloj") || !solved.has("presion")) return setToast("La puerta necesita un engranaje y una llave. Forzarla solo hace que respire más fuerte.");
-      return openPuzzle("sello");
-    }
+    if (target === "puerta") return openPuzzle("sello");
     if (target === "mesa") return lookOnly("Un inventario de 1913: trece criados entraron en la capilla; solo doce salieron.");
   };
 
@@ -736,7 +1054,7 @@ export function MansionGame() {
   };
 
   const handleScenePointer = (event: ReactPointerEvent<HTMLElement>) => {
-    if (dialogue || puzzle || journalOpen || aiOpen || roomTransition || storyStep !== null || scare) return;
+    if (dialogue || puzzle || journalOpen || aiOpen || roomTransition || storyStep !== null || endingStep !== null || scare) return;
     if ((event.target as HTMLElement).closest("button")) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     walkTo(((event.clientX - bounds.left) / bounds.width) * 100);
@@ -746,6 +1064,7 @@ export function MansionGame() {
     setSolved((old) => new Set(old).add(id));
     setPuzzle(null);
     setQuestionIndex(0);
+    playFx("correct");
     if (id === "reloj") {
       addItem("Engranaje de marfil");
       setToast("El reloj se abre. Dentro espera un engranaje tallado con trece dientes.");
@@ -753,7 +1072,7 @@ export function MansionGame() {
       addItem("Llave de servicio");
       setToast("La caldera exhala y entrega una llave negra, todavía tibia.");
     } else if (id === "sello") {
-      setFlags((old) => new Set(old).add("ines_liberada"));
+      setFlags((old) => new Set(old).add("voz_ines_liberada"));
       addItem("Mapa del ala norte");
       setDialogue({ speaker: "Inés", role: "La decimotercera heredera", portrait: "/character-ines-v2.png", lines: ["Has abierto mi voz, pero yo sigo atada a la torre.", "Busca mi caja de música. Gafe conoce el camino al invernadero."] });
       setDialogueLine(0);
@@ -766,10 +1085,10 @@ export function MansionGame() {
     else if (id === "baules") { addItem("Plano de los túneles"); setToast("Gafe sale del baúl con un plano entre los dientes y mucho polvo en los bigotes."); }
     else if (id === "compuertas") { addItem("Cuerda de la campana"); setToast("El agua baja y deja libre la escalera de la torre."); }
     else if (id === "campana") {
-      setFlags((old) => new Set(old).add("ines_liberada"));
+      setFlags((old) => new Set(old).add("ines_rescatada"));
       setDialogue({ speaker: "Inés", role: "Libre al fin", portrait: "/character-ines-v2.png", lines: ["La casa quería una cuenta perfecta. Tú le diste una historia distinta.", "Vámonos a casa. Gafe ya ha encontrado la salida… y probablemente también la cena."] });
       setDialogueLine(0);
-      setToast("La campana permanece en silencio. Amanece por primera vez en trece años.");
+      setToast("La campana permanece en silencio. Inés acompaña ahora a Paula y Gafe: regresad juntos al vestíbulo.");
     }
   };
 
@@ -783,10 +1102,12 @@ export function MansionGame() {
         setQuestionIndex((old) => old + 1);
         setAnswer("");
         setMistakes(0);
+        playFx("correct");
         setToast("Correcto. El mecanismo acepta la respuesta y prepara la siguiente prueba.");
       }
     } else {
       setMistakes((old) => old + 1);
+      playFx("wrong");
       setToast("La casa rechaza el resultado. Respíralo y repásalo paso a paso; si vuelves a fallar, Gafe te dará una pista.");
     }
   };
@@ -841,20 +1162,37 @@ export function MansionGame() {
   const askEco = (spoken?: string) => {
     const query = (spoken ?? aiInput).trim();
     if (!query) return;
-    const lower = query.toLowerCase();
-    let response = "La casa interfiere. Pregunta por una persona, un lugar, un objeto o tu objetivo actual.";
-    if (/objetivo|hacer|ahora|ayuda|pista/.test(lower)) response = `Tu prioridad es: ${objective} Observa los objetos que contrastan con la luz; suelen ser interactivos.`;
-    else if (/elvira|biblioteca|reloj/.test(lower)) response = solved.has("reloj") ? "Elvira ya pagó su parte. El engranaje pertenece a la puerta del archivo." : "El reloj no busca una hora: busca tres resultados. El sello de Aurelia demuestra que tienes derecho a intentarlo.";
-    else if (/tom[aá]s|cocina|caldera|v[aá]lvula/.test(lower)) response = solved.has("presion") ? "La presión está equilibrada. Conserva la llave negra." : "Lee la fórmula completa antes de calcular. Multiplicación y división tienen la misma prioridad: avanza de izquierda a derecha.";
-    else if (/in[eé]s|puerta|capilla|archivo/.test(lower)) response = solved.has("reloj") && solved.has("presion") ? "Ya posees las dos piezas. Baja al archivo y escucha a Inés antes de tocar el sello." : "La puerta exige dos objetos: uno mide el tiempo y otro domina la presión.";
-    else if (/gafe|gato/.test(lower)) response = "Gafe detecta magia escondida y cabe donde Paula no puede. Usa su sentido felino desde la barra superior; sus pistas nunca penalizan la partida.";
-    else if (/invernadero|flor|bruma/.test(lower)) response = solved.has("flora") ? "La lente de tinta lunar servirá en lugares donde las estrellas o la escritura parezcan incompletas." : "Bruma mezcla cantidades exactas. Gafe distingue las flores correctas por el olor.";
-    else if (/galer[ií]a|retrato/.test(lower)) response = solved.has("retratos") ? "La cinta pertenece a la caja de música de Inés." : "Coloca mentalmente a Aurelia, Tomás y Elvira de izquierda a derecha. Gafe puede representar el centro.";
-    else if (/dormitorio|caja|m[uú]sica/.test(lower)) response = "La caja alterna números por una regla estable. Di cada resultado en voz alta si te ayuda a oír el patrón.";
-    else if (/observatorio|estrella|cielo/.test(lower)) response = "El mapa de Inés y la lente lunar forman una sola pista. Las divisiones del círculo celeste son exactas.";
-    else if (/desv[aá]n|ba[uú]l|t[uú]nel|compuerta|torre|campana/.test(lower)) response = `Estás en la parte final. ${objective} El plano y el sentido felino de Gafe evitan probar caminos al azar.`;
-    else if (/sello|aurelia/.test(lower)) response = flags.has("sello_encontrado") ? "El sello ya está en tu inventario. Encaja en mecanismos marcados con trece radios." : "El retrato de Aurelia oculta más de lo que representa. Examínalo de cerca.";
-    setAiMessages((old) => [...old.slice(-3), `PAULA · ${query}`, `ECO · ${response}`]);
+    const lower = normalizeText(query);
+    const brief = roomBriefs[scene];
+    const currentPuzzle = brief.puzzle;
+    const availableCombination = inventoryCombinations.find(({ items, result }) =>
+      items.every((item) => inventory.includes(item)) && !inventory.includes(result),
+    );
+    let response = `Ahora mismo: ${objective}`;
+    if (/combinar|mezclar|mochila|inventario|objeto/.test(lower)) {
+      response = availableCombination
+        ? `En la mochila hay dos piezas relacionadas: ${availableCombination.items[0]} y ${availableCombination.items[1]}. Selecciona una y después la otra.`
+        : selectedItem
+          ? `${selectedItem} está preparado. Toca otro objeto para combinarlo o un mecanismo para usarlo.`
+          : "Selecciona un objeto de la mochila. Puedes tocar otro para combinarlos o usarlo sobre un mecanismo de la escena.";
+    } else if (/objetivo|hacer|ahora|ayuda|pista/.test(lower) && currentPuzzle && !solved.has(currentPuzzle)) {
+      if (!flags.has(brief.talkFlag)) response = `Empieza por esto: ${brief.talk}. Las conversaciones desbloquean información real.`;
+      else if (!flags.has(brief.clueFlag)) response = `La conversación ya está hecha. Ahora: ${brief.clue}. Debes usar COGER para guardarla.`;
+      else response = puzzleTools[currentPuzzle].readyText;
+    } else if (/elvira|biblioteca|reloj/.test(lower)) {
+      response = solved.has("reloj") ? "El engranaje de Elvira encaja con una pieza obtenida en la cocina." : "Habla con Elvira, recoge la página y usa el sello de Aurelia en el reloj.";
+    } else if (/tom[aá]s|cocina|caldera|v[aá]lvula/.test(lower)) {
+      response = solved.has("presion") ? "La llave de servicio forma un mecanismo con el engranaje de marfil." : "Escucha a Tomás, recoge la receta chamuscada y úsala en la caldera.";
+    } else if (/in[eé]s|puerta|capilla|archivo/.test(lower)) {
+      response = solved.has("sello") ? "La voz de Inés está libre, pero su recuerdo continúa en la torre." : "Combina el engranaje y la llave, escucha a Inés, recoge el registro y usa el mecanismo en la puerta.";
+    } else if (/gafe|gato/.test(lower)) {
+      response = "Gafe puede detectar la pista principal de cada habitación. Sus indicaciones cambian según el lugar y nunca consumen objetos.";
+    } else if (/falsa|mentira|basilio|trampa/.test(lower)) {
+      response = "Las pistas falsas ya no son decorativas: pruébalas en un mecanismo si quieres descubrir su reacción, pero la casa puede responder con un susto.";
+    } else if (/sello|aurelia/.test(lower)) {
+      response = flags.has("sello_encontrado") ? "El sello está en la mochila. Selecciónalo y úsalo en el reloj tras hablar con Elvira y recoger su página." : "Mira primero el retrato de Aurelia y reúne dos hallazgos del vestíbulo antes de mover el marco.";
+    }
+    setAiMessages((old) => [...old.slice(-7), `PAULA · ${query}`, `ECO · ${response}`]);
     setAiInput("");
   };
 
@@ -874,6 +1212,7 @@ export function MansionGame() {
   const travel = (next: SceneId, direction: "left" | "right" = "right") => {
     if (next === scene || roomTransition || !canTravel(next)) return;
     transitionTimerRef.current.forEach((timer) => window.clearTimeout(timer));
+    playFx("door");
     setRoomTransition({ label: `Cruzando hacia ${scenes[next].name}`, direction });
     const changeTimer = window.setTimeout(() => {
       setScene(next);
@@ -882,12 +1221,26 @@ export function MansionGame() {
       setWalking(false);
       setToast(scenes[next].description);
       setGafeSense(false);
-      if ((next === "galeria" || next === "desvan") && !flags.has(`susto_${next}`)) {
+      const scareMessages: Partial<Record<SceneId, string>> = {
+        cocina: "Una válvula gira sola y golpea la tubería tres veces.",
+        galeria: "Un retrato acaba de parpadear.",
+        archivo: "La voz de Paula susurra desde el otro lado de la puerta.",
+        observatorio: "Todas las estrellas se apagan… menos una.",
+        desvan: "Algo corre bajo las sábanas… demasiado grande para ser Gafe.",
+        tuneles: "El reflejo de Paula tarda un segundo de más en imitarla.",
+      };
+      const scareMessage = scareMessages[next];
+      if (scareMessage && !flags.has(`susto_${next}`)) {
         setFlags((old) => new Set(old).add(`susto_${next}`));
         const scareStartTimer = window.setTimeout(() => { playScareSting(); playPaulaScream(); }, 260);
-        setScare(next === "galeria" ? "Un retrato acaba de parpadear." : "Algo corre bajo las sábanas… demasiado grande para ser Gafe.");
+        setScare(scareMessage);
         const scareEndTimer = window.setTimeout(() => setScare(null), 1300);
         transitionTimerRef.current.push(scareStartTimer, scareEndTimer);
+      }
+      if (next === "vestibulo" && solved.has("campana") && !flags.has("epilogo_visto")) {
+        setDialogue(null);
+        setEndingStep(0);
+        setToast("Los tres han vuelto al vestíbulo. La puerta principal empieza a abrirse.");
       }
     }, 420);
     const finishTimer = window.setTimeout(() => setRoomTransition(null), 980);
@@ -899,13 +1252,66 @@ export function MansionGame() {
     walkTo(destination, () => travel(next, direction));
   };
 
+  const advanceEnding = () => {
+    if (endingStep === null) return;
+    if (endingStep + 1 < endingCards.length) {
+      setEndingStep((old) => old === null ? 0 : old + 1);
+      return;
+    }
+    const completedFlags = new Set(flags).add("epilogo_visto").add("aventura_completada");
+    setFlags(completedFlags);
+    setEndingStep(null);
+    setDialogue(null);
+    setScene("vestibulo");
+    setToast("Aventura completada. La partida queda guardada y siempre podrás volver a visitar la mansión.");
+    try {
+      const save: SavedGame = { version: 4, scene:"vestibulo", inventory, solved:[...solved], flags:[...completedFlags] };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    } catch { /* The final scene remains playable without storage. */ }
+    setStarted(false);
+  };
+
+  useEffect(() => {
+    const voiceWindow = window as AndroidVoiceWindow;
+    voiceWindow.__onAndroidBack = () => {
+      if (!started && !resetConfirm) return "exit";
+      if (resetConfirm) setResetConfirm(false);
+      else if (endingStep !== null) setEndingStep(null);
+      else if (storyStep !== null) {
+        setStoryStep(null);
+        if (storyReplay) {
+          setStoryReplay(false);
+          setStarted(false);
+        }
+      }
+      else if (dialogue) setDialogue(null);
+      else if (puzzle) setPuzzle(null);
+      else if (journalOpen) setJournalOpen(false);
+      else if (aiOpen) setAiOpen(false);
+      else if (selectedItem) setSelectedItem(null);
+      else if (scene !== "vestibulo") {
+        const previous = roomConnections[scene].left;
+        if (previous) {
+          setScene(previous);
+          setPaulaX(82);
+          setGafeX(90);
+          setToast(`Paula y Gafe regresan a ${scenes[previous].name}.`);
+        }
+      } else setStarted(false);
+      return "handled";
+    };
+    return () => { delete voiceWindow.__onAndroidBack; };
+  }, [aiOpen, dialogue, endingStep, journalOpen, puzzle, resetConfirm, scene, selectedItem, started, storyReplay, storyStep]);
+
   const dialogueText = dialogue?.lines[dialogueLine] ?? "";
   const sceneNpcs = sceneNpcsByRoom[scene];
   const previousRoom = roomConnections[scene].left ?? null;
   const nextRoom = roomConnections[scene].right ?? null;
   const vestibuleFinds = inventory.filter((item) => ["Media carta empapada", "Campanilla muda", "Llave de latón doblada", "Tiza azul", "Sello de Aurelia"].includes(item)).length;
   const roomBrief = roomBriefs[scene];
-  const roomTalked = flags.has(`${scene}_talked`) || (scene === "vestibulo" && flags.has("gafe_consultado"));
+  const roomTalked = scene === "vestibulo"
+    ? flags.has("gafe_consultado") || flags.has("basilio_interrogado")
+    : flags.has(roomBrief.talkFlag);
   const roomClueFound = scene === "vestibulo" ? vestibuleFinds >= 2 : flags.has(roomBrief.clueFlag);
   const roomChallengeDone = scene === "vestibulo" ? flags.has("sello_encontrado") : Boolean(roomBrief.puzzle && solved.has(roomBrief.puzzle));
 
@@ -919,10 +1325,19 @@ export function MansionGame() {
           <div className="title-rule"><i /><b>13</b><i /></div>
           <h2>El pacto de las trece campanadas</h2>
           <p>Explora. Interroga a los muertos. Resuelve lo que la casa no puede olvidar.</p>
-          <button className="start-button" onClick={begin}>Entrar en la mansión <span>→</span></button>
+          <button className="start-button" onClick={begin}>{flags.has("epilogo_visto") ? "Volver a la mansión" : flags.has("prologo_visto") ? "Continuar la aventura" : "Entrar en la mansión"} <span>→</span></button>
           {flags.has("prologo_visto") && <button className="replay-story" onClick={replayStory}>Volver a ver el prólogo</button>}
+          {(inventory.length > 0 || solved.size > 0 || flags.has("prologo_visto")) && <button className="new-game-button" onClick={() => setResetConfirm(true)}>Nueva partida desde el principio</button>}
           <small>Partida guardada automáticamente · Auriculares recomendados</small>
         </section>
+        {resetConfirm && <div className="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+          <section className="reset-card">
+            <p className="eyebrow">NUEVA PARTIDA</p>
+            <h2 id="reset-title">¿Abrir otra vez la carta de Aurelia?</h2>
+            <p>La aventura guardada se sustituirá por una nueva. La portada y todos los recursos del juego permanecerán intactos.</p>
+            <div><button onClick={() => setResetConfirm(false)}>Conservar partida</button><button className="danger" onClick={startNewGame}>Empezar de nuevo</button></div>
+          </section>
+        </div>}
       </main>
     );
   }
@@ -936,7 +1351,7 @@ export function MansionGame() {
           <button onClick={toggleAudio} aria-pressed={audioOn} title="Activar ambiente sonoro">{audioOn ? "◖))" : "◖)"} <span>Sonido</span></button>
           <button className={gafeSense ? "active" : ""} onClick={askGafe} title="Activar el sentido felino de Gafe">🐾 <span>Gafe</span></button>
           <button onClick={() => setJournalOpen(true)}>▤ <span>Cuaderno</span></button>
-          <button className={aiOpen ? "active" : ""} onClick={() => setAiOpen((old) => !old)}>✦ <span>ECO IA</span></button>
+          <button className={aiOpen ? "active" : ""} onClick={() => setAiOpen((old) => !old)}>✦ <span>ECO · Pistas</span></button>
         </div>
       </header>
 
@@ -1009,8 +1424,9 @@ export function MansionGame() {
         {scene !== "vestibulo" && nextRoom && <button className="door-exit route-exit exit-right" onClick={() => walkThroughDoor(nextRoom, 92, "right")}><span>{scenes[nextRoom].name}</span><i>→</i></button>}
 
         {sceneNpcs.map((npc) => <button key={npc.id} className={npc.cls} onClick={() => interact(npc.id)} aria-label={`Hablar con ${npc.label}`}><b><Image src={npc.image ?? `/character-${npc.id}-v2.png`} alt="" fill sizes="126px" /></b><span>{npc.label}</span></button>)}
-        <button className={`gafe-companion ${walking ? "is-walking" : ""} faces-${gafeFacing}`} style={{ left: `${gafeX}%`, "--walk-duration": `${walkDuration}ms` } as CSSProperties} onClick={askGafe} aria-label="Pedir ayuda a Gafe"><Image className="gafe-idle" src="/character-gafe-v2.png" alt="Gafe, gato negro de ojos ámbar" width={1024} height={1536} sizes="112px" /><i className="gafe-walk" aria-hidden="true" /><span>Gafe</span></button>
+        <div className={`gafe-companion ${walking ? "is-walking" : ""} faces-${gafeFacing}`} style={{ left: `${gafeX}%`, "--walk-duration": `${walkDuration}ms` } as CSSProperties} aria-hidden="true"><Image className="gafe-idle" src="/character-gafe-v2.png" alt="" width={1024} height={1536} sizes="112px" /><i className="gafe-walk" aria-hidden="true" /><span>Gafe</span></div>
         <div className={`paula ${walking ? "is-walking" : ""} ${scare ? "is-startled" : ""} faces-${paulaFacing}`} style={{ left: `${paulaX}%`, "--walk-duration": `${walkDuration}ms` } as CSSProperties} aria-label="Paula"><Image className="paula-idle" src="/character-paula-v3.png" alt="Paula con sus trenzas, vestido negro y brújula" width={906} height={1737} sizes="112px" /><i className="paula-walk" aria-hidden="true" /><Image className="paula-startled" src="/character-paula-startled.png" alt="" aria-hidden="true" width={906} height={1736} sizes="112px" /><span>Paula</span></div>
+        {solved.has("campana") && scene !== "vestibulo" && scene !== "torre" && <div className={`ines-companion ${walking ? "is-walking" : ""}`} style={{ left:`${Math.max(9, Math.min(89, paulaX + (paulaFacing === "right" ? 13 : -13)))}%`, "--walk-duration":`${walkDuration}ms` } as CSSProperties} aria-label="Inés acompaña a Paula"><Image src="/character-ines-v2.png" alt="Inés, libre de la torre" fill sizes="90px" /><span>Inés</span></div>}
         {gafeSense && <div className="sense-overlay" aria-hidden="true"><i /><i /><i /></div>}
       </section>
 
@@ -1020,8 +1436,8 @@ export function MansionGame() {
             {(["mirar", "hablar", "usar", "coger"] as Verb[]).map((item) => <button key={item} className={verb === item ? "selected" : ""} onClick={() => setVerb(item)}><i>{item === "mirar" ? "◉" : item === "hablar" ? "🎙" : item === "usar" ? "◇" : "⊕"}</i>{item}</button>)}
           </div>
           <div className="pockets" aria-label="Objetos recogidos">
-            <small>MOCHILA DE PAULA</small>
-            <div>{inventory.length ? inventory.slice(-5).map((item) => <button key={item} title={item}><i>{item.toLowerCase().includes("carta") ? "✉" : item.toLowerCase().includes("sello") ? "✦" : item.toLowerCase().includes("llave") ? "⌁" : item.toLowerCase().includes("tiza") ? "▰" : item.toLowerCase().includes("campanilla") ? "♢" : "◆"}</i><span>{item}</span></button>) : <p>Los objetos que recojas aparecerán aquí.</p>}</div>
+            <small>MOCHILA DE PAULA {selectedItem ? `· PREPARADO: ${selectedItem}` : "· TOCA DOS OBJETOS PARA COMBINARLOS"}</small>
+            <div>{inventory.length ? inventory.map((item) => <button key={item} className={selectedItem === item ? "selected-item" : ""} title={`Seleccionar ${item}`} aria-pressed={selectedItem === item} onClick={() => selectInventoryItem(item)}><i>{item.toLowerCase().includes("carta") ? "✉" : item.toLowerCase().includes("sello") ? "✦" : item.toLowerCase().includes("llave") ? "⌁" : item.toLowerCase().includes("tiza") ? "▰" : item.toLowerCase().includes("campanilla") ? "♢" : "◆"}</i><span>{item}</span></button>) : <p>Los objetos que recojas aparecerán aquí.</p>}</div>
           </div>
         </div>
         <div className="status-line"><span>OBJETIVO ACTUAL</span><p>{objective}</p><b>{[...solved].length}/11 pruebas</b></div>
@@ -1072,11 +1488,11 @@ export function MansionGame() {
       </div>}
 
       {aiOpen && <aside className="ai-panel">
-        <header><div><i>✦</i><span><b>ECO</b><small>INTELIGENCIA CONTEXTUAL LOCAL</small></span></div><button onClick={() => setAiOpen(false)}>×</button></header>
+        <header><div><i>✦</i><span><b>ECO</b><small>ASISTENTE CONTEXTUAL LOCAL</small></span></div><button onClick={() => setAiOpen(false)}>×</button></header>
         <div className="ai-state"><span className="pulse" /> Analizando {scenes[scene].name.toLowerCase()}</div>
         <div className="ai-log">{aiMessages.map((message, index) => <p key={`${message}-${index}`} className={message.startsWith("ECO") || index === 0 ? "eco" : "player"}>{message}</p>)}</div>
         <div className="ai-input"><input value={aiInput} onChange={(event) => setAiInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && askEco()} placeholder="Pregunta por una pista…" /><button onClick={() => startListening((text) => { setAiInput(text); askEco(text); })} title="Preguntar por voz">🎙</button><button onClick={() => askEco()}>↑</button></div>
-        <small>ECO conoce tu progreso y adapta las pistas sin enviar datos fuera del dispositivo.</small>
+        <small>ECO recuerda el progreso y adapta las pistas sin enviar la voz ni los datos de Paula fuera del dispositivo.</small>
       </aside>}
 
       {journalOpen && <div className="modal-scrim" role="dialog" aria-modal="true"><section className="journal">
@@ -1086,7 +1502,17 @@ export function MansionGame() {
       </section></div>}
 
       {scare && <div className="gentle-scare" role="status"><i>◉</i><b>{scare}</b></div>}
-      {solved.has("campana") && <div className="ending-badge"><span>AVENTURA COMPLETADA</span><b>La casa ha perdido la cuenta.</b></div>}
+      {endingStep !== null && <div className="story-scrim ending-scrim" role="dialog" aria-modal="true" aria-labelledby="ending-title">
+        <section className="story-card ending-card">
+          <div className="story-number">{String(endingStep + 1).padStart(2, "0")}</div>
+          <p className="eyebrow">{endingCards[endingStep].kicker}</p>
+          <h2 id="ending-title">{endingCards[endingStep].title}</h2>
+          <p>{endingCards[endingStep].text}</p>
+          <div className="story-progress">{endingCards.map((_, index) => <i key={index} className={index <= endingStep ? "active" : ""} />)}</div>
+          <button onClick={advanceEnding}>{endingStep + 1 < endingCards.length ? "Seguir el epílogo" : "Cerrar el libro"}<span>→</span></button>
+        </section>
+      </div>}
+      {flags.has("epilogo_visto") && <div className="ending-badge"><span>AVENTURA COMPLETADA</span><b>Paula, Gafe e Inés están a salvo.</b></div>}
     </main>
   );
 }
