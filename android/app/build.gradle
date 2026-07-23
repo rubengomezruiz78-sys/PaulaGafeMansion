@@ -1,0 +1,43 @@
+apply plugin: "com.android.application"
+
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file("../work/android-signing.properties")
+if (!signingPropertiesFile.exists()) {
+    throw new GradleException("Missing Android signing properties")
+}
+signingProperties.load(new FileInputStream(signingPropertiesFile))
+
+android {
+    namespace "com.paulaygafe.mansion"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.paulaygafe.mansion"
+        minSdk 26
+        targetSdk 35
+        versionCode 2
+        versionName "1.1"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(signingProperties["storeFile"])
+            storePassword signingProperties["storePassword"]
+            keyAlias signingProperties["keyAlias"]
+            keyPassword signingProperties["keyPassword"]
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

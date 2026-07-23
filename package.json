@@ -1,0 +1,23 @@
+{
+  "name": "paula-gafe-mansion",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Paula, Gafe y el misterio de la mansion encantada - workspace independiente (build APK Android)",
+  "scripts": {
+    "dev:web": "vite --config vite.android.config.ts",
+    "build:apk-web": "vite build --config vite.android.config.ts",
+    "preview:web": "vite preview --config vite.android.config.ts"
+  },
+  "dependencies": {
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "typescript": "5.9.3",
+    "vite": "8.0.13"
+  }
+}

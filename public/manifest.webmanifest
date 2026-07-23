@@ -1,0 +1,15 @@
+{
+  "name": "Paula, Gafe y el misterio de la mansión encantada",
+  "short_name": "Paula y Gafe",
+  "description": "Aventura gráfica de misterio con Paula y su gato Gafe.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#080a0c",
+  "theme_color": "#111518",
+  "lang": "es",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

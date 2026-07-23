@@ -1,0 +1,34 @@
+# Node
+node_modules/
+dist/
+
+# Vite build output que se inyecta en el APK (se regenera con build:apk-web)
+android/app/src/main/assets/
+
+# Android / Gradle
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+.gradle/
+
+# Secretos de firma (NO subir nunca)
+work/android-signing.properties
+android/keystore/*.jks
+
+# APKs generados
+*.apk
+
+# SO / editor
+Thumbs.db
+.DS_Store
+.idea/
+*.iml
+node_modules/
+.next/
+dist/
+android/build/
+android/app/build/
+android/.gradle/
+*.apk
+_assets_backup_original/
