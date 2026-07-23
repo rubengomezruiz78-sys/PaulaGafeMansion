@@ -302,3 +302,42 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--copper-brig
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+/* ============================================================= */
+/*  Selector Tablet / Móvil + modo de controles grandes (móvil)  */
+/* ============================================================= */
+.device-chooser .title-card { text-align:center; }
+.device-title { font-family:"Cinzel"; font-weight:500; font-size:22px; letter-spacing:.06em; margin:6px 0 10px; text-transform:none; }
+.device-options { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin:26px 0 8px; }
+.device-options button { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:170px; padding:22px 20px; cursor:pointer; color:#e7e0d3; border:1px solid rgba(225,182,111,.5); background:linear-gradient(160deg,rgba(20,25,27,.94),rgba(10,14,16,.94)); box-shadow:0 12px 34px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.06); transition:.2s; }
+.device-options button:hover,.device-options button:focus-visible { border-color:var(--copper-bright); transform:translateY(-3px); box-shadow:0 18px 44px #000; outline:none; }
+.device-options button i { font-style:normal; font-size:40px; line-height:1; color:var(--copper-bright); }
+.device-options button b { font-family:"Cinzel"; font-size:17px; letter-spacing:.06em; }
+.device-options button small { color:#8f938c; font-size:11px; }
+.device-switch { display:block; margin:14px auto 0; border:1px solid var(--line); background:rgba(10,14,16,.6); color:#9aa09a; padding:8px 14px; font-size:10px; letter-spacing:.06em; cursor:pointer; text-transform:uppercase; }
+.device-switch:hover { color:var(--copper-bright); border-color:rgba(225,182,111,.55); }
+
+/* --- Modo MÓVIL: controles y textos más grandes para dedos pequeños --- */
+:root[data-device="phone"] .header-actions button { height:46px; padding:0 12px; font-size:14px; }
+:root[data-device="phone"] .verbs button { font-size:13px; padding:8px 4px; min-height:54px; }
+:root[data-device="phone"] .verbs button i { font-size:22px; margin-bottom:3px; }
+:root[data-device="phone"] .pockets > small { font-size:10px; }
+:root[data-device="phone"] .pockets > div { height:clamp(60px,13dvh,74px); }
+:root[data-device="phone"] .pockets button { flex-basis:128px; min-height:58px; padding:7px 10px; }
+:root[data-device="phone"] .pockets button i { font-size:22px; line-height:22px; }
+:root[data-device="phone"] .pockets button span { font-size:10px; }
+:root[data-device="phone"] .status-line { font-size:13px; }
+:root[data-device="phone"] .status-line p { font-size:12px; }
+:root[data-device="phone"] .mission-card { width:250px; }
+:root[data-device="phone"] .mission-card strong { font-size:12px; }
+:root[data-device="phone"] .mission-card li { font-size:11px; }
+:root[data-device="phone"] .toast { font-size:14px; padding:13px 44px 13px 18px; }
+:root[data-device="phone"] .dialogue-text { font-size:17px; }
+:root[data-device="phone"] .dialogue > button { font-size:14px; padding:14px 12px; }
+:root[data-device="phone"] .dialogue-topics button { font-size:12px; padding:10px 12px; }
+:root[data-device="phone"] .puzzle-story { font-size:14px; }
+:root[data-device="phone"] .formula span { font-size:16px; }
+:root[data-device="phone"] .answer-row input, :root[data-device="phone"] .ai-input input { padding:15px; font-size:16px; }
+:root[data-device="phone"] .mic { min-height:52px; }
+:root[data-device="phone"] .submit-answer { padding:16px; font-size:13px; }
+:root[data-device="phone"] .device-options button { min-width:150px; padding:18px 16px; }

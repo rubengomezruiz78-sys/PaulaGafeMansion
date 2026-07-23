@@ -50,6 +50,18 @@ type AndroidVoiceWindow = typeof window & {
 };
 
 const SAVE_KEY = "mansion-paula-v4";
+const DEVICE_KEY = "mansion-paula-device";
+type DeviceMode = "tablet" | "phone";
+
+function readDeviceMode(): DeviceMode | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = localStorage.getItem(DEVICE_KEY);
+    return value === "tablet" || value === "phone" ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 const interactionPositions: Record<string, number> = {
   retrato: 74, escalera: 45, carta: 84, campanilla: 79, baul: 61, paraguero: 76, huellas: 28,
@@ -518,6 +530,7 @@ function objectiveFor(solved: Set<PuzzleId>, flags: Set<string>, inventory: stri
 
 export function MansionGame() {
   const [started, setStarted] = useState(false);
+  const [device, setDevice] = useState<DeviceMode | null>(readDeviceMode);
   const [scene, setScene] = useState<SceneId>("vestibulo");
   const [verb, setVerb] = useState<Verb>("mirar");
   const [inventory, setInventory] = useState<string[]>([]);
@@ -570,6 +583,17 @@ export function MansionGame() {
     }, 0);
     return () => window.clearTimeout(loadTimer);
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (device) document.documentElement.dataset.device = device;
+    else delete document.documentElement.dataset.device;
+  }, [device]);
+
+  const chooseDevice = (value: DeviceMode) => {
+    setDevice(value);
+    try { localStorage.setItem(DEVICE_KEY, value); } catch { /* El modo por defecto sigue siendo jugable sin almacenamiento. */ }
+  };
 
   useEffect(() => {
     const voiceWindow = window as AndroidVoiceWindow;
@@ -1316,6 +1340,27 @@ export function MansionGame() {
   const roomClueFound = scene === "vestibulo" ? vestibuleFinds >= 2 : flags.has(roomBrief.clueFlag);
   const roomChallengeDone = scene === "vestibulo" ? flags.has("sello_encontrado") : Boolean(roomBrief.puzzle && solved.has(roomBrief.puzzle));
 
+  if (device === null) {
+    return (
+      <main className="title-screen device-chooser">
+        <div className="title-backdrop"><Image className="title-backdrop-image" src="/cover-paula-gafe-v2.png" alt="" fill sizes="100vw" priority /></div>
+        <section className="title-card">
+          <p className="eyebrow">Antes de empezar</p>
+          <h2 className="device-title">¿Dónde vas a jugar?</h2>
+          <p>Elegimos los controles para que se vean cómodos. Podrás cambiarlo cuando quieras. El juego siempre se juega en horizontal.</p>
+          <div className="device-options">
+            <button onClick={() => chooseDevice("tablet")} aria-label="Jugar en tablet">
+              <i aria-hidden="true">▭</i><b>Tablet</b><small>Pantalla grande</small>
+            </button>
+            <button onClick={() => chooseDevice("phone")} aria-label="Jugar en móvil">
+              <i aria-hidden="true">▯</i><b>Móvil</b><small>Botones grandes · apaisado</small>
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   if (!started) {
     return (
       <main className="title-screen">
@@ -1330,6 +1375,7 @@ export function MansionGame() {
           {flags.has("prologo_visto") && <button className="replay-story" onClick={replayStory}>Volver a ver el prólogo</button>}
           {(inventory.length > 0 || solved.size > 0 || flags.has("prologo_visto")) && <button className="new-game-button" onClick={() => setResetConfirm(true)}>Nueva partida desde el principio</button>}
           <small>Partida guardada automáticamente · Auriculares recomendados</small>
+          <button className="device-switch" onClick={() => setDevice(null)}>Modo: {device === "phone" ? "Móvil" : "Tablet"} · cambiar</button>
         </section>
         {resetConfirm && <div className="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="reset-title">
           <section className="reset-card">

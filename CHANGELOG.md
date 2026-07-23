@@ -1,5 +1,16 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.3 (versionCode 5) — 2026-07-23
+- **Selector Tablet / Móvil al primer arranque**: pregunta "¿Dónde vas a jugar?"
+  y ajusta los controles. La elección se guarda (`mansion-paula-device`) y se
+  puede cambiar desde la pantalla de título ("Modo: … · cambiar").
+- **Modo Móvil**: botones de verbos, mochila, diálogos y puzzles más grandes
+  (targets táctiles ~54-78 px) y textos mayores, pensados para dedos de niña en
+  pantalla pequeña. Ambos modos se juegan en horizontal.
+- Sin desbordes ni scroll verificado en móvil apaisado (780×360) y tablet.
+  Implementado con atributo `data-device` en `:root` y overrides CSS de mayor
+  especificidad (no afecta al modo tablet).
+
 ## v1.2.1 (versionCode 4) — 2026-07-23
 Correcciones tras escrutinio exhaustivo del código:
 - **"Hablar" más indulgente**: en galería, observatorio, desván y túneles el
