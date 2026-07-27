@@ -830,7 +830,10 @@ export function MansionGame() {
   const advanceStory = () => {
     if (storyStep === null) return;
     if (storyStep + 1 < storyCards.length) {
-      setStoryStep((old) => old === null ? 0 : old + 1);
+      // Valor absoluto, NO `old + 1`: varios toques seguidos en el mismo render
+      // leian la misma condicion pero incrementaban una vez cada uno, se pasaban
+      // del numero de tarjetas y el juego se quedaba en blanco.
+      setStoryStep(storyStep + 1);
       return;
     }
     setStoryStep(null);
@@ -874,6 +877,14 @@ export function MansionGame() {
     setStoryReplay(false);
     setEndingStep(null);
     setResetConfirm(false);
+    // Posicion de partida: sin esto Paula reaparecia donde la dejo el final anterior.
+    setPaulaX(43);
+    setGafeX(34);
+    setPaulaFacing("right");
+    setGafeFacing("right");
+    setWalking(false);
+    setScare(null);
+    setRoomTransition(null);
     setStarted(true);
     setStoryStep(0);
   };
@@ -1326,11 +1337,12 @@ export function MansionGame() {
   const submitAnswer = () => {
     if (!puzzle) return;
     const current = puzzleBank[puzzle].questions[questionIndex];
+    if (!current) return; // Doble toque en "Confirmar": el indice ya avanzo.
     const correct = isCorrectAnswer(answer, current.answer, current.accept);
     if (correct) {
       if (questionIndex + 1 >= puzzleBank[puzzle].questions.length) finishPuzzle(puzzle);
       else {
-        setQuestionIndex((old) => old + 1);
+        setQuestionIndex(questionIndex + 1); // Valor absoluto: ver nota en advanceStory.
         setAnswer("");
         setMistakes(0);
         playFx("correct");
@@ -1517,7 +1529,7 @@ export function MansionGame() {
   const advanceEnding = () => {
     if (endingStep === null) return;
     if (endingStep + 1 < endingCards.length) {
-      setEndingStep((old) => old === null ? 0 : old + 1);
+      setEndingStep(endingStep + 1); // Valor absoluto: ver nota en advanceStory.
       return;
     }
     const completedFlags = new Set(flags).add("epilogo_visto").add("aventura_completada");
@@ -1705,6 +1717,11 @@ export function MansionGame() {
 
         {sceneObjects[scene].map((object) => <button key={object.id} className="hotspot room-object" style={{ left:`${object.x}%`, bottom:`${object.y}%`, width:`${object.width ?? 11}%`, height:`${object.height ?? 16}%` }} onClick={() => interact(object.id)}><span>{object.label}</span></button>)}
 
+        {/* Tras liberar a Inés, la casa deja de cambiar los pasillos: el camino de
+            vuelta es directo. Sin esto habia que cruzar hasta 10 salas seguidas
+            despues del climax, y parecia que el juego se habia quedado colgado. */}
+        {solved.has("campana") && !flags.has("epilogo_visto") && scene !== "vestibulo" &&
+          <button className="door-exit way-home" onClick={() => walkThroughDoor("vestibulo", 50, "left")}><i>⌂</i><span>Volver al vestíbulo con Inés</span></button>}
         {scene !== "vestibulo" && previousRoom && <button className="door-exit route-exit exit-left" onClick={() => walkThroughDoor(previousRoom, 6, "left")}><i>←</i><span>{scenes[previousRoom].name}</span></button>}
         {scene !== "vestibulo" && nextRoom && <button className="door-exit route-exit exit-right" onClick={() => walkThroughDoor(nextRoom, 92, "right")}><span>{scenes[nextRoom].name}</span><i>→</i></button>}
 
@@ -1728,7 +1745,7 @@ export function MansionGame() {
         <div className="status-line"><span>OBJETIVO ACTUAL</span><p>{objective}</p><b>{[...solved].length}/11 pruebas</b></div>
       </section>
 
-      {storyStep !== null && <div className="story-scrim" role="dialog" aria-modal="true" aria-labelledby="story-title">
+      {storyStep !== null && storyCards[storyStep] && <div className="story-scrim" role="dialog" aria-modal="true" aria-labelledby="story-title">
         <section className="story-card">
           <div className="story-number">{String(storyStep + 1).padStart(2, "0")}</div>
           <p className="eyebrow">{storyCards[storyStep].kicker}</p>
@@ -1751,10 +1768,10 @@ export function MansionGame() {
             <button className={`voice-topic ${listening ? "listening" : ""} ${voiceAvailable ? "" : "unavailable"}`} onClick={() => startListening((text) => askDialogueQuestion(text))} title={voiceAvailable ? "Hacer una pregunta con la voz" : "Voz no disponible en este dispositivo: usa el teclado"}>{listening ? "Escuchando…" : voiceAvailable ? "🎙 Preguntar con voz" : "⌨ Usa el teclado"}</button>
           </div> : null}
         </div>
-        <button onClick={() => { if (dialogueLine + 1 < dialogue.lines.length) setDialogueLine((old) => old + 1); else setDialogue(null); }}>{dialogueLine + 1 < dialogue.lines.length ? "Continuar  ›" : "Terminar  ×"}</button>
+        <button onClick={() => { if (dialogueLine + 1 < dialogue.lines.length) setDialogueLine(dialogueLine + 1); else setDialogue(null); }}>{dialogueLine + 1 < dialogue.lines.length ? "Continuar  ›" : "Terminar  ×"}</button>
       </section>}
 
-      {puzzle && <div className="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="puzzle-title">
+      {puzzle && puzzleBank[puzzle].questions[questionIndex] && <div className="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="puzzle-title">
         <section className="puzzle-card">
           <button className="close" onClick={() => setPuzzle(null)} aria-label="Cerrar">×</button>
           <p className="eyebrow">PRUEBA {questionIndex + 1} DE {puzzleBank[puzzle].questions.length}</p>
@@ -1787,7 +1804,7 @@ export function MansionGame() {
       </section></div>}
 
       {scare && <div className="gentle-scare" role="status"><i>◉</i><b>{scare}</b></div>}
-      {endingStep !== null && <div className="story-scrim ending-scrim" role="dialog" aria-modal="true" aria-labelledby="ending-title">
+      {endingStep !== null && endingCards[endingStep] && <div className="story-scrim ending-scrim" role="dialog" aria-modal="true" aria-labelledby="ending-title">
         <section className="story-card ending-card">
           <div className="story-number">{String(endingStep + 1).padStart(2, "0")}</div>
           <p className="eyebrow">{endingCards[endingStep].kicker}</p>

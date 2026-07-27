@@ -1,5 +1,28 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.4.2 (versionCode 11) — 2026-07-27 · PANTALLA EN BLANCO Y FINAL DEL JUEGO
+
+- **ARREGLADO: el juego se quedaba en blanco al tocar rápido.** Si se pulsaba
+  varias veces seguidas el botón del prólogo (lo normal cuando ya te sabes la
+  historia, o simplemente por impaciencia), el contador de tarjetas se pasaba del
+  final y la aplicación **moría con la pantalla en negro**: había que cerrarla y
+  volver a abrirla. Reproducido con cuatro toques rápidos. El mismo defecto
+  estaba en el epílogo, en los diálogos y en el botón "Confirmar respuesta" de
+  los puzzles (un doble toque podía matar la partida en mitad de una prueba).
+  Corregido en los cuatro sitios, con una red de seguridad añadida para que
+  ningún índice fuera de rango pueda volver a dejar la pantalla vacía.
+  Verificado con 12 toques seguidos en el prólogo y 5 en un puzzle: sin errores.
+- **Camino de vuelta directo al final.** Tras liberar a Inés en la torre había
+  que cruzar **10 salas** de una en una para volver al vestíbulo y ver el
+  epílogo. Después del momento culminante, eso parecía un fallo. Ahora aparece
+  un botón "Volver al vestíbulo con Inés" que lleva directo, coherente con la
+  historia: la casa ha perdido el poder de cambiar los pasillos.
+- **Nueva partida:** Paula y Gafe vuelven a su posición inicial. Antes reaparecían
+  donde los hubiera dejado la partida anterior.
+- Verificado de principio a fin: las 7 combinaciones de objetos, el puzzle de la
+  campana, las cuatro cartas del epílogo, el guardado final y "Nueva partida".
+  Comprobado también a 1280×800 y 640×360 además de 852×393.
+
 ## v1.4.1 (versionCode 10) — 2026-07-27 · PUZZLES, RESPUESTAS Y ELENCO
 Repaso de los 11 puzzles y del elenco de personajes.
 
