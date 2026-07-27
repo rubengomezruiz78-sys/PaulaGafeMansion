@@ -199,7 +199,7 @@ const sceneObjects: Record<SceneId, SceneObject[]> = {
   ],
 };
 
-const puzzleBank: Record<PuzzleId, { title: string; story: string; questions: { prompt: string; answer: number | string; hint?: string }[] }> = {
+const puzzleBank: Record<PuzzleId, { title: string; story: string; questions: { prompt: string; answer: number | string; hint?: string; accept?: string[] }[] }> = {
   reloj: {
     title: "El reloj de las horas devoradas",
     story: "Elvira señala tres discos. Cada resultado correcto hace avanzar una aguja; un error despierta al reloj.",
@@ -232,7 +232,7 @@ const puzzleBank: Record<PuzzleId, { title: string; story: string; questions: { 
     { prompt: "La mezcla usa 6 hojas en cada uno de 7 frascos y descarta la mitad. ¿Cuántas hojas conserva?", answer: 21, hint: "Primero 6 × 7 hojas, y luego quédate con la mitad." },
   ]},
   retratos: { title: "La familia que cambió de sitio", story: "Los cuadros solo aceptan una historia ordenada. Escucha bien las pistas de Gafe.", questions: [
-    { prompt: "Aurelia está a la izquierda de Tomás. Elvira está a la derecha de Tomás. ¿Quién ocupa el centro?", answer: "tomás", hint: "No necesitas calcular: imagina tres posiciones." },
+    { prompt: "Aurelia está a la izquierda de Tomás. Elvira está a la derecha de Tomás. ¿Quién ocupa el centro?", answer: "tomás", accept: ["tomas", "tomas valcarcel", "el guardes"], hint: "No necesitas calcular: imagina tres posiciones." },
     { prompt: "Si 6 retratos esconden 4 símbolos cada uno, ¿cuántos símbolos hay en total?", answer: 24, hint: "6 retratos con 4 símbolos cada uno: multiplica 6 × 4." },
   ]},
   caja: { title: "La caja de música de Inés", story: "El cilindro repite patrones. Paula debe descubrir qué número continúa.", questions: [
@@ -245,7 +245,7 @@ const puzzleBank: Record<PuzzleId, { title: string; story: string; questions: { 
     { prompt: "La estrella correcta es la que aparece 4 veces en cada una de 6 páginas. ¿Cuántas apariciones?", answer: 24, hint: "4 apariciones en cada una de 6 páginas: 4 × 6." },
   ]},
   melodia: { title: "La melodía de los nombres", story: "Baltasar tararea tres notas. La cuarta se esconde en una palabra.", questions: [
-    { prompt: "Completa el patrón de notas: DO, MI, SOL, DO, MI, SOL… ¿qué nota sigue?", answer: "do", hint: "El patrón se repite igual. ¿Qué nota toca justo después de SOL?" },
+    { prompt: "Completa el patrón de notas: DO, MI, SOL, DO, MI, SOL… ¿qué nota sigue?", answer: "do", accept: ["un do", "la nota do", "c"], hint: "El patrón se repite igual. ¿Qué nota toca justo después de SOL?" },
     { prompt: "El gramófono gira 18 veces por minuto durante 4 minutos. Después divide las vueltas entre 6 pistas. ¿Cuántas por pista?", answer: 12, hint: "Primero 18 × 4 vueltas en total, y luego divídelas entre 6." },
   ]},
   baules: { title: "Los baúles sin dueño", story: "Gafe puede entrar bajo las sábanas, pero Paula debe indicarle el baúl correcto.", questions: [
@@ -254,13 +254,13 @@ const puzzleBank: Record<PuzzleId, { title: string; story: string; questions: { 
   ]},
   compuertas: { title: "El camino del agua", story: "Abrir demasiado inundaría el archivo. No hay prisa: cada compuerta puede pensarse con calma.", questions: [
     { prompt: "Tres canales reciben 48 litros cada uno. Se reparten entre 8 desagües. ¿Cuántos litros pasan por cada desagüe?", answer: 18, hint: "Primero suma el agua: 3 × 48 litros. Luego reparte entre 8 desagües." },
-    { prompt: "La compuerta I abre antes que la III. La II abre después que la III. ¿Cuál se abre en segundo lugar?", answer: "tres", hint: "Ordena I, III y II." },
+    { prompt: "La compuerta I abre antes que la III. La II abre después que la III. ¿Cuál se abre en segundo lugar?", answer: "tres", accept: ["iii", "3", "tercera", "la tercera", "compuerta iii"], hint: "Ordena I, III y II." },
     { prompt: "Doce ruedas giran 6 veces y luego deshacen un tercio de las vueltas. ¿Cuántas vueltas permanecen?", answer: 48, hint: "Primero 12 × 6 vueltas. Un tercio (÷ 3) se deshace; resta esa parte del total." },
   ]},
   campana: { title: "La decimotercera campanada", story: "No es una carrera. La casa solo pierde poder cuando Paula explica la cuenta completa.", questions: [
     { prompt: "Trece campanadas durante 9 noches producen 117 ecos. Si cada recuerdo absorbe 3 ecos, ¿cuántos recuerdos quedan atrapados?", answer: 39, hint: "Reparte los 117 ecos en grupos de 3: 117 ÷ 3." },
     { prompt: "Aurelia dejó 7 llaves a cada una de 12 personas. Inés devolvió la mitad. ¿Cuántas llaves quedaron?", answer: 42, hint: "Primero 7 × 12 llaves en total; devolvió la mitad, así que queda la otra mitad." },
-    { prompt: "Última pregunta: ¿quién ha acompañado a Paula incluso cuando la casa mentía?", answer: "gafe", hint: "Tiene cuatro patas y ojos de color ámbar." },
+    { prompt: "Última pregunta: ¿quién ha acompañado a Paula incluso cuando la casa mentía?", answer: "gafe", accept: ["el gato", "gato", "mi gato", "el gato negro"], hint: "Tiene cuatro patas y ojos de color ámbar." },
   ]},
 };
 
@@ -347,20 +347,33 @@ const endingCards = [
 ];
 
 const numberWords: Record<string, number> = {
-  tres: 3, siete: 7, ocho: 8, doce: 12, quince: 15, dieciocho: 18, veintiuno: 21, veinticuatro: 24, treinta: 30, treinta_y_nueve: 39, cuarenta: 40, "cuarenta y dos": 42, "cuarenta y cinco": 45, cuarenta_y_ocho: 48, sesenta: 60,
+  uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12,
+  trece: 13, catorce: 14, quince: 15, dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20,
+  veintiuno: 21, veintidos: 22, veintitres: 23, veinticuatro: 24, veinticinco: 25, treinta: 30, treinta_y_nueve: 39,
+  cuarenta: 40, "cuarenta y dos": 42, "cuarenta y cinco": 45, cuarenta_y_ocho: 48, sesenta: 60,
   "sesenta y tres": 63, setenta: 70, "setenta y ocho": 78, ochenta: 80,
   "ochenta y cuatro": 84,
+  // Ordinales y romanos: los enunciados hablan de "compuerta I / II / III",
+  // asi que responder "III" o "la tercera" es tan valido como "tres".
+  primera: 1, primero: 1, i: 1, segunda: 2, segundo: 2, ii: 2, tercera: 3, tercero: 3, iii: 3,
+  cuarta: 4, cuarto: 4, iv: 4, quinta: 5, quinto: 5, v: 5,
 };
 
 function normalizeText(value: string) {
-  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/[.,!?]/g, "");
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/[.,!?\u00bf\u00a1:;]/g, "");
 }
 
 function parseSpokenNumber(value: string) {
   const clean = normalizeText(value);
   const digits = clean.match(/-?\d+/);
   if (digits) return Number(digits[0]);
-  return numberWords[clean] ?? numberWords[clean.replace(/ /g, "_")] ?? Number.NaN;
+  const direct = numberWords[clean] ?? numberWords[clean.replace(/ /g, "_")];
+  if (direct !== undefined) return direct;
+  // "la tercera compuerta", "el numero siete": busca la primera palabra que sea un numero.
+  for (const word of clean.split(/\s+/)) {
+    if (numberWords[word] !== undefined) return numberWords[word];
+  }
+  return Number.NaN;
 }
 
 const sceneIds = new Set<SceneId>(Object.keys(scenes) as SceneId[]);
@@ -382,9 +395,13 @@ function readSavedGame(): SavedGame | null {
   }
 }
 
-function isCorrectAnswer(value: string, expected: number | string) {
-  if (typeof expected === "number") return parseSpokenNumber(value) === expected;
+function isCorrectAnswer(value: string, expected: number | string, accept?: string[]) {
   const clean = normalizeText(value);
+  if (accept?.some((alternative) => {
+    const option = normalizeText(alternative);
+    return clean === option || clean.split(/\s+/).includes(option);
+  })) return true;
+  if (typeof expected === "number") return parseSpokenNumber(value) === expected;
   const normalizedExpected = normalizeText(expected);
   if (clean === normalizedExpected || clean.split(/\s+/).includes(normalizedExpected)) return true;
   const expectedNumber = parseSpokenNumber(normalizedExpected);
@@ -493,6 +510,146 @@ const npcDialogue: Record<string, Dialogue> = {
       { label:"¿Eres el fundador de verdad?", keywords:["fundador","verdad","perro"], response:["Técnicamente fui el perro del jardinero. Pero un óleo bien pintado abre muchas puertas sociales."] },
       { label:"¿Qué sabes de los retratos?", keywords:["retratos","orden","cambian"], response:["Aurelia, Tomás y Elvira se turnan el centro del pasillo. Gafe conoce el orden correcto; yo solo vigilo con dignidad."] },
       { label:"¿Conoces a Gafe?", keywords:["gafe","gato"], response:["Un gato entrando en una galería de perros ilustres. Escandaloso. Aunque admito que tiene buen ojo para las trampas."] },
+    ],
+  },
+};
+
+/* Objetos con voz propia. La casa esconde recuerdos dentro de objetos corrientes
+   (biblia del juego), asi que cada trasto con personalidad es un personaje al que
+   se puede HABLAR. Varios mienten con mucha educacion: Gafe siempre los desmiente. */
+const objectCharacters: Record<string, Dialogue> = {
+  libro_rojo: {
+    speaker: "El Libro Rojo",
+    role: "Novela dramática · se cree importante",
+    portrait: "📕",
+    lines: [
+      "(bosteza) Llevo ciento trece años esperando a que alguien me lea, y lo primero que hacéis es interrogarme.",
+      "La respuesta del reloj es trece. Siempre es trece. Es un número con mucha presencia literaria.",
+    ],
+    topics: [
+      { label:"¿Seguro que es trece?", keywords:["seguro","trece","verdad"], response:["Completamente. Bueno… razonablemente. Digamos que trece queda mejor en una frase que sesenta y tres."] },
+      { label:"¿Qué guardas dentro?", keywords:["guardas","dentro","pagina"], response:["Un marcapáginas, tres manchas de té y la página que Doña Elvira jura haber dejado en el escritorio."] },
+      { label:"¿Por qué bostezas?", keywords:["bostezas","aburrido","sueño"], response:["Porque nadie pasa de mi capítulo cuarto. Ni siquiera el marqués, y eso que lo escribió él."] },
+    ],
+  },
+  salero_bromista: {
+    speaker: "El Salero",
+    role: "Condimento con opiniones firmes",
+    portrait: "🧂",
+    lines: [
+      "¡Por fin alguien con manos! La caldera funciona con cuatrocientas cucharadas, apúntalo. (achís)",
+      "Perdón. Soy alérgico a la pimienta y a que me contradigan.",
+    ],
+    topics: [
+      { label:"¿Cuatrocientas cucharadas?", keywords:["cuatrocientas","cucharadas","seguro"], response:["Puede que fueran cuarenta. O cuatro. Los números y yo tenemos una relación muy libre."] },
+      { label:"¿Conoces a Tomás?", keywords:["tomas","guardes","cocina"], response:["Cocinaba fatal y guardaba secretos peor. Dejó su fórmula escrita en una receta que se le quemó. Muy simbólico."] },
+      { label:"¿Qué hay tras el muro?", keywords:["muro","tuberia","cuenta"], response:["Algo que cuenta despacio. Yo no me meto: soy sal, no soy valiente."] },
+    ],
+  },
+  llave_capilla: {
+    speaker: "La Llave de Porcelana",
+    role: "Llave decorativa · no abre nada",
+    portrait: "🗝",
+    lines: [
+      "Soy la llave más hermosa de esta casa. También soy completamente inútil, pero eso se comenta menos.",
+      "Don Basilio me regaló diciendo que era irrompible. Mírame bien: no tengo ni dientes.",
+    ],
+    topics: [
+      { label:"¿Abres la puerta del pacto?", keywords:["abres","puerta","pacto"], response:["No. Esa puerta necesita un mecanismo de verdad, hecho de dos piezas. Yo solo sirvo para hacer bonito y romperme."] },
+      { label:"¿Por qué mintió Basilio?", keywords:["basilio","mintio","por que"], response:["No lo llames mentir. Él lo llama «mantener viva la conversación»."] },
+    ],
+  },
+  flor_embustera: {
+    speaker: "La Flor Embustera",
+    role: "Planta imitadora de voces",
+    portrait: "🌸",
+    lines: [
+      "«Paula, soy Gafe, la mezcla lleva cien gotas.» (voz de gato muy mal imitada)",
+      "…Vale, no soy Gafe. Pero reconoce que casi cuela.",
+    ],
+    topics: [
+      { label:"¿Cuántas gotas de verdad?", keywords:["gotas","verdad","cuantas"], response:["Ni idea. Yo repito voces, no recetas. Pregúntale a la señora Bruma, que sí escucha antes de hablar."] },
+      { label:"¿Quién te regó?", keywords:["rego","quien","agua"], response:["Don Basilio, con agua del espejo. Desde entonces respondo antes de que me pregunten. Es agotador."] },
+      { label:"¿Viste a Inés?", keywords:["ines","niña","viste"], response:["Venía a dibujar raíces. Nunca me creyó nada, y por eso me caía tan bien."] },
+    ],
+  },
+  muneca_susurra: {
+    speaker: "La Muñeca",
+    role: "Juguete de Inés · susurra números",
+    portrait: "🎎",
+    lines: [
+      "Tres… seis… doce… veinticinco… (susurro)",
+      "Inés me enseñó el patrón, pero le cambié el último número para ver si alguien se daba cuenta.",
+    ],
+    topics: [
+      { label:"¿Cuál es el número falso?", keywords:["falso","numero","ultimo"], response:["El veinticinco. Si cada número es el doble del anterior, después de doce no puede venir veinticinco. Gafe ya me lo arrancó de un mordisco."] },
+      { label:"¿Cómo era Inés?", keywords:["ines","como","era"], response:["Ordenada con sus juegos y desordenada con sus miedos. Dejó una partida a medias y la casa nunca la dejó terminarla."] },
+      { label:"¿Te da miedo la casa?", keywords:["miedo","casa","noche"], response:["Soy una muñeca de trapo en un caserón encantado. Llevo trece años fingiendo que no."] },
+    ],
+  },
+  estrella_papel: {
+    speaker: "La Estrella de Papel",
+    role: "Mapa doblado · pésimo sentido de la orientación",
+    portrait: "⭐",
+    lines: [
+      "Tengo escrito NORTE en mis cinco puntas. Eso me convierte en cinco veces más fiable, ¿verdad?",
+      "…Gafe dice que me convierte en cuatro veces más mentirosa. Qué gato tan literal.",
+    ],
+    topics: [
+      { label:"¿Cuál es el norte real?", keywords:["norte","real","cual"], response:["El que señala la lente agrietada cuando se alinea con la brújula de Paula. Yo solo señalo hacia arriba y espero acertar."] },
+      { label:"¿Quién te dobló?", keywords:["doblo","quien","papel"], response:["Inés, en una noche sin estrellas. Dijo que si el cielo mentía, ella se haría uno propio."] },
+    ],
+  },
+  partitura_falsa: {
+    speaker: "La Partitura en Blanco",
+    role: "Obra maestra sin una sola nota",
+    portrait: "🎼",
+    lines: [
+      "Contengo la pieza más difícil jamás compuesta. Dura cuatro minutos y treinta y tres segundos de silencio absoluto.",
+      "Baltasar dice que eso no es componer, que es vaguería con pentagrama.",
+    ],
+    topics: [
+      { label:"¿Y la melodía de verdad?", keywords:["melodia","verdad","notas"], response:["Está en el cilindro de cera. Tres notas que se repiten: el patrón importa más que el oído."] },
+      { label:"¿Sirves para algo?", keywords:["sirves","algo","util"], response:["El papel en blanco siempre sirve. Solo hay que encontrar la tinta adecuada… o una lente que la revele."] },
+    ],
+  },
+  mapa_falso: {
+    speaker: "El Mapa Perfecto",
+    role: "Cartografía optimista",
+    portrait: "🗺",
+    lines: [
+      "¡Buenas noticias! He encontrado la salida. Está a doscientos metros y hay una heladería justo al lado.",
+      "No preguntes cómo cabe una heladería dentro de una mansión. Los mapas tenemos licencia artística.",
+    ],
+    topics: [
+      { label:"¿Existe esa heladería?", keywords:["heladeria","existe","salida"], response:["Existir, lo que se dice existir… no. Pero anima mucho mirarla en el papel."] },
+      { label:"¿Dónde está el plano bueno?", keywords:["plano","bueno","tuneles"], response:["Dentro de un baúl, custodiado por polvo y por un gato que cabe donde no debería."] },
+    ],
+  },
+  moneda_pozo: {
+    speaker: "La Moneda del Aljibe",
+    role: "Moneda de dos caras iguales",
+    portrait: "🪙",
+    lines: [
+      "Lánzame al aire y decide con mi resultado. Cara: compuerta cerrada. Cruz: compuerta cerrada.",
+      "Llevo cien años dando el mismo consejo y nadie me ha acusado nunca de contradecirme.",
+    ],
+    topics: [
+      { label:"¿Entonces no ayudas?", keywords:["ayudas","sirves","no"], response:["Te ayudo a descartar el azar. En esta casa, adivinar sale caro; contar bien, no."] },
+      { label:"¿Quién te tiró aquí?", keywords:["tiro","quien","pozo"], response:["Trece personas pidieron trece deseos. Doce salieron del agua. Yo me quedé a hacer compañía a la que faltaba."] },
+    ],
+  },
+  palanca_dorada: {
+    speaker: "La Palanca Dorada",
+    role: "Trampa con muy buena presentación",
+    portrait: "🔱",
+    lines: [
+      "«TIRAR PARA GANAR». Lo pone bien grande. ¿A que da gusto leer instrucciones claras?",
+      "Gafe se ha sentado encima. Qué gato tan poco deportivo.",
+    ],
+    topics: [
+      { label:"¿Qué pasa si tiro?", keywords:["tiro","pasa","ganar"], response:["Un golpe seco dentro del muro y una campanada que nadie quiere oír. Pero técnicamente habrías «tirado», que era lo prometido."] },
+      { label:"¿Cómo se libera a Inés?", keywords:["ines","libera","campana"], response:["Sin golpes. Con una cuenta bien explicada y un nudo hecho con su cinta roja. Lo sé porque llevo años viendo fallar a la casa."] },
     ],
   },
 };
@@ -1005,6 +1162,15 @@ export function MansionGame() {
       } else if (verb === "hablar") {
         const npcId = objectTalkTargets[roomObject.id];
         if (npcId) return speak(npcId);
+        const objectVoice = objectCharacters[roomObject.id];
+        if (objectVoice) {
+          setDialogue(objectVoice);
+          setDialogueLine(0);
+          // No marca `${scene}_talked`: el objetivo "habla con X" debe seguir
+          // pidiendo al personaje real, que es quien da la pista que abre el puzzle.
+          setFlags((old) => new Set(old).add(`objeto_hablado_${roomObject.id}`));
+          return;
+        }
         setToast(`Paula pregunta a ${roomObject.label.toLowerCase()}. ${roomObject.look}`);
       } else {
         setToast(roomObject.look);
@@ -1094,7 +1260,8 @@ export function MansionGame() {
   };
 
   const walkTo = (destination: number, onArrival?: () => void) => {
-    if (walking) return;
+    // Un toque nuevo mientras Paula camina REDIRIGE el paseo; antes se descartaba
+    // en silencio y el juego parecia no responder al segundo toque.
     const next = Math.max(7, Math.min(86, destination));
     const direction = next < paulaX ? "left" : "right";
     const duration = Math.max(320, Math.min(1800, Math.abs(next - paulaX) * 32));
@@ -1159,7 +1326,7 @@ export function MansionGame() {
   const submitAnswer = () => {
     if (!puzzle) return;
     const current = puzzleBank[puzzle].questions[questionIndex];
-    const correct = isCorrectAnswer(answer, current.answer);
+    const correct = isCorrectAnswer(answer, current.answer, current.accept);
     if (correct) {
       if (questionIndex + 1 >= puzzleBank[puzzle].questions.length) finishPuzzle(puzzle);
       else {
@@ -1615,7 +1782,7 @@ export function MansionGame() {
 
       {journalOpen && <div className="modal-scrim" role="dialog" aria-modal="true"><section className="journal">
         <button className="close" onClick={() => setJournalOpen(false)}>×</button><p className="eyebrow">CUADERNO DE PAULA Y GAFE</p><h2>El misterio de la mansión encantada</h2>
-        <div className="journal-grid"><div><h3>Hallazgos</h3><ul><li className={flags.has("sello_encontrado") ? "done" : ""}>El retrato de Aurelia oculta un sello.</li><li className={solved.has("reloj") ? "done" : ""}>El reloj de Elvira mide una deuda.</li><li className={solved.has("presion") ? "done" : ""}>Tomás encerró la llave en la caldera.</li><li className={solved.has("sello") ? "done" : ""}>La voz de Inés está atada a la torre.</li><li className={solved.has("flora") && solved.has("retratos") ? "done" : ""}>La lente y la cinta abren el dormitorio.</li><li className={solved.has("estrellas") ? "done" : ""}>El cielo contiene una partitura invisible.</li><li className={solved.has("compuertas") ? "done" : ""}>Los túneles conducen a la campana.</li></ul><h3>Objetos guardados</h3><p>{inventory.length ? inventory.join(" · ") : "Aún no has recogido ningún objeto."}</p></div><div><h3>Personas</h3><p><b>Gafe</b> · gato negro, compañero y detector de magia.</p><p><b>Elvira</b> · bibliotecaria que convirtió las cuentas en cerraduras.</p><p><b>Tomás</b> · guardés que selló la capilla.</p><p><b>Inés</b> · voz desaparecida hace trece años.</p><p><b>Señora Bruma</b> · botánica que oye hablar a las flores.</p><p><b>Baltasar</b> · cocinero fantasma que esconde pistas en melodías.</p></div></div>
+        <div className="journal-grid"><div><h3>Hallazgos</h3><ul><li className={flags.has("sello_encontrado") ? "done" : ""}>El retrato de Aurelia oculta un sello.</li><li className={solved.has("reloj") ? "done" : ""}>El reloj de Elvira mide una deuda.</li><li className={solved.has("presion") ? "done" : ""}>Tomás encerró la llave en la caldera.</li><li className={solved.has("sello") ? "done" : ""}>La voz de Inés está atada a la torre.</li><li className={solved.has("flora") && solved.has("retratos") ? "done" : ""}>La lente y la cinta abren el dormitorio.</li><li className={solved.has("estrellas") ? "done" : ""}>El cielo contiene una partitura invisible.</li><li className={solved.has("compuertas") ? "done" : ""}>Los túneles conducen a la campana.</li></ul><h3>Objetos guardados</h3><p>{inventory.length ? inventory.join(" · ") : "Aún no has recogido ningún objeto."}</p></div><div><h3>Personas</h3><p><b>Gafe</b> · gato negro, compañero y detector de magia.</p><p><b>Elvira</b> · bibliotecaria que convirtió las cuentas en cerraduras.</p><p><b>Tomás</b> · guardés que selló la capilla.</p><p><b>Inés</b> · voz desaparecida hace trece años.</p><p><b>Señora Bruma</b> · botánica que oye hablar a las flores.</p><p><b>Baltasar</b> · cocinero fantasma que esconde pistas en melodías.</p><p><b>Barón Pelusa</b> · retrato de un perro que se cree fundador de la familia.</p><h3>Objetos que hablan</h3><p>Usa HABLAR con los trastos de cada sala: el libro rojo, el salero, la flor embustera, la muñeca, la estrella de papel, el mapa perfecto, la moneda, la palanca dorada… Casi todos exageran; Gafe siempre los desmiente.</p></div></div>
         <div className="journal-objective"><small>PRÓXIMO PASO</small>{objective}</div>
       </section></div>}
 

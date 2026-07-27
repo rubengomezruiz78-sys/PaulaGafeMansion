@@ -1,5 +1,29 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.4.1 (versionCode 10) — 2026-07-27 · PUZZLES, RESPUESTAS Y ELENCO
+Repaso de los 11 puzzles y del elenco de personajes.
+
+- **El juego ya no ignora los toques impacientes.** Si Paula estaba caminando,
+  cualquier toque nuevo se descartaba en silencio: el segundo objeto que tocabas
+  simplemente no respondía. Ahora el toque nuevo redirige el paseo, como en
+  cualquier aventura point-and-click. Era de los fallos más molestos: parecía que
+  el juego se colgaba.
+- **Respuestas más tolerantes.** Las 28 preguntas se validan ahora contra 203
+  comprobaciones automáticas. Se aceptan formas que antes se rechazaban aunque
+  fueran correctas: números romanos ("III" cuando el enunciado habla de la
+  compuerta I, II y III), ordinales ("la tercera"), respuestas con unidad
+  ("12 minutos") y sinónimos razonables ("el gato" por Gafe). Toda la aritmética
+  de los enunciados se ha verificado una a una.
+- **11 personajes nuevos**: los trastos con personalidad de cada sala pasan a ser
+  personajes con los que se puede HABLAR, cada uno con voz y tres preguntas —
+  el Libro Rojo, el Salero, la Llave de Porcelana, la Flor Embustera, la Muñeca,
+  la Estrella de Papel, la Partitura en Blanco, el Mapa Perfecto, la Moneda del
+  Aljibe, la Palanca Dorada y el Barón Pelusa. Casi todos exageran o mienten con
+  mucha educación, y Gafe siempre los desmiente. El elenco pasa de 8 a 19.
+- Hablar con un objeto **no** marca el objetivo "habla con X" de la sala: ese
+  check sigue exigiendo al personaje real, que es quien da la pista que abre el
+  puzzle.
+
 ## v1.4.0 (versionCode 9) — 2026-07-27 · QA DE LAS 12 SALAS, VOZ Y ECO
 Auditoría automatizada sala por sala midiendo, para cada punto interactivo, si su
 centro era realmente alcanzable con el dedo. Aparecieron 9 fallos reales:
