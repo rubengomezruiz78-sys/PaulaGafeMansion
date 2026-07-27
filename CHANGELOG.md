@@ -1,5 +1,27 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.4.4 (versionCode 13) — 2026-07-28 · PROBADO A LA CONTRA
+Ronda de pruebas jugando **mal a propósito**, que es donde se esconden los
+fallos que no salen jugando bien.
+
+- **ARREGLADO: el botón Atrás sacaba del juego al cruzar una puerta.** Si se
+  pulsaba Atrás mientras Paula caminaba hacia una salida, el juego saltaba a la
+  pantalla de título como si se hubiera cerrado. La partida no se perdía, pero
+  asustaba. Ahora, mientras Paula camina, cruza de sala o hay un susto, Atrás
+  no hace nada.
+
+Todo lo demás aguantó sin un solo error:
+- Pistas falsas en los mecanismos: responden con su broma y no rompen nada.
+- Combinar objetos que no encajan, entrar en salas cerradas, tocar mecanismos
+  sin los requisitos: todos avisan con un mensaje que explica qué falta.
+- Cerrar un puzzle a media pregunta y volver a abrirlo: entra limpio.
+- Cambiar de Tablet a Móvil en mitad de un puzzle: nada se descoloca.
+- Recargar la aplicación en cualquier momento: la partida vuelve intacta.
+- Partida guardada corrupta (salas y puzzles inventados): se sanea sola y el
+  juego arranca con normalidad en lugar de quedarse en blanco.
+- Más de 300 pulsaciones seguidas y desordenadas por toda la pantalla, como
+  quien se impacienta: cero errores y la partida sigue coherente.
+
 ## v1.4.3 (versionCode 12) — 2026-07-28 · PARTIDA COMPLETA JUGADA DE VERDAD
 Se jugó la aventura entera de principio a fin, sin trucos ni partidas
 preparadas: las 12 salas, los 11 puzzles y las 8 combinaciones, tal y como la

@@ -1573,6 +1573,10 @@ export function MansionGame() {
     const voiceWindow = window as AndroidVoiceWindow;
     voiceWindow.__onAndroidBack = () => {
       if (!started && !resetConfirm) return "exit";
+      // Mientras Paula camina hacia una puerta, se cruza de sala o hay un susto,
+      // Atras no debe hacer nada: la escena aun no ha cambiado y el jugador
+      // acababa en la portada, como si hubiera cerrado el juego.
+      if (walking || roomTransition || scare) return "handled";
       if (resetConfirm) setResetConfirm(false);
       else if (endingStep !== null) setEndingStep(null);
       else if (storyStep !== null) {
@@ -1599,7 +1603,7 @@ export function MansionGame() {
       return "handled";
     };
     return () => { delete voiceWindow.__onAndroidBack; };
-  }, [aiOpen, dialogue, endingStep, journalOpen, puzzle, resetConfirm, scene, selectedItem, started, storyReplay, storyStep]);
+  }, [aiOpen, dialogue, endingStep, journalOpen, puzzle, resetConfirm, roomTransition, scare, scene, selectedItem, started, storyReplay, storyStep, walking]);
 
   const dialogueText = dialogue?.lines[dialogueLine] ?? "";
   const sceneNpcs = sceneNpcsByRoom[scene];
