@@ -122,6 +122,11 @@ public class MainActivity extends Activity {
             });
         }
 
+        @JavascriptInterface
+        public boolean isAvailable() {
+            return SpeechRecognizer.isRecognitionAvailable(MainActivity.this);
+        }
+
         void beginListening() {
             if (!SpeechRecognizer.isRecognitionAvailable(MainActivity.this)) {
                 sendError("El reconocimiento de voz no está disponible en esta tablet");
@@ -167,7 +172,23 @@ public class MainActivity extends Activity {
 
         @Override
         public void onError(int error) {
-            sendError("No he podido entenderte. Vuelve a intentarlo.");
+            String message;
+            switch (error) {
+                case SpeechRecognizer.ERROR_NO_MATCH:
+                case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                    message = "No he podido entenderte. Vuelve a intentarlo o escribe la respuesta.";
+                    break;
+                case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                    message = "Falta el permiso de micrófono. Puedes escribir la respuesta.";
+                    break;
+                case SpeechRecognizer.ERROR_NETWORK:
+                case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                    message = "El reconocimiento de voz necesita conexión y no la encuentra. Escribe la respuesta.";
+                    break;
+                default:
+                    message = "El micrófono no ha podido escuchar bien. Escribe la respuesta si prefieres.";
+            }
+            sendError(message);
             destroy();
         }
 

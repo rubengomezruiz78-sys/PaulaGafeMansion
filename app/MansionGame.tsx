@@ -43,7 +43,7 @@ type SpeechRecognitionLike = {
 };
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 type AndroidVoiceWindow = typeof window & {
-  AndroidVoice?: { startListening: () => void; cancelListening: () => void };
+  AndroidVoice?: { startListening: () => void; cancelListening: () => void; isAvailable?: () => boolean };
   __onAndroidVoiceResult?: (text: string) => void;
   __onAndroidVoiceError?: (message: string) => void;
   __onAndroidBack?: () => "handled" | "exit";
@@ -481,6 +481,24 @@ const npcDialogue: Record<string, Dialogue> = {
       { label:"¿Qué guarda el cilindro?", keywords:["cilindro","cera","guarda"], response:["Mi último ensayo y un estornudo perfectamente afinado. Lo importante son las tres primeras notas."] },
     ],
   },
+  pelusa: {
+    speaker: "Barón Pelusa",
+    role: "Fundador honorario · en realidad, el perro del jardinero",
+    portrait: "🐾",
+    lines: [
+      "Ejem. Barón Pelusa, decimocuarto de mi linaje. Sí, llevo peluca. Es protocolo, no vanidad.",
+      "Los retratos de esta galería cambian de sitio cuando nadie mira. Yo, en cambio, jamás me muevo: sería indigno de un óleo.",
+    ],
+    topics: [
+      { label:"¿Eres el fundador de verdad?", keywords:["fundador","verdad","perro"], response:["Técnicamente fui el perro del jardinero. Pero un óleo bien pintado abre muchas puertas sociales."] },
+      { label:"¿Qué sabes de los retratos?", keywords:["retratos","orden","cambian"], response:["Aurelia, Tomás y Elvira se turnan el centro del pasillo. Gafe conoce el orden correcto; yo solo vigilo con dignidad."] },
+      { label:"¿Conoces a Gafe?", keywords:["gafe","gato"], response:["Un gato entrando en una galería de perros ilustres. Escandaloso. Aunque admito que tiene buen ojo para las trampas."] },
+    ],
+  },
+};
+
+const objectTalkTargets: Partial<Record<string, keyof typeof npcDialogue>> = {
+  retrato_perro: "pelusa",
 };
 
 const sceneNpcsByRoom: Record<SceneId, SceneNpc[]> = {
@@ -497,6 +515,18 @@ const sceneNpcsByRoom: Record<SceneId, SceneNpc[]> = {
   tuneles: [{ id: "tomas", label: "Tomás", cls: "npc ghost tomas", letter: "T" }],
   torre: [{ id: "ines", label: "Inés", cls: "npc ghost ines", letter: "I" }],
 };
+
+function isRoomLocked(next: SceneId, solved: Set<PuzzleId>) {
+  return (
+    (next === "archivo" && (!solved.has("reloj") || !solved.has("presion"))) ||
+    ((next === "invernadero" || next === "galeria") && !solved.has("sello")) ||
+    (next === "dormitorio" && (!solved.has("flora") || !solved.has("retratos"))) ||
+    (next === "observatorio" && !solved.has("caja")) ||
+    ((next === "musica" || next === "desvan") && !solved.has("estrellas")) ||
+    (next === "tuneles" && (!solved.has("melodia") || !solved.has("baules"))) ||
+    (next === "torre" && !solved.has("compuertas"))
+  );
+}
 
 function objectiveFor(solved: Set<PuzzleId>, flags: Set<string>, inventory: string[]) {
   const has = (item: string) => inventory.includes(item);
@@ -545,10 +575,11 @@ export function MansionGame() {
   const [answer, setAnswer] = useState("");
   const [mistakes, setMistakes] = useState(0);
   const [listening, setListening] = useState(false);
+  const [voiceAvailable, setVoiceAvailable] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiInput, setAiInput] = useState("");
   const [aiMessages, setAiMessages] = useState<string[]>([
-    "Soy ECO, una presencia contextual. Puedo analizar lo que ya has visto, pero no resolveré el misterio por ti.",
+    "Soy ECO. Puedo analizar lo que ya has visto, pero no resolveré el misterio por ti. Prueba a preguntarme «¿qué hago ahora?», «estoy atascada», «¿qué puedo coger aquí?» o «¿a dónde puedo ir?».",
   ]);
   const [journalOpen, setJournalOpen] = useState(false);
   const [audioOn, setAudioOn] = useState(false);
@@ -598,6 +629,12 @@ export function MansionGame() {
   useEffect(() => {
     const voiceWindow = window as AndroidVoiceWindow;
     if ("serviceWorker" in navigator && !voiceWindow.AndroidVoice) void navigator.serviceWorker.register("/sw.js");
+    if (voiceWindow.AndroidVoice?.isAvailable) {
+      setVoiceAvailable(voiceWindow.AndroidVoice.isAvailable());
+    } else {
+      const speechWindow = window as typeof window & { webkitSpeechRecognition?: unknown; SpeechRecognition?: unknown };
+      setVoiceAvailable(Boolean(speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition));
+    }
   }, []);
 
   useEffect(() => {
@@ -966,6 +1003,8 @@ export function MansionGame() {
       } else if (verb === "usar" && selectedItem) {
         setToast(`${selectedItem} no tiene una función clara sobre ${roomObject.label.toLowerCase()}. Prueba a observarlo o combinar el objeto con otra cosa de la mochila.`);
       } else if (verb === "hablar") {
+        const npcId = objectTalkTargets[roomObject.id];
+        if (npcId) return speak(npcId);
         setToast(`Paula pregunta a ${roomObject.label.toLowerCase()}. ${roomObject.look}`);
       } else {
         setToast(roomObject.look);
@@ -1138,6 +1177,10 @@ export function MansionGame() {
   };
 
   const startListening = (onText: (text: string) => void) => {
+    if (!voiceAvailable) {
+      setToast("La voz no está disponible en este dispositivo. Escribe la respuesta con el teclado.");
+      return;
+    }
     const voiceWindow = window as AndroidVoiceWindow;
     if (voiceWindow.AndroidVoice) {
       voiceWindow.AndroidVoice.cancelListening();
@@ -1194,16 +1237,50 @@ export function MansionGame() {
       items.every((item) => inventory.includes(item)) && !inventory.includes(result),
     );
     let response = `Ahora mismo: ${objective}`;
-    if (/combinar|mezclar|mochila|inventario|objeto/.test(lower)) {
+
+    // El siguiente paso concreto de ESTA sala, en orden de progresion.
+    const nextStepHere = () => {
+      if (scene === "vestibulo") {
+        if (!flags.has("gafe_consultado") && !flags.has("basilio_interrogado")) return "Habla con Gafe (boton de la pata) o con Don Basilio. Uno dice la verdad y el otro se divierte.";
+        if (!flags.has("retrato_examinado")) return "MIRA el retrato de Aurelia antes de tocarlo. El marco esconde el truco.";
+        if (vestibuleFinds < 2) return `Necesitas dos hallazgos del vestibulo y llevas ${vestibuleFinds}. Usa COGER en la carta, la campanilla, el baul o el paraguero.`;
+        if (!flags.has("sello_encontrado")) return "Ya puedes usar COGER en el retrato de Aurelia: detras esta su sello.";
+        return "Tienes el sello. Cruza la puerta de la izquierda hacia la biblioteca.";
+      }
+      if (!currentPuzzle) return objective;
+      if (solved.has(currentPuzzle)) return `Esta sala ya esta resuelta. ${objective}`;
+      if (!flags.has(brief.talkFlag)) return `Primero: ${brief.talk}. Aqui las conversaciones dan informacion real, no relleno.`;
+      if (!flags.has(brief.clueFlag)) return `Ahora: ${brief.clue}. Cambia al verbo COGER y toca el objeto.`;
+      if (!inventory.includes(puzzleTools[currentPuzzle].item)) return puzzleTools[currentPuzzle].readyText;
+      return `Selecciona «${puzzleTools[currentPuzzle].item}» en la mochila y usalo en el mecanismo de la sala.`;
+    };
+
+    // Que objetos quedan por coger aqui (sin desvelar para que sirven).
+    const pendingHere = sceneObjects[scene]
+      .filter((object) => object.item && !inventory.includes(object.item))
+      .map((object) => object.label);
+
+    if (/a donde|adonde|donde (voy|ir|puedo ir)|puerta|salir|salida|otra (sala|habitacion)/.test(lower)) {
+      const openDoors = ([roomConnections[scene].left, roomConnections[scene].right]
+        .filter(Boolean) as SceneId[])
+        .filter((room) => !isRoomLocked(room, solved));
+      response = openDoors.length
+        ? `Desde aqui puedes ir a: ${openDoors.map((room) => scenes[room].name).join(" y ")}.`
+        : "Las salidas de esta sala siguen cerradas. Resuelve primero el mecanismo de esta habitacion.";
+    } else if (/coger|recoger|guardar|que hay aqui|que queda/.test(lower)) {
+      response = pendingHere.length
+        ? `En ${scenes[scene].name.toLowerCase()} aun puedes recoger: ${pendingHere.join(", ")}. Recuerda cambiar al verbo COGER.`
+        : "En esta sala ya has recogido todo lo que se puede guardar. El siguiente paso esta en el mecanismo o en otra habitacion.";
+    } else if (/atasca|atascad|bloquea|no puedo|no se que|perdid|ayudame|siguiente paso|que hago/.test(lower)) {
+      response = nextStepHere();
+    } else if (/combinar|mezclar|mochila|inventario|objeto/.test(lower)) {
       response = availableCombination
         ? `En la mochila hay dos piezas relacionadas: ${availableCombination.items[0]} y ${availableCombination.items[1]}. Selecciona una y después la otra.`
         : selectedItem
           ? `${selectedItem} está preparado. Toca otro objeto para combinarlo o un mecanismo para usarlo.`
           : "Selecciona un objeto de la mochila. Puedes tocar otro para combinarlos o usarlo sobre un mecanismo de la escena.";
-    } else if (/objetivo|hacer|ahora|ayuda|pista/.test(lower) && currentPuzzle && !solved.has(currentPuzzle)) {
-      if (!flags.has(brief.talkFlag)) response = `Empieza por esto: ${brief.talk}. Las conversaciones desbloquean información real.`;
-      else if (!flags.has(brief.clueFlag)) response = `La conversación ya está hecha. Ahora: ${brief.clue}. Debes usar COGER para guardarla.`;
-      else response = puzzleTools[currentPuzzle].readyText;
+    } else if (/objetivo|hacer|ahora|ayuda|pista/.test(lower)) {
+      response = nextStepHere();
     } else if (/elvira|biblioteca|reloj/.test(lower)) {
       response = solved.has("reloj") ? "El engranaje de Elvira encaja con una pieza obtenida en la cocina." : "Habla con Elvira, recoge la página y usa el sello de Aurelia en el reloj.";
     } else if (/tom[aá]s|cocina|caldera|v[aá]lvula/.test(lower)) {
@@ -1222,14 +1299,7 @@ export function MansionGame() {
   };
 
   const canTravel = (next: SceneId) => {
-    const locked =
-      (next === "archivo" && (!solved.has("reloj") || !solved.has("presion"))) ||
-      ((next === "invernadero" || next === "galeria") && !solved.has("sello")) ||
-      (next === "dormitorio" && (!solved.has("flora") || !solved.has("retratos"))) ||
-      (next === "observatorio" && !solved.has("caja")) ||
-      ((next === "musica" || next === "desvan") && !solved.has("estrellas")) ||
-      (next === "tuneles" && (!solved.has("melodia") || !solved.has("baules"))) ||
-      (next === "torre" && !solved.has("compuertas"));
+    const locked = isRoomLocked(next, solved);
     if (locked) setToast("Esa puerta todavía no se abre. Las pistas del objetivo actual explican qué le falta.");
     return !locked;
   };
@@ -1511,7 +1581,7 @@ export function MansionGame() {
         <div><p className="speaker">{dialogue.speaker} <span>{dialogue.role}</span></p><p className="dialogue-text">“{dialogueText}”</p>
           {dialogueLine + 1 >= dialogue.lines.length && dialogue.topics?.length ? <div className="dialogue-topics" aria-label="Preguntas disponibles">
             {dialogue.topics.map((topic) => <button key={topic.label} onClick={() => askDialogueQuestion(topic.label, topic)}>{topic.label}</button>)}
-            <button className={listening ? "voice-topic listening" : "voice-topic"} onClick={() => startListening((text) => askDialogueQuestion(text))} title="Hacer una pregunta con la voz">{listening ? "Escuchando…" : "🎙 Preguntar con voz"}</button>
+            <button className={`voice-topic ${listening ? "listening" : ""} ${voiceAvailable ? "" : "unavailable"}`} onClick={() => startListening((text) => askDialogueQuestion(text))} title={voiceAvailable ? "Hacer una pregunta con la voz" : "Voz no disponible en este dispositivo: usa el teclado"}>{listening ? "Escuchando…" : voiceAvailable ? "🎙 Preguntar con voz" : "⌨ Usa el teclado"}</button>
           </div> : null}
         </div>
         <button onClick={() => { if (dialogueLine + 1 < dialogue.lines.length) setDialogueLine((old) => old + 1); else setDialogue(null); }}>{dialogueLine + 1 < dialogue.lines.length ? "Continuar  ›" : "Terminar  ×"}</button>
@@ -1527,7 +1597,7 @@ export function MansionGame() {
           <label htmlFor="answer">Tu respuesta</label>
           <div className="answer-row">
             <input id="answer" inputMode={typeof puzzleBank[puzzle].questions[questionIndex].answer === "number" ? "numeric" : "text"} value={answer} onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => event.key === "Enter" && submitAnswer()} placeholder="Escribe o di la respuesta…" />
-            <button className={listening ? "mic listening" : "mic"} onClick={() => startListening(setAnswer)} title="Responder con el micrófono">{listening ? "●" : "🎙"}<span>{listening ? "Escuchando…" : "Responder por voz"}</span></button>
+            <button className={`mic ${listening ? "listening" : ""} ${voiceAvailable ? "" : "unavailable"}`} onClick={() => startListening(setAnswer)} title={voiceAvailable ? "Responder con el micrófono" : "Voz no disponible en este dispositivo: usa el teclado"}>{listening ? "●" : voiceAvailable ? "🎙" : "⌨"}<span>{listening ? "Escuchando…" : voiceAvailable ? "Responder por voz" : "Voz no disponible"}</span></button>
           </div>
           {mistakes > 0 && <p className="error-hint">La casa ha rechazado {mistakes} {mistakes === 1 ? "respuesta" : "respuestas"}. Comprueba las operaciones.</p>}
           {mistakes > 1 && puzzleBank[puzzle].questions[questionIndex].hint && <p className="kind-hint">Pista de Gafe: {puzzleBank[puzzle].questions[questionIndex].hint}</p>}
@@ -1539,7 +1609,7 @@ export function MansionGame() {
         <header><div><i>✦</i><span><b>ECO</b><small>ASISTENTE CONTEXTUAL LOCAL</small></span></div><button onClick={() => setAiOpen(false)}>×</button></header>
         <div className="ai-state"><span className="pulse" /> Analizando {scenes[scene].name.toLowerCase()}</div>
         <div className="ai-log">{aiMessages.map((message, index) => <p key={`${message}-${index}`} className={message.startsWith("ECO") || index === 0 ? "eco" : "player"}>{message}</p>)}</div>
-        <div className="ai-input"><input value={aiInput} onChange={(event) => setAiInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && askEco()} placeholder="Pregunta por una pista…" /><button onClick={() => startListening((text) => { setAiInput(text); askEco(text); })} title="Preguntar por voz">🎙</button><button onClick={() => askEco()}>↑</button></div>
+        <div className="ai-input"><input value={aiInput} onChange={(event) => setAiInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && askEco()} placeholder="Pregunta por una pista…" /><button className={voiceAvailable ? "" : "unavailable"} onClick={() => startListening((text) => { setAiInput(text); askEco(text); })} title={voiceAvailable ? "Preguntar por voz" : "Voz no disponible en este dispositivo: usa el teclado"}>{voiceAvailable ? "🎙" : "⌨"}</button><button onClick={() => askEco()}>↑</button></div>
         <small>ECO recuerda el progreso y adapta las pistas sin enviar la voz ni los datos de Paula fuera del dispositivo.</small>
       </aside>}
 

@@ -1,5 +1,39 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.4.0 (versionCode 9) — 2026-07-27 · QA DE LAS 12 SALAS, VOZ Y ECO
+Auditoría automatizada sala por sala midiendo, para cada punto interactivo, si su
+centro era realmente alcanzable con el dedo. Aparecieron 9 fallos reales:
+
+- **Objetos imposibles de coger (3 bloqueos de partida)**: la receta chamuscada
+  (cocina), la canica azul (dormitorio) y la flecha de tiza (túneles) quedaban
+  tapadas por un personaje. Las tres son pistas **obligatorias**: sin ellas el
+  puzzle de su sala no abría y la aventura se quedaba atascada sin explicación.
+- **Otros elementos tapados**: baúl de Inés y paragüero (vestíbulo), libro de
+  cuentas (biblioteca), partitura (salón de música), caja de música (dormitorio),
+  baúles numerados (desván) y compuertas (túneles).
+- **Causa raíz**: los puntos interactivos no tenían prioridad definida, así que
+  los personajes y los botones de salida se dibujaban por encima. Se ha fijado un
+  orden explícito: objeto pequeño > salida > personaje > zona de puzzle grande.
+- **Zonas táctiles**: varios objetos medían ~26 px de alto. Mínimo ahora 48 px.
+
+Voz (la tablet Lenovo avisaba de que "no es compatible"):
+- El juego **pregunta al arrancar** si el dispositivo reconoce voz. Si no, los
+  botones de micrófono se muestran como teclado con el texto "Voz no disponible"
+  en vez de fallar al pulsarlos: deja de parecer una avería y pasa a ser una
+  alternativa clara. El teclado siempre funcionó y sigue funcionando.
+- Los errores del micrófono ahora distinguen permiso, falta de red y no haber
+  entendido, cada uno con su explicación.
+
+ECO (asistente de pistas local):
+- Entiende tres preguntas nuevas y frecuentes en una niña: "estoy atascada",
+  "¿qué puedo coger aquí?" y "¿a dónde puedo ir?". Responde con el **paso
+  concreto** de la sala actual, la lista de objetos que aún quedan por recoger y
+  las salidas realmente abiertas, en vez de repetir el objetivo general.
+
+Personajes:
+- Nuevo personaje jugable: **Barón Pelusa**, el perro del jardinero con peluca
+  que se hace pasar por fundador de la familia, con diálogo y tres preguntas.
+
 ## v1.3.3 (versionCode 8) — 2026-07-23 · DOS ESCALAS COMPLETAS
 Reescalado integral para que TODO el juego quepa en móviles apaisados bajos
 (852×393 px CSS), en las dos escalas (Tablet y Móvil):
