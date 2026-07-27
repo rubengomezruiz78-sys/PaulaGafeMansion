@@ -1,5 +1,28 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.4.3 (versionCode 12) — 2026-07-28 · PARTIDA COMPLETA JUGADA DE VERDAD
+Se jugó la aventura entera de principio a fin, sin trucos ni partidas
+preparadas: las 12 salas, los 11 puzzles y las 8 combinaciones, tal y como la
+jugaría Paula. Terminó con 11/11 pruebas y **cero errores**. Por el camino
+aparecieron cuatro cosas que confundían:
+
+- **"Habla con Gafe" no se marcaba nunca.** Nada más empezar, Gafe te explica la
+  situación en una conversación completa… y el objetivo "Habla con Gafe o
+  Basilio" seguía sin tachar. Se podía terminar el vestíbulo entero con esa
+  tarea pendiente pese a haberla hecho. Ahora la charla inicial cuenta.
+- **El juego pedía algo ya hecho.** Si tenías el mecanismo del archivo montado
+  pero no lo habías vuelto a seleccionar, al tocar la puerta respondía "combina
+  el engranaje con la llave": justo lo que acababas de hacer. Ahora dice que ya
+  lo llevas y que lo toques para prepararlo.
+- **Tocar un objeto de la mochila lo desactivaba sin avisar.** Si quedaba
+  seleccionado de una acción anterior y lo tocabas para usarlo, en realidad lo
+  soltabas, y el mecanismo parecía no responder. Ahora tocarlo significa
+  siempre "quiero usar esto".
+- **La tiza azul podía obligar a desandar media mansión.** Es opcional en el
+  vestíbulo pero hace falta diez salas después; quien no la cogiera tenía que
+  recorrer ocho salas de ida y ocho de vuelta. Ahora la tiza blanca que se
+  encuentra en los propios túneles sirve igual, con su propio texto.
+
 ## v1.4.2 (versionCode 11) — 2026-07-27 · PANTALLA EN BLANCO Y FINAL DEL JUEGO
 
 - **ARREGLADO: el juego se quedaba en blanco al tocar rápido.** Si se pulsaba

@@ -296,6 +296,15 @@ const inventoryCombinations: InventoryCombination[] = [
     text: "Gafe apoya la pata en el plano mientras Paula marca con tiza azul los caminos que no huelen a trampa.",
   },
   {
+    // Alternativa de rescate: la tiza azul es opcional en el vestibulo, pero hace
+    // falta diez salas despues. Sin esto habia que desandar media mansion; la tiza
+    // blanca se encuentra en los propios tuneles y sirve igual.
+    items: ["Plano de los túneles", "Trozo de tiza blanca"],
+    result: "Plano marcado por Gafe",
+    flag: "plano_gafe_marcado",
+    text: "No hay tiza azul, pero la blanca que Paula borró a Basilio sirve igual. Gafe apoya la pata mientras marca los caminos que no huelen a trampa.",
+  },
+  {
     items: ["Plano marcado por Gafe", "Clave de resonancia"],
     result: "Ruta segura del aljibe",
     flag: "ruta_aljibe_preparada",
@@ -694,7 +703,9 @@ function objectiveFor(solved: Set<PuzzleId>, flags: Set<string>, inventory: stri
     : "Recoger la cinta roja de Inés y combinarla con la cuerda de la campana.";
   if (solved.has("melodia") && solved.has("baules")) {
     if (!has("Clave de resonancia")) return "Combinar la partitura invisible con el diapasón de cobre.";
-    if (!has("Plano marcado por Gafe")) return "Combinar el plano de los túneles con la tiza azul del vestíbulo.";
+    if (!has("Plano marcado por Gafe")) return has("Tiza azul")
+      ? "Combinar el plano de los túneles con la tiza azul."
+      : "Combinar el plano de los túneles con una tiza: la azul del vestíbulo o la blanca que hay en los túneles.";
     if (!has("Ruta segura del aljibe")) return "Combinar el plano marcado con la clave de resonancia.";
     return "Usar la ruta segura de Gafe en las compuertas del aljibe.";
   }
@@ -823,7 +834,7 @@ export function MansionGame() {
     else if (!flags.has("intro_vista")) {
       setDialogue(openingDialogue);
       setDialogueLine(0);
-      setFlags((old) => new Set(old).add("intro_vista"));
+      setFlags((old) => new Set(old).add("intro_vista").add("gafe_consultado").add("vestibulo_talked"));
     }
   };
 
@@ -842,7 +853,9 @@ export function MansionGame() {
       setStarted(false);
       return;
     }
-    setFlags((old) => new Set(old).add("prologo_visto").add("intro_vista"));
+    // La charla inicial ES hablar con Gafe: si no lo marcamos, el objetivo
+    // "Habla con Gafe o Basilio" seguia sin cumplirse justo despues de hablar con el.
+    setFlags((old) => new Set(old).add("prologo_visto").add("intro_vista").add("gafe_consultado").add("vestibulo_talked"));
     setDialogue(openingDialogue);
     setDialogueLine(0);
     setToast("Objetivo: explora el vestíbulo, recoge pistas y descubre qué puerta merece confianza.");
@@ -989,6 +1002,14 @@ export function MansionGame() {
 
   const selectInventoryItem = (item: string) => {
     if (selectedItem === item) {
+      // Si no estabamos en modo USAR, el objeto seguia marcado de una accion
+      // anterior: tocarlo significa "quiero usar esto", no "gu rdalo". Antes se
+      // deseleccionaba sin que se notara y el mecanismo parecia no responder.
+      if (verb !== "usar") {
+        setVerb("usar");
+        setToast(`${item} preparado. Ahora toca el lugar donde quieras usarlo.`);
+        return;
+      }
       setSelectedItem(null);
       setToast(`${item} vuelve a la mochila.`);
       return;
@@ -1117,8 +1138,11 @@ export function MansionGame() {
       setToast(tool.readyText);
       return;
     }
+    // Ya tiene la herramienta: decirle que la seleccione, NO que vuelva a
+    // fabricarla. Antes repetia el readyText ("combina el engranaje con la
+    // llave...") aunque el objeto ya estuviera hecho y en la mochila.
     if (verb !== "usar" || !selectedItem) {
-      setToast(tool.readyText);
+      setToast(`Ya llevas «${tool.item}» en la mochila. Tócalo para prepararlo y después vuelve a tocar aquí.`);
       return;
     }
     if (selectedItem !== tool.item) {
