@@ -312,6 +312,27 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--copper-brig
   .device-options { margin:10px 0 2px; gap:12px; }
   .device-options button { min-width:140px; padding:12px 16px; }
   .device-options button i { font-size:30px; }
+  /* Tarjetas de prologo/epilogo: quitar min-height alto y permitir scroll para que su boton quepa */
+  .story-scrim { padding:12px; overflow:auto; place-items:center; }
+  .story-card { min-height:0; padding:22px 30px 20px; width:min(680px,92vw); }
+  .story-number { font-size:64px; right:20px; top:10px; }
+  .story-card h2 { font-size:21px; margin:6px 0 10px; }
+  .story-card > p:not(.eyebrow) { font-size:13.5px; line-height:1.45; }
+  .story-progress { margin:14px 0 12px; }
+  /* Modal de puzzle: compactar para que "Confirmar respuesta" quepa sin scroll */
+  .puzzle-card { padding:14px 26px 16px; }
+  .puzzle-card .eyebrow { font-size:9px; }
+  .puzzle-card h2 { font-size:18px; margin:2px 0 6px; }
+  .puzzle-story { font-size:12.5px; line-height:1.4; margin:2px 0 4px; }
+  .formula { min-height:0; margin:8px 0; padding:10px 14px; }
+  .formula span { font-size:13.5px; line-height:1.35; }
+  .formula b { width:40px; height:40px; font-size:16px; }
+  .puzzle-card label { margin-bottom:3px; }
+  .answer-row input { padding:11px; font-size:15px; }
+  .mic { min-height:44px; }
+  .error-hint, .kind-hint { font-size:10px; margin:4px 0 0; }
+  .submit-answer { margin-top:10px; padding:11px; }
+  /* Diario/ECO ya usan max-height + overflow (definido arriba en este bloque) */
 }
 
 @media (hover: none) {
@@ -354,12 +375,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--copper-brig
 :root[data-device="phone"] .dialogue-text { font-size:17px; }
 :root[data-device="phone"] .dialogue > button { font-size:14px; padding:14px 12px; }
 :root[data-device="phone"] .dialogue-topics button { font-size:12px; padding:10px 12px; }
-:root[data-device="phone"] .puzzle-story { font-size:14px; }
-:root[data-device="phone"] .formula span { font-size:16px; }
-:root[data-device="phone"] .answer-row input, :root[data-device="phone"] .ai-input input { padding:15px; font-size:16px; }
-:root[data-device="phone"] .mic { min-height:52px; }
-:root[data-device="phone"] .submit-answer { padding:16px; font-size:13px; }
 :root[data-device="phone"] .device-options button { min-width:150px; padding:18px 16px; }
+/* Los controles internos de los modales (puzzle/ECO) NO se agrandan aqui: en
+   pantallas apaisadas bajas se compactan via @media (max-height) para que el
+   boton de confirmar quede siempre visible sin scroll, en ambos modos. */
 
 /* Conmutador de dispositivo siempre visible en la cabecera */
 .header-actions .device-toggle { border-color:rgba(225,182,111,.34); color:var(--copper-bright); }

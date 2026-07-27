@@ -1,5 +1,18 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.3.3 (versionCode 8) — 2026-07-23 · DOS ESCALAS COMPLETAS
+Reescalado integral para que TODO el juego quepa en móviles apaisados bajos
+(852×393 px CSS), en las dos escalas (Tablet y Móvil):
+- **Modal de puzzle**: se compacta para que "Confirmar respuesta" y el campo de
+  respuesta queden siempre visibles, sin scroll interno (antes el botón caía
+  fuera a 393 px de alto).
+- **Arquitectura corregida**: el modo Móvil agranda solo el HUD fijo (verbos,
+  mochila, cabecera) que siempre cabe; los modales (puzzle, prólogo, epílogo,
+  diálogo, cuaderno, ECO) se compactan por altura de forma común a ambos modos,
+  evitando que las ampliaciones del modo Móvil dejaran botones fuera de pantalla.
+- Verificado pantalla por pantalla a 852×393 en Móvil y Tablet: selector,
+  título/Entrar, prólogo, juego, diálogo, cuaderno, ECO y puzzle — todo visible.
+
 ## v1.3.2 (versionCode 7) — 2026-07-23 · CORRECCIÓN IMPORTANTE
 - **Arreglado: el botón "Entrar en la mansión" quedaba fuera de pantalla** en
   móviles apaisados de poca altura (p. ej. Redmi Note 15 ≈ 852×393 px CSS). El
