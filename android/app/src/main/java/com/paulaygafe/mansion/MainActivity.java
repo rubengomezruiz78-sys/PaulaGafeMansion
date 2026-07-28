@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
@@ -78,6 +79,30 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) enterImmersiveMode();
+    }
+
+    // El juego ya decide que hace Atras en cada capa (cerrar puzzle, volver de sala,
+    // salir en la portada), pero nadie llamaba a __onAndroidBack: toda esa navegacion
+    // era codigo muerto. Interceptamos la tecla antes que el WebView para que llegue.
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() != KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event);
+        if (event.getAction() == KeyEvent.ACTION_UP && event.getRepeatCount() == 0) askGameAboutBack();
+        return true;
+    }
+
+    private void askGameAboutBack() {
+        if (webView == null) {
+            finish();
+            return;
+        }
+        webView.evaluateJavascript(
+            "(function(){try{return (window.__onAndroidBack&&window.__onAndroidBack())||'exit';}"
+                + "catch(error){return 'exit';}})()",
+            value -> {
+                if (value == null || !value.contains("handled")) finish();
+            }
+        );
     }
 
     @Override

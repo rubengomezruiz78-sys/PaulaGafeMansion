@@ -1,5 +1,20 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v1.4.5 (versionCode 14) — 2026-07-28 · EL BOTÓN ATRÁS, POR FIN CONECTADO
+Probado en la tablet Lenovo real, no solo en el ordenador.
+
+- **ARREGLADO: el botón Atrás de Android no llegaba al juego.** El juego tenía
+  escrito con detalle qué debe hacer Atrás en cada momento (cerrar un mecanismo,
+  cerrar el cuaderno, volver a la sala anterior, salir desde la portada), pero
+  la aplicación de Android nunca se lo preguntaba: todo ese comportamiento era
+  código muerto y Atrás quedaba en tierra de nadie. Ahora la aplicación consulta
+  al juego antes de decidir. Comprobado en la tablet: dentro de la aventura,
+  Atrás devuelve a Paula a la sala anterior sin cerrar nada; en la portada, sale
+  del juego. Esto también hace efectivo el arreglo de la v1.4.4, que hasta ahora
+  no podía notarse en el dispositivo.
+- Se mantiene el comportamiento clásico de Atrás también en móviles con Android
+  13 o superior, donde el sistema lo habría desviado por su cuenta.
+
 ## v1.4.4 (versionCode 13) — 2026-07-28 · PROBADO A LA CONTRA
 Ronda de pruebas jugando **mal a propósito**, que es donde se esconden los
 fallos que no salen jugando bien.
