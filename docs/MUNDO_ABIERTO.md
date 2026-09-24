@@ -77,7 +77,7 @@ tools/         build_sprites.py (limpieza de sprites + métricas)
 - [x] F2 Núcleo puro + tests: perspectiva, navmesh/A*, rng, walker, npcBrain (estado/reloj → F5/F6)
 - [x] F3 Rebanada vertical: vestíbulo+biblioteca calibrados, Paula natural, Gafe, 2 NPC
 - [ ] F4 Probar F3 en navegador (tablet/móvil) y en el Redmi
-- [ ] F5 Motor de diálogo + condiciones + memoria/afinidad (tests)
+- [x] F5 Motor de diálogo + condiciones + memoria/afinidad (tests) + guardado + arnés E2E
 - [ ] F6 IA de NPC: rutinas, percepción, deambular, charla NPC↔NPC (tests)
 - [ ] F7 Zonas: calibrar las 12, salidas, grafo, mapa del mundo
 - [ ] F8 Reparto completo: 8 principales + 13 criados fantasma procedurales

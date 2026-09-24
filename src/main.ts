@@ -29,6 +29,10 @@ async function start(): Promise<void> {
     else game.loop.wake();
   });
   (window as unknown as { __game?: Phaser.Game }).__game = game;
+  if (import.meta.env.DEV) {
+    const { installTestHarness } = await import("./testHarness");
+    installTestHarness(game);
+  }
 }
 
 void start();

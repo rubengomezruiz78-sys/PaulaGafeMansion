@@ -2,15 +2,20 @@ import Phaser from "phaser";
 import { DEBUG, GAME_H, GAME_W } from "../config";
 import { NavGrid } from "../core/navmesh";
 import { NpcBrain, type Intent } from "../core/npcBrain";
+import { DialogueRunner } from "../core/dialogue";
 import { Projection, type Pt } from "../core/perspective";
+import { apply } from "../core/rules";
 import { Rng } from "../core/rng";
+import { DIALOGUES } from "../content/dialogues";
 import { NPCS_BY_ZONE, type NpcDef } from "../content/npcs";
+import { describeNotice, speakerFor } from "../content/speakers";
+import { session } from "../game/session";
 import { polyPx, toPx, walkAreaPx, zone as getZone, ZONES, type ExitDef, type PropDef, type ZoneDef, type ZoneId } from "../content/zones";
 import { pushBackHandler } from "../platform";
 import { Bubble } from "../world/Bubble";
 import { Gafe, Ghost, Paula } from "../world/characters";
 import { drawDebug } from "../world/debug";
-import { UI_EVENTS, type DialogueRequest } from "./UIScene";
+import { UI_EVENTS, type ConversationRequest, type DialogueRequest } from "./UIScene";
 
 interface WorldData {
   zone: ZoneId;
@@ -56,6 +61,7 @@ export class WorldScene extends Phaser.Scene {
 
   create(data: WorldData): void {
     this.zoneDef = getZone(data.zone);
+    session.enterZone(this.zoneDef.id);
     this.proj = new Projection(this.zoneDef.perspective, GAME_W, GAME_H);
     this.nav = new NavGrid(walkAreaPx(this.zoneDef), this.proj);
     this.npcs = [];
@@ -176,6 +182,8 @@ export class WorldScene extends Phaser.Scene {
       case "prop": {
         const c = polyPx(pending.prop.hotspot);
         this.paula.walker.face({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: 0 });
+        apply([{ examine: pending.prop.id }], session.state);
+        session.save();
         this.say({ speaker: "Paula", portrait: "paula-idle", lines: PROP_TEXT[pending.prop.id] ?? [pending.prop.label] });
         break;
       }
@@ -184,10 +192,22 @@ export class WorldScene extends Phaser.Scene {
         this.paula.walker.face(npc.actor.pos);
         npc.actor.walker.face(this.paula.pos);
         npc.bubble?.destroy();
-        this.say({
-          speaker: npc.def.name, role: npc.def.role, portrait: npc.def.sprite, lines: npc.def.talk,
-          onClose: () => npc.brain.endTalk(this.clock),
-        });
+        const end = () => {
+          npc.brain.endTalk(this.clock);
+          session.save();
+        };
+        const tree = DIALOGUES[npc.def.id];
+        if (tree) {
+          this.game.events.emit(UI_EVENTS.conversation, {
+            runner: new DialogueRunner(tree, session.state),
+            speaker: speakerFor,
+            notice: describeNotice,
+            onChange: () => session.save(),
+            onEnd: end,
+          } satisfies ConversationRequest);
+        } else {
+          this.say({ speaker: npc.def.name, role: npc.def.role, portrait: npc.def.sprite, lines: npc.def.talk, onClose: end });
+        }
         break;
       }
     }
