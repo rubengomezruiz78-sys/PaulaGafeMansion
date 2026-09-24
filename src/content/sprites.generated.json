@@ -1,0 +1,112 @@
+{
+  "paula-idle": {
+    "file": "paula-idle.webp",
+    "frames": 1,
+    "frameWidth": 343,
+    "frameHeight": 900,
+    "originX": 0.5284,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.3
+  },
+  "paula-startled": {
+    "file": "paula-startled.webp",
+    "frames": 1,
+    "frameWidth": 445,
+    "frameHeight": 900,
+    "originX": 0.465,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.233
+  },
+  "gafe-sit": {
+    "file": "gafe-sit.webp",
+    "frames": 1,
+    "frameWidth": 472,
+    "frameHeight": 900,
+    "originX": 0.6093,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 0.32
+  },
+  "basilio": {
+    "file": "basilio.webp",
+    "frames": 1,
+    "frameWidth": 441,
+    "frameHeight": 900,
+    "originX": 0.3656,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.82
+  },
+  "elvira": {
+    "file": "elvira.webp",
+    "frames": 1,
+    "frameWidth": 298,
+    "frameHeight": 900,
+    "originX": 0.5134,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.6
+  },
+  "tomas": {
+    "file": "tomas.webp",
+    "frames": 1,
+    "frameWidth": 322,
+    "frameHeight": 900,
+    "originX": 0.529,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.7
+  },
+  "ines": {
+    "file": "ines.webp",
+    "frames": 1,
+    "frameWidth": 294,
+    "frameHeight": 900,
+    "originX": 0.4129,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.42
+  },
+  "bruma": {
+    "file": "bruma.webp",
+    "frames": 1,
+    "frameWidth": 319,
+    "frameHeight": 900,
+    "originX": 0.5174,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.58
+  },
+  "baltasar": {
+    "file": "baltasar.webp",
+    "frames": 1,
+    "frameWidth": 382,
+    "frameHeight": 900,
+    "originX": 0.5374,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.74
+  },
+  "paula-walk": {
+    "file": "paula-walk.webp",
+    "frames": 4,
+    "frameWidth": 394,
+    "frameHeight": 715,
+    "originX": 0.4633,
+    "originY": 0.9916,
+    "refHeightPx": 703,
+    "realHeightM": 1.3
+  },
+  "gafe-walk": {
+    "file": "gafe-walk.webp",
+    "frames": 4,
+    "frameWidth": 403,
+    "frameHeight": 295,
+    "originX": 0.5737,
+    "originY": 0.9797,
+    "refHeightPx": 283,
+    "realHeightM": 0.29
+  }
+}

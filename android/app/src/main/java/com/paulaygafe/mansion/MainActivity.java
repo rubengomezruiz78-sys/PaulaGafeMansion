@@ -261,6 +261,12 @@ public class MainActivity extends Activity {
                 if (mime == null && path.endsWith(".webmanifest")) mime = "application/manifest+json";
                 if (mime == null && path.endsWith(".js")) mime = "application/javascript";
                 if (mime == null && path.endsWith(".css")) mime = "text/css";
+                if (mime == null && path.endsWith(".webp")) mime = "image/webp";
+                if (mime == null && path.endsWith(".json")) mime = "application/json";
+                if (mime == null && path.endsWith(".ttf")) mime = "font/ttf";
+                if (mime == null && path.endsWith(".woff2")) mime = "font/woff2";
+                if (mime == null && path.endsWith(".ogg")) mime = "audio/ogg";
+                if (mime == null && path.endsWith(".mp3")) mime = "audio/mpeg";
                 if (mime == null) mime = "application/octet-stream";
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Cache-Control", "no-cache");
