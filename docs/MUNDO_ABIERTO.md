@@ -84,9 +84,17 @@ tools/         build_sprites.py (limpieza de sprites + métricas)
 - [x] F3 Rebanada vertical: vestíbulo+biblioteca calibrados, Paula natural, Gafe, 2 NPC
 - [ ] F4 Probar F3 en navegador (tablet/móvil) y en el Redmi
 - [x] F5 Motor de diálogo + condiciones + memoria/afinidad (tests) + guardado + arnés E2E
-- [ ] F6 IA de NPC: rutinas, percepción, deambular, charla NPC↔NPC (tests)
+- [x] F6 IA de NPC: rutinas, percepción, deambular, charla NPC↔NPC (tests)
+      `core/worldSim.ts` (rutinas por toda la casa, cruzando puertas reales; se
+      congela mientras hablan con Paula), `core/chat.ts` (charlas: las de historia
+      dejan pista `oido:<id>` si Paula las oye enteras a ≤7 m), `game/world.ts`
+      (singletons). En la escena: cola de comentarios (uno a la vez), charlas uno
+      junto al otro a la misma profundidad y lejos de Paula, Paula se pone al lado.
 - [x] F7 Zonas: las 12 calibradas, grafo de 13 conexiones con bucles, cierres de historia, test de integridad (el mapa del mundo pasa a F12)
-- [ ] F8 Reparto completo: 8 principales + 13 criados fantasma procedurales
+- [x] F8 Reparto completo: 8 principales + 13 criados fantasma procedurales
+      (Paula, Gafe, Basilio, Elvira, Tomás, Inés —la 13.ª—, Bruma, Baltasar y 12
+      criados dibujados por código en `world/ghostArt.ts`, cada uno con oficio,
+      gesto, estatura real y árbol de diálogo propio)
 - [ ] F9 Objetos, inventario, combinar, interacción contextual
 - [ ] F10 Misiones + puzzles (teclado numérico) + pistas (Gafe/ECO offline)
 - [ ] F11 Validador + solucionador + test de partida completa

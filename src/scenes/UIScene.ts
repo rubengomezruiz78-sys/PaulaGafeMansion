@@ -202,9 +202,10 @@ export class UIScene extends Phaser.Scene {
     const cy = PANEL.y + PANEL.h / 2;
     // Encuadre de cara: cabeza en la mitad superior del círculo, centrada en el
     // eje del cuerpo (ancla de los pies), no en el lienzo.
-    const faceH = meta.frameHeight * (meta.realHeightM < 0.5 ? 0.42 : 0.2);
+    const frame = meta.portrait ?? { top: 0, height: meta.realHeightM < 0.5 ? 0.42 : 0.2 };
+    const faceH = meta.frameHeight * frame.height;
     const img = this.add.image(cx, cy - PORTRAIT_R + 8, s.portrait, 0)
-      .setOrigin(meta.originX, 0)
+      .setOrigin(meta.originX, frame.top)
       .setScale((PORTRAIT_R * 2) / faceH);
     const mask = this.make.graphics({}, false).fillCircle(cx, cy, PORTRAIT_R - 4);
     img.setMask(mask.createGeometryMask());

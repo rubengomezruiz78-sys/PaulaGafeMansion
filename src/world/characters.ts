@@ -156,10 +156,21 @@ export class Ghost extends Actor {
 
   protected animate(dt: number): void {
     const t = this.time + this.seed;
-    this.liftM = this.style.floatM + 0.03 * Math.sin(t * 1.35);
     const ppm = this.proj.ppm(this.pos.y);
-    this.body.y = -this.liftM * ppm;
     const sr = Math.min(1, this.walker.speedRatio());
+    if (this.style.floatM <= 0) {
+      // Persona viva (no flota): pisa el suelo, con un leve balanceo al andar.
+      this.liftM = 0;
+      const phase = this.walker.gaitPhase();
+      this.body.y = -0.012 * ppm * sr * Math.abs(Math.sin(phase * Math.PI * 2));
+      this.body.rotation = approach(this.body.rotation, 0.025 * sr * Math.sin(phase * Math.PI * 2), dt * 0.8);
+      const s = this.poseScale(this.pose);
+      const breathe = Math.sin(t * Math.PI * 2 * 0.25);
+      this.pose.obj.setScale(s * this.flip, s * (1 + 0.006 * breathe)).setAlpha(this.style.alpha);
+      return;
+    }
+    this.liftM = this.style.floatM + 0.03 * Math.sin(t * 1.35);
+    this.body.y = -this.liftM * ppm;
     // Se inclina un poco en la dirección del deslizamiento y oscila despacio.
     const target = 0.02 * Math.sin(t * 0.9) + this.walker.facing * 0.035 * sr;
     this.body.rotation = approach(this.body.rotation, target, dt * 0.6);

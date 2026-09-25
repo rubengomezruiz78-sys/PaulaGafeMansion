@@ -1,7 +1,9 @@
 import Phaser from "phaser";
 import { COLORS, CSS, FONT_TITLE, GAME_H, GAME_W } from "../config";
 import { SPRITES, SPRITE_KEYS, spritePath } from "../content/sprites";
+import { NPCS } from "../content/npcs";
 import { ZONES } from "../content/zones";
+import { makeGhostTexture } from "../world/ghostArt";
 
 /** Carga de recursos + texturas procedurales. */
 export class BootScene extends Phaser.Scene {
@@ -37,6 +39,8 @@ export class BootScene extends Phaser.Scene {
     this.makeShadowTexture();
     this.makeRingTexture();
     this.makeGlintTexture();
+    // Los criados fantasma se dibujan por código una sola vez.
+    for (const npc of NPCS) if (npc.art) makeGhostTexture(this, npc.sprite, npc.art);
     this.scene.start("world", { zone: "vestibulo" });
     this.scene.launch("ui");
   }

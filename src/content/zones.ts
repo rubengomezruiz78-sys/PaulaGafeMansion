@@ -79,3 +79,7 @@ export const zone = (id: ZoneId): ZoneDef => {
   if (!z) throw new Error(`Zona sin definir: ${id}`);
   return z;
 };
+
+/** Enlaces del grafo del mapa (para la simulación del mundo). */
+export const zoneLinks = (): { from: string; exitId: string; to: string; toExit: string }[] =>
+  (Object.values(ZONES) as ZoneDef[]).flatMap((z) => z.exits.map((e) => ({ from: z.id, exitId: e.id, to: e.to, toExit: e.toExit })));
