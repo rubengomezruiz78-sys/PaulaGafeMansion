@@ -15,7 +15,7 @@
 import { GAME_H, GAME_W } from "../config";
 import type { PerspectiveCalib, Pt } from "../core/perspective";
 import type { WalkArea } from "../core/navmesh";
-import type { Cond } from "../core/rules";
+import type { Cond, Effect } from "../core/rules";
 import { PLANTA_ALTA } from "./zones/plantaAlta";
 import { PLANTA_BAJA } from "./zones/plantaBaja";
 import { SOTANO } from "./zones/sotano";
@@ -40,6 +40,8 @@ export interface ExitDef {
   requires?: Cond;
   /** Lo que dice Paula si está bloqueada. */
   lockedText?: string;
+  /** Lo que cambia al cruzarla (p. ej. descorrer un cerrojo desde este lado). */
+  onUse?: Effect[];
 }
 
 export interface PropDef {

@@ -21,6 +21,8 @@ export interface ChatDef {
   lines: [string, string][];
   /** Se aplican si Paula la oye entera. */
   effects?: Effect[];
+  /** Lo que Paula apunta en su cuaderno al oírla (charlas de historia). */
+  note?: string;
 }
 
 export const heardFlag = (chatId: string) => `oido:${chatId}`;

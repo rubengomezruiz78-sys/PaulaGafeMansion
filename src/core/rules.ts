@@ -26,7 +26,9 @@ export type Cond =
   /** El personaje ya le contó a Paula ese nodo de conversación. */
   | { seen: [npc: string, node: string] }
   /** Paula ya eligió esa opción con ese personaje. */
-  | { chose: [npc: string, choice: string] };
+  | { chose: [npc: string, choice: string] }
+  /** Hay una marca con ese nombre en la zona donde está Paula (ver `mark`). */
+  | { marked: string };
 
 export type Effect =
   | { set: string }
@@ -37,7 +39,12 @@ export type Effect =
   | { stage: [quest: string, stage: number] }
   | { complete: string }
   | { count: string }
-  | { examine: string };
+  | { examine: string }
+  /** Marca ligada a la zona actual (p. ej. «ya encontré a Pepito aquí»). */
+  | { mark: string };
+
+/** Clave del flag de una marca en una zona. */
+export const markFlag = (name: string, zone: string): string => `${name}@${zone}`;
 
 /** Aviso para la interfaz de algo que el jugador debe notar. */
 export type Notice =
@@ -72,6 +79,7 @@ export function check(cond: Cond | undefined, s: GameState): boolean {
   if ("counter" in cond) return compare(s.counters[cond.counter[0]] ?? 0, cond.counter[1], cond.counter[2]);
   if ("seen" in cond) return s.npc[cond.seen[0]]?.seen.includes(cond.seen[1]) === true;
   if ("chose" in cond) return s.npc[cond.chose[0]]?.chosen.includes(cond.chose[1]) === true;
+  if ("marked" in cond) return hasFlag(s, markFlag(cond.marked, s.zone));
   const never: never = cond;
   throw new Error(`Condición desconocida: ${JSON.stringify(never)}`);
 }
@@ -112,7 +120,8 @@ export function apply(effects: readonly Effect[] | undefined, s: GameState): Not
     } else if ("count" in e) s.counters[e.count] = (s.counters[e.count] ?? 0) + 1;
     else if ("examine" in e) {
       if (!s.examined.includes(e.examine)) s.examined.push(e.examine);
-    } else {
+    } else if ("mark" in e) s.flags[markFlag(e.mark, s.zone)] = true;
+    else {
       const never: never = e;
       throw new Error(`Efecto desconocido: ${JSON.stringify(never)}`);
     }
@@ -134,8 +143,14 @@ export function condRefs(cond: Cond | undefined, out: Refs = emptyRefs()): Refs 
   else if ("questDone" in cond) out.quests.add(cond.questDone);
   else if ("visited" in cond) out.zones.add(cond.visited);
   else if ("examined" in cond) out.props.add(cond.examined);
-  else if ("seen" in cond) out.npcs.add(cond.seen[0]);
-  else if ("chose" in cond) out.npcs.add(cond.chose[0]);
+  else if ("counter" in cond) out.counters.add(cond.counter[0]);
+  else if ("seen" in cond) {
+    out.npcs.add(cond.seen[0]);
+    out.nodes.add(`${cond.seen[0]}:${cond.seen[1]}`);
+  } else if ("chose" in cond) {
+    out.npcs.add(cond.chose[0]);
+    out.choices.add(`${cond.chose[0]}:${cond.chose[1]}`);
+  } else if ("marked" in cond) out.marks.add(cond.marked);
   return out;
 }
 
@@ -146,8 +161,15 @@ export interface Refs {
   quests: Set<string>;
   zones: Set<string>;
   props: Set<string>;
+  marks: Set<string>;
+  counters: Set<string>;
+  /** «npc:nodo» de condiciones `seen`. */
+  nodes: Set<string>;
+  /** «npc:opción» de condiciones `chose`. */
+  choices: Set<string>;
 }
 
 export const emptyRefs = (): Refs => ({
-  flags: new Set(), items: new Set(), npcs: new Set(), quests: new Set(), zones: new Set(), props: new Set(),
+  flags: new Set(), items: new Set(), npcs: new Set(), quests: new Set(), zones: new Set(), props: new Set(), marks: new Set(),
+  counters: new Set(), nodes: new Set(), choices: new Set(),
 });

@@ -17,6 +17,7 @@ export const CHATS: ChatDef[] = [
       ["tomas", "Hay que repartir los pulsos entre los tubos, como dice la receta chamuscada."],
     ],
     effects: [{ set: "sabe-porton-presion" }],
+    note: "Tomás y Remedios: el portón de la caldera se abre con la presión justa; hay que repartir los pulsos entre los tubos.",
   },
   {
     id: "puertas",
@@ -27,6 +28,7 @@ export const CHATS: ChatDef[] = [
       ["leocadia", "La biblioteca es la de la izquierda. La que huele a papel."],
     ],
     effects: [{ set: "sabe-puerta-biblioteca" }],
+    note: "Leocadia: Don Basilio miente con las puertas. La biblioteca es la de la izquierda, la que huele a papel.",
   },
   {
     id: "cuentas-reloj",
@@ -38,6 +40,7 @@ export const CHATS: ChatDef[] = [
       ["elvira", "Doce cada una. Por fin alguien que sabe dividir."],
     ],
     effects: [{ set: "pista-reloj" }],
+    note: "Elvira y Nicanor: siete noches de nueve campanadas son 63; 144 minutos entre 12 marcas, 12 cada una.",
   },
   {
     id: "cinta-roja",
@@ -48,6 +51,7 @@ export const CHATS: ChatDef[] = [
       ["clotilde", "¿Lejos de la campana? Qué niña más lista."],
     ],
     effects: [{ set: "sabe-cinta-roja" }],
+    note: "Florentina: Inés ató su cinta roja arriba, en la torre, lejos de la campana.",
   },
   {
     id: "compuertas",
@@ -58,6 +62,7 @@ export const CHATS: ChatDef[] = [
       ["anselmo", "…y la segunda, la última. Hasta yo me lo sé."],
     ],
     effects: [{ set: "pista-compuertas" }],
+    note: "Tadeo y Anselmo: la compuerta I antes que la III, y la II la última.",
   },
   {
     id: "melodia",
@@ -68,6 +73,7 @@ export const CHATS: ChatDef[] = [
       ["baltasar", "Después del sol… vuelve a empezar. Como todo en esta casa."],
     ],
     effects: [{ set: "pista-melodia" }],
+    note: "Baltasar: do, mi, sol… y después del sol, vuelta a empezar.",
   },
   {
     id: "antidoto",
@@ -79,6 +85,7 @@ export const CHATS: ChatDef[] = [
       ["serafin", "Ocho gotas cada una… zzz."],
     ],
     effects: [{ set: "pista-antidoto" }],
+    note: "Bruma y Serafín: 8 macetas con 3 flores son 24; 72 gotas entre 9 raíces, 8 cada una.",
   },
   {
     id: "baul-siete",
@@ -89,6 +96,7 @@ export const CHATS: ChatDef[] = [
       ["pepito", "En el que tiene un siete pintado. Olía a tinta y a lavanda."],
     ],
     effects: [{ set: "pista-baul" }],
+    note: "Pepito: el baúl bueno del desván tiene un siete pintado y huele a tinta.",
   },
 
   // ------------------------------------------------------------ ambiente

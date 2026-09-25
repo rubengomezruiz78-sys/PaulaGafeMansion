@@ -1,9 +1,15 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_W } from "../config";
-import type { DialogueRunner, Step } from "../core/dialogue";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
+import type { DialogueRunner, Line, Step } from "../core/dialogue";
 import type { Notice } from "../core/rules";
+import { fill } from "../core/text";
+import { ITEMS } from "../content/items";
+import { speakerFor } from "../content/speakers";
 import { SPRITES, type SpriteKey } from "../content/sprites";
+import { session } from "../game/session";
 import { pushBackHandler } from "../platform";
+import { MODAL_EVENT, setModal } from "../ui/modal";
+import { makeButton, type Button } from "../ui/widgets";
 
 export interface Speaker {
   name: string;
@@ -11,12 +17,15 @@ export interface Speaker {
   portrait?: SpriteKey;
 }
 
-/** Frases de un solo hablante (examinar objetos, avisos narrativos). */
+/**
+ * Frases sin opciones (examinar objetos, avisos, escenas). Las frases sueltas
+ * las dice `speaker`; `{ by, text }` las dice otro (p. ej. Gafe o Inés).
+ */
 export interface DialogueRequest {
   speaker: string;
   role?: string;
   portrait?: SpriteKey;
-  lines: string[];
+  lines: Line[];
   onClose?: () => void;
 }
 
@@ -36,7 +45,11 @@ export const UI_EVENTS = {
   conversation: "ui:conversation",
   zone: "ui:zone",
   toast: "ui:toast",
-  modal: "ui:modal",
+  modal: MODAL_EVENT,
+  /** La interfaz pide usar un objeto (o dejar de usarlo, con null). */
+  use: "ui:use",
+  /** El mundo avisa de qué objeto tiene Paula en la mano (o null). */
+  using: "ui:using",
 } as const;
 
 const PANEL = { x: 150, y: 770, w: GAME_W - 300, h: 285 };
@@ -76,6 +89,8 @@ export class UIScene extends Phaser.Scene {
   private releaseBack?: () => void;
   private zoneTitle?: Phaser.GameObjects.Text;
   private toasts: Phaser.GameObjects.Container[] = [];
+  private hud?: Phaser.GameObjects.Container;
+  private usingChip?: Button;
 
   constructor() {
     super("ui");
@@ -83,17 +98,23 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     this.registry.set("modal", false);
+    this.registry.set("modalOwners", []);
     const ev = this.game.events;
     ev.on(UI_EVENTS.dialogue, this.openSimple, this);
     ev.on(UI_EVENTS.conversation, this.openConversation, this);
     ev.on(UI_EVENTS.zone, this.showZoneTitle, this);
     ev.on(UI_EVENTS.toast, this.showToast, this);
+    ev.on(UI_EVENTS.modal, this.onModal, this);
+    ev.on(UI_EVENTS.using, this.showUsing, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       ev.off(UI_EVENTS.dialogue, this.openSimple, this);
       ev.off(UI_EVENTS.conversation, this.openConversation, this);
       ev.off(UI_EVENTS.zone, this.showZoneTitle, this);
       ev.off(UI_EVENTS.toast, this.showToast, this);
+      ev.off(UI_EVENTS.modal, this.onModal, this);
+      ev.off(UI_EVENTS.using, this.showUsing, this);
     });
+    this.buildHud();
     // Un toque en cualquier parte avanza el texto (salvo si hay que elegir).
     this.input.on(Phaser.Input.Events.POINTER_UP, () => this.advance());
   }
@@ -110,7 +131,7 @@ export class UIScene extends Phaser.Scene {
   private openSimple(req: DialogueRequest): void {
     const speaker: Speaker = { name: req.speaker, role: req.role, portrait: req.portrait };
     this.begin(req.onClose);
-    this.queue = req.lines.map((text) => ({ speaker, text }));
+    this.queue = req.lines.map((l) => (typeof l === "string" ? { speaker, text: l } : { speaker: speakerFor(l.by), text: l.text }));
     this.choices = [];
     this.nextLine();
   }
@@ -221,7 +242,7 @@ export class UIScene extends Phaser.Scene {
       return;
     }
     this.setSpeaker(line.speaker);
-    this.fullText = line.text;
+    this.fullText = fill(line.text, session.state);
     this.shown = 0;
     this.bodyText?.setText("");
     this.hint?.setVisible(false);
@@ -294,8 +315,7 @@ export class UIScene extends Phaser.Scene {
   // ------------------------------------------------------------ cierre
 
   private setModal(on: boolean): void {
-    this.registry.set("modal", on);
-    this.game.events.emit(UI_EVENTS.modal, on);
+    setModal(this, "dialogue", on);
   }
 
   private close(notify: boolean): void {
@@ -319,8 +339,46 @@ export class UIScene extends Phaser.Scene {
     this.onClose = undefined;
     // El mundo vuelve a aceptar toques un instante después: el toque que cierra
     // la conversación no debe mandar a Paula a caminar.
-    this.time.delayedCall(80, () => this.setModal(false));
+    this.time.delayedCall(80, () => {
+      if (!this.panel) this.setModal(false);
+    });
     if (notify) onClose?.();
+  }
+
+  // ------------------------------------------------------------ HUD
+
+  /** Botones fijos: mochila y cuaderno (arriba a la derecha, grandes para el dedo). */
+  private buildHud(): void {
+    const open = (tab: "mochila" | "cuaderno") => {
+      if (this.registry.get("modal")) return;
+      this.scene.launch("bag", {
+        tab,
+        onUse: (item: string) => this.game.events.emit(UI_EVENTS.use, item),
+      });
+    };
+    const bag = makeButton(this, GAME_W - 30 - 124, 26, 124, 112, "🎒", () => open("mochila"), { fontSize: 60, radius: 28 });
+    const book = makeButton(this, GAME_W - 30 - 124 - 20 - 124, 26, 124, 112, "📖", () => open("cuaderno"), { fontSize: 60, radius: 28 });
+    for (const b of [bag, book]) b.label.setPadding(0, 8, 0, 4);
+    this.hud = this.add.container(0, 0, [book.container, bag.container]).setDepth(80);
+  }
+
+  private onModal(on: boolean): void {
+    this.hud?.setVisible(!on);
+    this.usingChip?.container.setVisible(!on);
+  }
+
+  /** Aviso de «Paula tiene X en la mano»; tocarlo lo guarda otra vez. */
+  private showUsing(item: string | null): void {
+    this.usingChip?.container.destroy();
+    this.usingChip = undefined;
+    const def = item ? ITEMS[item] : undefined;
+    if (!def) return;
+    // Abajo a la izquierda: arriba están el nombre de la sala y los avisos.
+    const chip = makeButton(this, 30, GAME_H - 30 - 104, 700, 104, `${def.icon}  Usando: ${def.name}   ✕`, () => this.game.events.emit(UI_EVENTS.use, null), {
+      fontSize: 32, fill: 0x1d3a2a, edge: 0x8fd6a0, align: "left", radius: 28,
+    });
+    chip.container.setDepth(80);
+    this.usingChip = chip;
   }
 
   // ------------------------------------------------------------ avisos

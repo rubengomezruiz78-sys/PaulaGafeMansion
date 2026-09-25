@@ -1,15 +1,19 @@
 import Phaser from "phaser";
 import { DEBUG, GAME_H, GAME_W } from "../config";
 import { heardFlag, type ChatDef } from "../core/chat";
-import { DialogueRunner } from "../core/dialogue";
+import { DialogueRunner, type Line } from "../core/dialogue";
+import { resolveProp } from "../core/interact";
 import { NavGrid } from "../core/navmesh";
 import { NpcBrain, type Intent } from "../core/npcBrain";
 import { Projection, type Pt } from "../core/perspective";
-import { apply, check } from "../core/rules";
+import { apply, check, type Notice } from "../core/rules";
 import { Rng } from "../core/rng";
 import type { SimEvent, SimNpc } from "../core/worldSim";
 import { DIALOGUES } from "../content/dialogues";
+import { GAFE_HINTS } from "../content/hints";
+import { ITEMS, itemName } from "../content/items";
 import { npcById, type NpcDef } from "../content/npcs";
+import { PROPS } from "../content/props";
 import { describeNotice, speakerFor } from "../content/speakers";
 import { polyPx, toPx, walkAreaPx, zone as getZone, ZONES, type ExitDef, type PropDef, type ZoneDef, type ZoneId } from "../content/zones";
 import { session } from "../game/session";
@@ -18,6 +22,7 @@ import { pushBackHandler } from "../platform";
 import { Bubble } from "../world/Bubble";
 import { Gafe, Ghost, Paula } from "../world/characters";
 import { drawDebug } from "../world/debug";
+import type { PuzzleRequest } from "./PuzzleScene";
 import { UI_EVENTS, type ConversationRequest, type DialogueRequest } from "./UIScene";
 
 interface WorldData {
@@ -93,6 +98,8 @@ export class WorldScene extends Phaser.Scene {
   /** Comentarios en espera: salen de uno en uno para que no se pisen. */
   private barks: { rt: NpcRuntime; line: string; until: number }[] = [];
   private nextBarkAt = 0;
+  /** Objeto de la mochila que Paula lleva en la mano para usarlo. */
+  private using?: string;
 
   constructor() {
     super("world");
@@ -133,7 +140,11 @@ export class WorldScene extends Phaser.Scene {
     });
 
     this.releaseBack = pushBackHandler(() => this.onBack());
+    this.using = undefined;
+    this.game.events.emit(UI_EVENTS.using, null);
+    this.game.events.on(UI_EVENTS.use, this.setUsing, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off(UI_EVENTS.use, this.setUsing, this);
       this.releaseBack?.();
       this.abortChat();
       for (const rt of this.npcs) if (worldSim.isPaused(rt.def.id)) worldSim.resume(rt.def.id, this.now, false);
@@ -209,6 +220,7 @@ export class WorldScene extends Phaser.Scene {
       .sort((a, b) => b.actor.pos.y - a.actor.pos.y)
       .find((n) => n.actor.hitRect().contains(pt.x, pt.y));
     if (npc) return this.walkToNpc(npc);
+    if (this.gafe.hitRect().contains(pt.x, pt.y)) return this.askGafe();
 
     // 2) Objetos y salidas.
     const prop = this.zoneDef.props.find((p) => Phaser.Geom.Polygon.Contains(new Phaser.Geom.Polygon(polyPx(p.hotspot)), pt.x, pt.y));
@@ -218,6 +230,7 @@ export class WorldScene extends Phaser.Scene {
     }
     const exit = this.zoneDef.exits.find((e) => Phaser.Geom.Polygon.Contains(new Phaser.Geom.Polygon(polyPx(e.hotspot)), pt.x, pt.y));
     if (exit) {
+      this.setUsing(null);
       this.pending = { kind: "exit", exit };
       if (check(exit.requires, session.state)) this.game.events.emit(UI_EVENTS.toast, `→ ${exit.label}`);
       return this.walkTo(toPx(exit.approach));
@@ -273,15 +286,83 @@ export class WorldScene extends Phaser.Scene {
       case "prop": {
         const c = polyPx(pending.prop.hotspot);
         this.paula.walker.face({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: 0 });
-        apply([{ examine: pending.prop.id }], session.state);
-        session.save();
-        this.say({ speaker: "Paula", portrait: "paula-idle", lines: PROP_TEXT[pending.prop.id] ?? [pending.prop.label] });
+        this.interactProp(pending.prop);
         break;
       }
       case "npc":
         this.talkTo(pending.npc);
         break;
     }
+  }
+
+  /** Examinar un objeto (o usar en él lo que Paula lleva en la mano). */
+  private interactProp(prop: PropDef): void {
+    const using = this.using;
+    if (using) this.setUsing(null);
+    const action = resolveProp(PROPS[prop.id] ?? [], session.state, using);
+    if (!action) {
+      this.say({ speaker: "Paula", portrait: "paula-idle", lines: [using ? `¿${itemName(using)}? No, aquí no sirve.` : prop.label] });
+      return;
+    }
+    const notices = apply([...(action.effects ?? []), { examine: prop.id }], session.state);
+    session.save();
+    this.toastNotices(notices);
+    const puzzle = action.puzzle;
+    this.say({
+      speaker: "Paula", portrait: "paula-idle", lines: action.lines,
+      onClose: puzzle ? () => this.openPuzzle(puzzle) : undefined,
+    });
+  }
+
+  private toastNotices(notices: Notice[]): void {
+    for (const n of notices) {
+      const text = describeNotice(n, session.state);
+      if (text) this.game.events.emit(UI_EVENTS.toast, text);
+    }
+  }
+
+  private openPuzzle(id: string): void {
+    this.scene.launch("puzzle", {
+      id,
+      onClose: (solved) => {
+        session.save();
+        if (solved && session.state.flags.final) this.playEnding();
+      },
+    } satisfies PuzzleRequest);
+  }
+
+  /** Paula coge (o suelta, con null) un objeto de la mochila para usarlo. */
+  private setUsing(item: string | null): void {
+    this.using = item && ITEMS[item] && session.state.inventory.includes(item) ? item : undefined;
+    this.game.events.emit(UI_EVENTS.using, this.using ?? null);
+  }
+
+  /** Tocar a Gafe: dice (a su manera) qué se podría hacer ahora. */
+  private askGafe(): void {
+    this.pending = undefined;
+    this.paula.walker.stop();
+    this.paula.walker.face(this.gafe.pos);
+    const hint = GAFE_HINTS.find((h) => check(h.if, session.state));
+    this.say({ speaker: "Gafe", role: "Gato negro", portrait: "gafe-sit", lines: [hint?.text ?? "Miau."] });
+  }
+
+  /** La decimotercera campanada (el final completo llega con el ambiente, F12). */
+  private playEnding(): void {
+    const lines: Line[] = [
+      "Cinco recuerdos… y trece campanadas contadas sin dar un solo golpe.",
+      { by: "ines", text: "¡Me acuerdo! Me acuerdo de todo: de mi casa, de mi cinta, de mi canción." },
+      { by: "ines", text: "Y de tu voz, Paula. Gracias por no irte." },
+      { by: "basilio", text: "Señorita… ha dejado de llover. Por primera vez en cien años, en esta casa amanece." },
+      { by: "gafe", text: "Prrr. (Gafe ronronea tan fuerte que tiembla la torre.)" },
+      "Vamos, Gafe. Hay que contarle a todo el mundo que esta casa ya no da miedo.",
+    ];
+    this.say({
+      speaker: "Paula", portrait: "paula-idle", lines,
+      onClose: () => {
+        this.cameras.main.flash(1600, 255, 244, 220);
+        this.game.events.emit(UI_EVENTS.toast, "✦ FIN ✦  Gracias por jugar, Paula. La casa sigue abierta para explorar.");
+      },
+    });
   }
 
   private talkTo(rt: NpcRuntime): void {
@@ -322,6 +403,7 @@ export class WorldScene extends Phaser.Scene {
       this.say({ speaker: "Paula", portrait: "paula-idle", lines: [exit.lockedText ?? "Por aquí no se puede pasar todavía."] });
       return;
     }
+    this.toastNotices(apply(exit.onUse, session.state));
     this.transitioning = true;
     this.cameras.main.fadeOut(300, 5, 6, 8);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
@@ -330,6 +412,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private onBack(): boolean {
+    if (this.using) {
+      this.setUsing(null);
+      return true;
+    }
     if (this.paula.walker.moving) {
       this.paula.walker.stop();
       this.pending = undefined;
@@ -469,6 +555,11 @@ export class WorldScene extends Phaser.Scene {
       rt.mode = "free";
       this.handleSim(worldSim.settled(rt.def.id, this.now, this.zoneDef.id));
     }
+    // Si Paula se para encima de alguien, ese alguien se aparta un paso.
+    if (rt.mode === "free" && !rt.actor.walker.moving && !this.paula.walker.moving
+      && this.proj.floorDistance(rt.actor.pos, this.paula.pos) < 0.5) {
+      rt.actor.walker.setPath(this.nav.findPath(rt.actor.pos, this.clearOfPaula(rt.actor.pos)));
+    }
     if (rt.mode === "free" || rt.mode === "talking") {
       rt.thinkIn -= dt;
       if (rt.thinkIn <= 0) {
@@ -484,18 +575,28 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     rt.actor.update(dt);
+    // Quien está delante de Paula y la tapa se vuelve translúcido.
+    const pr = this.paula.hitRect();
+    const cut = Phaser.Geom.Rectangle.Intersection(pr, rt.actor.hitRect());
+    rt.actor.updateSeeThrough(rt.actor.pos.y > this.paula.pos.y && cut.width * cut.height > 0.25 * pr.width * pr.height, dt);
     rt.bubble?.follow();
   }
 
-  /** Si un destino cae encima de Paula, lo aparta un metro de ella. */
+  /**
+   * Si un destino cae encima de Paula, lo cambia por un sitio a ~1 m de ella
+   * donde no la tape: a un lado o detrás (nunca delante, entre ella y la cámara).
+   */
   private clearOfPaula(target: Pt): Pt {
     const pf = this.proj.toFloor(this.paula.pos);
     const tf = this.proj.toFloor(target);
-    const d = Math.hypot(tf.X - pf.X, tf.Z - pf.Z);
-    if (d >= 0.9) return target;
-    const ux = d > 0.05 ? (tf.X - pf.X) / d : 1;
-    const uz = d > 0.05 ? (tf.Z - pf.Z) / d : 0;
-    return this.nav.nearestWalkable(this.proj.fromFloor({ X: pf.X + ux, Z: Math.max(0.6, pf.Z + uz) }));
+    if (Math.hypot(tf.X - pf.X, tf.Z - pf.Z) >= 0.9) return target;
+    const side = Math.sign(tf.X - pf.X) || 1;
+    const options: [number, number][] = [[side, 0], [-side, 0], [side * 0.8, 0.7], [-side * 0.8, 0.7], [0, 1.1]];
+    for (const [dx, dz] of options) {
+      const p = this.proj.fromFloor({ X: pf.X + dx, Z: pf.Z + dz });
+      if (this.nav.isWalkable(p)) return p;
+    }
+    return this.nav.nearestWalkable(this.proj.fromFloor({ X: pf.X + side, Z: pf.Z + 0.7 }));
   }
 
   private applyIntent(rt: NpcRuntime, intent: Intent): void {
@@ -590,7 +691,7 @@ export class WorldScene extends Phaser.Scene {
       c.timers.push(this.time.delayedCall(delay, () => {
         const speaker = who === c.a.def.id ? c.a : c.b;
         if (speaker.gone) return;
-        if (this.proj.floorDistance(speaker.actor.pos, this.paula.pos) > EARSHOT_M) c.heard = false;
+        if (this.proj.floorDistance(speaker.actor.pos, this.paula.pos) > EARSHOT_M || this.registry.get("modal")) c.heard = false;
         // Solo un bocadillo a la vez en la charla: el del que habla.
         c.a.bubble?.destroy();
         c.b.bubble?.destroy();
@@ -664,14 +765,3 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 }
-
-/** Lo que Paula piensa al examinar cada objeto (provisional: pasará al motor de objetos en F9). */
-const PROP_TEXT: Record<string, string[]> = {
-  "retrato-aurelia": ["Es la bisabuela Aurelia. Sostiene una llave pintada…", "El marco tiene polvo por todas partes menos en el borde de abajo. Alguien lo ha movido."],
-  "carta-mojada": ["Media carta empapada. El sello roto tiene el mismo dibujo que mi brújula."],
-  "campanilla": ["Una campanilla de latón en mitad de la alfombra. Está demasiado limpia para llevar años aquí."],
-  "baul-ines": ["Un baúl de viaje con las iniciales I. V.", "La cerradura está forzada… desde dentro."],
-  "paraguero": ["Tres paraguas secos y una tiza azul húmeda. Alguien la ha usado esta misma noche."],
-  "reloj-aritmetico": ["Este reloj no da la hora: cuenta algo. Tiene tres discos llenos de números."],
-  "libro-abierto": ["Un libro de cuentas abierto. Alguien ha subrayado dos veces «7 × 9»."],
-};

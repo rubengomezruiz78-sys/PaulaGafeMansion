@@ -84,6 +84,15 @@ export abstract class Actor {
 
   abstract heightM(): number;
 
+  private seeThrough = 1;
+
+  /** Se vuelve translúcido mientras tapa a Paula, para que siempre se la vea. */
+  updateSeeThrough(hiding: boolean, dt: number): void {
+    const target = hiding ? 0.38 : 1;
+    this.seeThrough += (target - this.seeThrough) * Math.min(1, dt * 7);
+    this.body.setAlpha(this.seeThrough);
+  }
+
   /** Rectángulo aproximado del cuerpo en pantalla (para tocar al personaje). */
   hitRect(): Phaser.Geom.Rectangle {
     const ppm = this.proj.ppm(this.pos.y);

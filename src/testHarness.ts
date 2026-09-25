@@ -3,7 +3,12 @@
  * fotograma de forma determinista, tocar puntos, drenar diálogos y leer el
  * estado. Permite pruebas fiables aunque el navegador no pinte fotogramas.
  */
-import type Phaser from "phaser";
+import Phaser from "phaser";
+import { heardFlag } from "./core/chat";
+import { apply } from "./core/rules";
+import { CHATS } from "./content/chats";
+import { solveGame, talkThrough } from "./content/solver";
+import { ZONES, polyPx, type PropDef } from "./content/zones";
 import { session } from "./game/session";
 
 export function installTestHarness(game: Phaser.Game): void {
@@ -13,6 +18,7 @@ export function installTestHarness(game: Phaser.Game): void {
     session,
     world: () => game.scene.getScene("world") as unknown as Record<string, any>,
     ui: () => game.scene.getScene("ui") as unknown as Record<string, any>,
+    puzzle: () => game.scene.getScene("puzzle") as unknown as Record<string, any>,
     /** Avanza `seconds` de juego a 60 fps. */
     step(seconds: number) {
       t = Math.max(t, game.loop.time);
@@ -43,6 +49,95 @@ export function installTestHarness(game: Phaser.Game): void {
       const ui = api.ui();
       for (let s = 0; s < maxSeconds && !ui.panel; s += 0.1) api.step(0.1);
       return !!ui.panel;
+    },
+    /** Resuelve con el teclado el puzzle abierto (respuestas del contenido). */
+    solvePuzzle() {
+      const p = api.puzzle();
+      for (let guard = 0; guard < 12 && game.scene.isActive("puzzle"); guard += 1) {
+        const step = p.run.step;
+        if (step.kind === "number") {
+          for (const ch of String(step.answer)) p.press(ch);
+          p.press("OK");
+        } else p.choose(step.answer);
+        api.step(1.6);
+      }
+      return !game.scene.isActive("puzzle");
+    },
+    /** Un punto dentro del objeto que no tape ningún personaje. */
+    tapPointFor(prop: PropDef) {
+      const w = api.world();
+      const pts = polyPx(prop.hotspot);
+      const poly = new Phaser.Geom.Polygon(pts);
+      const covered = (x: number, y: number) =>
+        w.npcs.some((n: any) => !n.gone && n.actor.hitRect().contains(x, y)) || w.gafe.hitRect().contains(x, y);
+      const xs = pts.map((p) => p.x);
+      const ys = pts.map((p) => p.y);
+      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+      const c = { x: xs.reduce((a, b) => a + b, 0) / xs.length, y: ys.reduce((a, b) => a + b, 0) / ys.length };
+      if (poly.contains(c.x, c.y) && !covered(c.x, c.y)) return c;
+      for (let i = 1; i < 10; i += 1) {
+        for (let j = 1; j < 10; j += 1) {
+          const x = x0 + ((x1 - x0) * i) / 10;
+          const y = y0 + ((y1 - y0) * j) / 10;
+          if (poly.contains(x, y) && !covered(x, y)) return { x, y };
+        }
+      }
+      return c;
+    },
+    /**
+     * Partida completa por la interfaz real siguiendo la ruta del
+     * solucionador: toca los objetos (Paula camina hasta ellos), lee los
+     * diálogos y resuelve los puzzles con el teclado. Las conversaciones y
+     * charlas se aplican directamente (dependen de dónde estén los personajes).
+     */
+    autoplay() {
+      const plan = solveGame().log;
+      const problems: string[] = [];
+      session.reset();
+      api.world().scene.restart({ zone: "vestibulo" });
+      api.step(0.6);
+      for (const entry of plan) {
+        const m = /^([a-z]+): (examinar|hablar con|oír la charla|cruzar) (.+)$/.exec(entry);
+        if (!m) {
+          problems.push(`paso desconocido: ${entry}`);
+          continue;
+        }
+        const [, zone, verb, what] = m;
+        const s = session.state;
+        if (verb === "examinar") {
+          if (api.world().zoneDef.id !== zone) {
+            api.world().scene.restart({ zone });
+            api.step(0.8);
+          }
+          const prop = (ZONES as Record<string, any>)[zone].props.find((p: PropDef) => p.id === what) as PropDef;
+          const pt = api.tapPointFor(prop);
+          api.tap(pt.x, pt.y);
+          if (!api.waitDialogue(25)) {
+            problems.push(`no se llegó a ${zone}/${what}`);
+            continue;
+          }
+          api.drain(60);
+          api.step(0.4);
+          if (game.scene.isActive("puzzle") && !api.solvePuzzle()) problems.push(`puzzle sin resolver en ${zone}/${what}`);
+          api.step(0.3);
+          if (!s.examined.includes(what)) problems.push(`${zone}/${what} no quedó examinado`);
+        } else if (verb === "hablar con") {
+          const here = s.zone;
+          s.zone = zone;
+          talkThrough(what, s);
+          s.zone = here;
+        } else if (verb === "oír la charla") {
+          const chat = CHATS.find((c) => c.id === what);
+          s.flags[heardFlag(what)] = true;
+          apply(chat?.effects, s);
+        } else if (verb === "cruzar") {
+          const exit = (ZONES as Record<string, any>)[zone].exits.find((e: any) => e.id === what);
+          apply(exit?.onUse, s);
+          if (!s.visited.includes(exit.to)) s.visited.push(exit.to);
+        }
+      }
+      const ending = api.waitDialogue(5) ? api.drain(40) : [];
+      return { final: session.state.flags.final === true, problems, ending, steps: plan.length };
     },
   };
   (window as unknown as { __test: typeof api }).__test = api;

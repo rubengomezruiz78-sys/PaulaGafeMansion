@@ -25,7 +25,7 @@ export const SOTANO: Partial<Record<ZoneId, ZoneDef>> = {
         id: "puerta-pacto", to: "tuneles", toExit: "pasadizo-archivo", label: "Puerta del pacto",
         hotspot: [[0.64, 0.2], [0.8, 0.2], [0.8, 0.74], [0.64, 0.74]], approach: [0.72, 0.78],
         requires: { flag: "pacto-roto" },
-        lockedText: "La puerta del pacto tiene un mecanismo vacío. Le faltan dos piezas.",
+        lockedText: "La puerta del pacto está encadenada al altar de la capilla. Mientras el pacto siga en pie, no se abrirá.",
       },
     ],
     props: [

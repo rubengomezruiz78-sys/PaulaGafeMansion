@@ -131,7 +131,7 @@ export const PLANTA_ALTA: Partial<Record<ZoneId, ZoneDef>> = {
         id: "pasarela-torre", to: "torre", toExit: "pasarela-observatorio", label: "Pasarela a la torre",
         hotspot: [[0.8, 0.4], [0.86, 0.4], [0.86, 0.6], [0.8, 0.6]], approach: [0.83, 0.64],
         requires: { flag: "pasarela-abierta" },
-        lockedText: "La pasarela está cerrada con un cerrojo oxidado… por el otro lado.",
+        lockedText: "La pasarela está cerrada con un cerrojo lleno de estrellas. Quizá desde el telescopio se entienda cómo se abre.",
       },
     ],
     props: [
@@ -159,10 +159,14 @@ export const PLANTA_ALTA: Partial<Record<ZoneId, ZoneDef>> = {
       {
         id: "escalera-aljibe", to: "tuneles", toExit: "tunel-torre", label: "Bajar al aljibe",
         hotspot: [[0.0, 0.82], [0.06, 0.82], [0.06, 1.0], [0.0, 1.0]], approach: [0.05, 0.92],
+        // Desde la torre se baja la palanca del aljibe: el agua se retira.
+        onUse: [{ set: "compuertas-abiertas" }],
       },
       {
         id: "pasarela-observatorio", to: "observatorio", toExit: "pasarela-torre", label: "Pasarela al observatorio",
         hotspot: [[0.1, 0.97], [0.3, 0.97], [0.3, 1.0], [0.1, 1.0]], approach: [0.2, 0.96],
+        // Desde este lado el cerrojo de estrellas se descorre con la mano.
+        onUse: [{ set: "pasarela-abierta" }],
       },
     ],
     props: [

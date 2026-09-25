@@ -95,8 +95,37 @@ tools/         build_sprites.py (limpieza de sprites + métricas)
       (Paula, Gafe, Basilio, Elvira, Tomás, Inés —la 13.ª—, Bruma, Baltasar y 12
       criados dibujados por código en `world/ghostArt.ts`, cada uno con oficio,
       gesto, estatura real y árbol de diálogo propio)
-- [ ] F9 Objetos, inventario, combinar, interacción contextual
-- [ ] F10 Misiones + puzzles (teclado numérico) + pistas (Gafe/ECO offline)
-- [ ] F11 Validador + solucionador + test de partida completa
+- [x] F9 Objetos, inventario, interacción contextual: `core/interact.ts` +
+      `content/props.ts` (cada objeto de las 12 salas reacciona según la historia;
+      si pide un objeto y Paula lo lleva, se usa solo), mochila y cuaderno
+      (`scenes/BagScene.ts`), «usar aquí» con aviso de objeto en la mano.
+      (Combinar objetos se descartó: la historia no lo necesita.)
+- [x] F10 Misiones + puzzles (teclado numérico) + pistas (Gafe/ECO offline):
+      11 puzzles de cálculo de 4.º de primaria (`content/puzzles.ts`,
+      `scenes/PuzzleScene.ts`), progreso guardado por paso, pista de Gafe a los
+      dos fallos; tocar a Gafe da la siguiente pista (`content/hints.ts`);
+      objetivos principales como lista en el cuaderno (`MAIN_GOALS`).
+- [x] F11 Validador + solucionador + test de partida completa:
+      `content/validate.ts`, `content/solver.ts` (tests: termina, también sin
+      charlas y sin Clotilde) y `__test.autoplay()` en el navegador (juega por
+      la interfaz real: 102 pasos, todos los objetos y los 11 puzzles).
+      Recorrido: `npx vite-node scripts/solve-log.ts`.
 - [ ] F12 Ambiente: sonido, lluvia, luz, partículas, título, final
 - [ ] F13 QA completo en tablet/móvil + APK + instalar
+
+## Guion jugable (F9–F11)
+Meta: que la campana de la torre suene trece veces **sin golpearla** para que
+Inés recupere la memoria. Hace falta: romper el pacto y reunir 5 recuerdos.
+- Sello: retrato de Aurelia (mirarlo dos veces, o la pista de Basilio/Clotilde).
+- Reloj (biblioteca, pide el sello) → engranaje de marfil.
+- Pacto (altar del archivo, pide sello + engranaje) → `pacto-roto` (túneles).
+- Caldera (cocina, opcional) → `porton-abierto`: otro camino a los túneles.
+- Recuerdos: caja de música (dormitorio) → canica; retratos (galería) → foto;
+  gramófono (música) → cilindro; antídoto (invernadero, pedírselo a Bruma) →
+  flor + lente; esfera del reloj (torre) → cinta.
+- Torre: compuertas (túneles) o cerrojo de estrellas (telescopio + lente). Al
+  cruzar desde la torre, las dos vías quedan abiertas para siempre.
+- Campana (torre) con pacto roto y 5 recuerdos → final.
+- Opcionales: baúles (plano), escondite de Pepito (encontrarlo en 3 salas; su
+  secreto ayuda en la campana), guante de Gumersindo, galleta para Pepito.
+

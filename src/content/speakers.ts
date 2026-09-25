@@ -1,5 +1,7 @@
 /** Quién habla en una conversación: Paula, Gafe o un personaje del mundo. */
 import type { Notice } from "../core/rules";
+import type { GameState } from "../core/state";
+import { fill } from "../core/text";
 import type { Speaker } from "../scenes/UIScene";
 import { itemName } from "./items";
 import { NPCS } from "./npcs";
@@ -17,13 +19,13 @@ export function speakerFor(id: string): Speaker {
 }
 
 /** Texto del aviso para la interfaz (o null si no hay que avisar). */
-export function describeNotice(n: Notice): string | null {
+export function describeNotice(n: Notice, s?: GameState): string | null {
   switch (n.type) {
     case "item": return `✦ Has conseguido: ${itemName(n.item)}`;
     case "itemLost": return `Has entregado: ${itemName(n.item)}`;
     case "quest": {
       const t = questStageText(n.quest, n.stage);
-      return t ? `Nueva tarea: ${t}` : null;
+      return t ? `Nueva tarea: ${s ? fill(t, s) : t}` : null;
     }
     case "questDone": return `✔ ${QUESTS[n.quest]?.title ?? n.quest}`;
   }

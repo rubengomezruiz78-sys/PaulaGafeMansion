@@ -1,7 +1,9 @@
 import Phaser from "phaser";
 import { GAME_H, GAME_W } from "./config";
 import { installBackBridge, loadFonts } from "./platform";
+import { BagScene } from "./scenes/BagScene";
 import { BootScene } from "./scenes/BootScene";
+import { PuzzleScene } from "./scenes/PuzzleScene";
 import { UIScene } from "./scenes/UIScene";
 import { WorldScene } from "./scenes/WorldScene";
 
@@ -21,7 +23,7 @@ async function start(): Promise<void> {
     render: { antialias: true, roundPixels: false, powerPreference: "high-performance" },
     input: { activePointers: 2 },
     fps: { target: 60, smoothStep: true },
-    scene: [BootScene, WorldScene, UIScene],
+    scene: [BootScene, WorldScene, UIScene, PuzzleScene, BagScene],
   });
   // Pausar al irse a segundo plano (ahorra batería y evita saltos de tiempo).
   document.addEventListener("visibilitychange", () => {
