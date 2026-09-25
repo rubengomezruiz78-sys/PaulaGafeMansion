@@ -9,6 +9,7 @@ import { apply } from "./core/rules";
 import { CHATS } from "./content/chats";
 import { solveGame, talkThrough } from "./content/solver";
 import { ZONES, polyPx, type PropDef } from "./content/zones";
+import { makeDemoRecorder } from "./demoRecorder";
 import { session } from "./game/session";
 
 export function installTestHarness(game: Phaser.Game): void {
@@ -191,5 +192,13 @@ export function installTestHarness(game: Phaser.Game): void {
       return { final: session.state.flags.final === true, problems, ending, steps: plan.length, retries };
     },
   };
-  (window as unknown as { __test: typeof api }).__test = api;
+  const demo = {
+    /** Graba el vídeo de demostración (ver src/demoRecorder.ts y tools/video_server.py). */
+    recordDemo() {
+      const rec = makeDemoRecorder(game, api);
+      (window as unknown as { __demo: typeof rec }).__demo = rec;
+      return rec.run();
+    },
+  };
+  (window as unknown as { __test: typeof api & typeof demo }).__test = Object.assign(api, demo);
 }
