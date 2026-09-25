@@ -84,6 +84,12 @@ const EARSHOT_M = 7;
  */
 const KEEP_ZONES = 3;
 const recentZones: string[] = [];
+/**
+ * Modo ligero: si la tablet no llega a ~36 fps en una sala, se quitan los
+ * efectos decorativos (viñeta y motas) el resto de la sesión.
+ */
+let lowFx = false;
+const LOW_FPS = 36;
 
 export class WorldScene extends Phaser.Scene {
   private zoneDef!: ZoneDef;
@@ -114,6 +120,8 @@ export class WorldScene extends Phaser.Scene {
   private lightningIn = 0;
   private flashRect!: Phaser.GameObjects.Rectangle;
   private stepCount = 0;
+  private fxObjects: Phaser.GameObjects.GameObject[] = [];
+  private perfClock = 0;
 
   constructor() {
     super("world");
@@ -240,6 +248,7 @@ export class WorldScene extends Phaser.Scene {
       this.handleSim(worldSim.tick(this.now, this.zoneDef.id));
     }
 
+    this.watchPerformance(dt);
     this.paula.update(dt);
     this.footsteps();
     this.updateLightning(dt);
@@ -844,21 +853,39 @@ export class WorldScene extends Phaser.Scene {
     sound.setAmbience(this.amb);
     this.lightningIn = this.rng.range(6, 18);
     this.stepCount = 0;
-    // Viñeta: oscurece los bordes y da profundidad al cuadro.
-    this.add.image(0, 0, "vignette").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(4400).setAlpha(0.6);
+    this.perfClock = 0;
+    this.fxObjects = [];
     this.flashRect = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xdde8ff, 0).setOrigin(0).setDepth(4500)
       .setBlendMode(Phaser.BlendModes.ADD);
+    if (lowFx) return;
+    // Viñeta: oscurece los bordes y da profundidad al cuadro.
+    this.fxObjects.push(this.add.image(0, 0, "vignette").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(4400).setAlpha(0.6));
     for (let i = 0; i < 14; i += 1) {
       const x = this.rng.range(0, GAME_W);
       const y = this.rng.range(120, GAME_H * 0.8);
       const m = this.add.image(x, y, "glint").setTint(0xd8e6ff).setBlendMode(Phaser.BlendModes.ADD)
         .setScale(this.rng.range(0.04, 0.09)).setAlpha(0).setDepth(4300);
+      this.fxObjects.push(m);
       this.tweens.add({
         targets: m, x: x + this.rng.range(-80, 80), y: y - this.rng.range(40, 140),
         alpha: { from: 0, to: this.rng.range(0.15, 0.4) },
         duration: this.rng.range(6000, 11000), yoyo: true, repeat: -1, delay: this.rng.range(0, 6000), ease: "Sine.easeInOut",
       });
     }
+  }
+
+  /** Si va a tirones, pasa a modo ligero (se mide tras unos segundos en la sala). */
+  private watchPerformance(dt: number): void {
+    if (lowFx) return;
+    this.perfClock += dt;
+    if (this.perfClock < 6 || this.perfClock % 3 > dt) return;
+    if (this.game.loop.actualFps >= LOW_FPS) return;
+    lowFx = true;
+    for (const o of this.fxObjects) {
+      this.tweens.killTweensOf(o);
+      o.destroy();
+    }
+    this.fxObjects = [];
   }
 
   /** Un relámpago cada tanto (en las salas con ventanas) y su trueno después. */
