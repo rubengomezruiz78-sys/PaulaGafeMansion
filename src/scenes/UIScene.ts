@@ -12,6 +12,8 @@ import { MODAL_EVENT, setModal } from "../ui/modal";
 import { makeButton, type Button } from "../ui/widgets";
 
 export interface Speaker {
+  /** Quién es en el mundo («paula», «gafe», id de personaje): el bocadillo sale de su cabeza. */
+  id?: string;
   name: string;
   role?: string;
   portrait?: SpriteKey;
@@ -23,6 +25,7 @@ export interface Speaker {
  */
 export interface DialogueRequest {
   speaker: string;
+  speakerId?: string;
   role?: string;
   portrait?: SpriteKey;
   lines: Line[];
@@ -52,10 +55,14 @@ export const UI_EVENTS = {
   using: "ui:using",
 } as const;
 
-const PANEL = { x: 150, y: 770, w: GAME_W - 300, h: 285 };
-const PORTRAIT_R = 108;
+/** Bocadillo de diálogo (escena lógica 1920×1080): pequeño y junto a quien habla. */
+const BUBBLE = { maxW: 780, pad: 22, portraitR: 40, gapHead: 22, margin: 18 };
 const CHARS_PER_SECOND = 48;
-const CHOICE = { w: 860, h: 78, gap: 14, right: PANEL.x + PANEL.w, bottom: PANEL.y - 18 };
+/** Opciones: botones compactos y numerados, abajo a la derecha. */
+const CHOICE = { w: 700, h: 62, gap: 10, right: GAME_W - 20, bottom: GAME_H - 16 };
+
+/** Posición de la cabeza de un personaje presente en la sala (la da el mundo). */
+export type SpeakerAnchor = (id: string) => { x: number; y: number } | null;
 
 interface QueuedLine {
   speaker: Speaker;
@@ -68,7 +75,15 @@ interface QueuedLine {
  * no recibe toques (registry "modal").
  */
 export class UIScene extends Phaser.Scene {
+  /** El bocadillo abierto (se llama «panel» por compatibilidad con las pruebas). */
   private panel?: Phaser.GameObjects.Container;
+  private bubbleBg?: Phaser.GameObjects.Graphics;
+  private portraitMask?: Phaser.GameObjects.Graphics;
+  private speaker?: Speaker;
+  private bubbleSize = { w: 0, h: 0 };
+  /** El texto de la frase ya partido en líneas (así no saltan palabras al escribirse). */
+  private wrapped = "";
+  private choiceTop = GAME_H;
   private portrait?: Phaser.GameObjects.Image;
   private portraitKey?: SpriteKey;
   private nameText?: Phaser.GameObjects.Text;
@@ -120,16 +135,35 @@ export class UIScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    if (!this.panel) return;
+    this.placeBubble();
     if (!this.bodyText || this.shown >= this.fullText.length) return;
     this.shown = Math.min(this.fullText.length, this.shown + (CHARS_PER_SECOND * delta) / 1000);
-    this.bodyText.setText(this.fullText.slice(0, Math.floor(this.shown)));
+    this.bodyText.setText(this.visibleText());
     if (this.shown >= this.fullText.length) this.lineFinished();
+  }
+
+  /** Lo escrito hasta ahora, sobre el texto ya partido en líneas. */
+  private visibleText(): string {
+    let left = Math.floor(this.shown);
+    let out = "";
+    for (const ch of this.wrapped) {
+      if (ch === "\n") {
+        out += ch;
+        continue;
+      }
+      if (left <= 0) break;
+      out += ch;
+      left -= 1;
+    }
+    return out;
   }
 
   // ------------------------------------------------------------ apertura
 
   private openSimple(req: DialogueRequest): void {
-    const speaker: Speaker = { name: req.speaker, role: req.role, portrait: req.portrait };
+    const id = req.speakerId ?? (req.speaker === "Paula" ? "paula" : req.speaker === "Gafe" ? "gafe" : undefined);
+    const speaker: Speaker = { id, name: req.speaker, role: req.role, portrait: req.portrait };
     this.begin(req.onClose);
     this.queue = req.lines.map((l) => (typeof l === "string" ? { speaker, text: l } : { speaker: speakerFor(l.by), text: l.text }));
     this.choices = [];
@@ -178,60 +212,108 @@ export class UIScene extends Phaser.Scene {
     this.nextLine();
   }
 
-  // ------------------------------------------------------------ panel
+  // ------------------------------------------------------------ bocadillo
 
   private buildPanel(): void {
     const c = this.add.container(0, 0).setDepth(100);
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.35).fillRoundedRect(PANEL.x + 6, PANEL.y + 10, PANEL.w, PANEL.h, 26);
-    g.fillStyle(COLORS.panel, 0.95).fillRoundedRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 26);
-    g.lineStyle(3, COLORS.panelEdge, 0.7).strokeRoundedRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 26);
-    const cx = PANEL.x + 40 + PORTRAIT_R;
-    const cy = PANEL.y + PANEL.h / 2;
-    g.fillStyle(0x16242a, 1).fillCircle(cx, cy, PORTRAIT_R);
-    c.add(g);
-    const edge = this.add.graphics().lineStyle(4, COLORS.copper, 0.9).strokeCircle(cx, cy, PORTRAIT_R);
-    const tx = cx + PORTRAIT_R + 44;
-    this.nameText = this.add.text(tx, PANEL.y + 30, "", { fontFamily: FONT_TITLE, fontSize: "40px", color: CSS.copper });
-    this.roleText = this.add.text(tx, PANEL.y + 42, "", { fontFamily: FONT_UI, fontSize: "22px", color: CSS.muted, letterSpacing: 2 });
-    this.bodyText = this.add.text(tx, PANEL.y + 92, "", {
-      fontFamily: FONT_UI, fontSize: fs(36), color: CSS.ivory, lineSpacing: 10,
-      wordWrap: { width: PANEL.x + PANEL.w - tx - 60, useAdvancedWrap: true },
+    this.bubbleBg = this.add.graphics();
+    const r = BUBBLE.portraitR;
+    const tx = BUBBLE.pad + r * 2 + 16;
+    this.nameText = this.add.text(tx, BUBBLE.pad - 6, "", { fontFamily: FONT_TITLE, fontSize: fs(26), color: CSS.copper });
+    this.roleText = this.add.text(tx, BUBBLE.pad, "", { fontFamily: FONT_UI, fontSize: fs(16), color: CSS.muted, letterSpacing: 2 });
+    this.bodyText = this.add.text(tx, BUBBLE.pad + 30, "", {
+      fontFamily: FONT_UI, fontSize: fs(30), color: CSS.ivory, lineSpacing: 6,
     });
-    this.hint = this.add.text(PANEL.x + PANEL.w - 40, PANEL.y + PANEL.h - 26, "toca para seguir  ▸", {
-      fontFamily: FONT_UI, fontSize: fs(24), color: CSS.copper,
-    }).setOrigin(1, 1).setVisible(false);
-    this.tweens.add({ targets: this.hint, alpha: 0.35, duration: 700, yoyo: true, repeat: -1 });
-    c.add([this.nameText, this.roleText, this.bodyText, this.hint]);
-    c.add(edge); // el aro por encima del retrato
+    this.hint = this.add.text(0, 0, "▸", { fontFamily: FONT_UI, fontSize: fs(26), color: CSS.copper }).setOrigin(1, 1).setVisible(false);
+    this.tweens.add({ targets: this.hint, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
+    c.add([this.bubbleBg, this.nameText, this.roleText, this.bodyText, this.hint]);
     c.setAlpha(0);
-    this.tweens.add({ targets: c, alpha: 1, duration: 160 });
+    this.tweens.add({ targets: c, alpha: 1, duration: 140 });
     this.panel = c;
   }
 
   private setSpeaker(s: Speaker): void {
     if (!this.panel || !this.nameText || !this.roleText) return;
+    this.speaker = s;
     this.nameText.setText(s.name);
-    this.roleText.setText(s.role ? s.role.toUpperCase() : "").setX(this.nameText.x + this.nameText.width + 22);
+    this.roleText.setText(s.role ? s.role.toUpperCase() : "").setX(this.nameText.x + this.nameText.width + 12).setY(this.nameText.y + 9);
     if (s.portrait === this.portraitKey) return;
     this.portrait?.destroy();
+    this.portraitMask?.destroy();
     this.portrait = undefined;
+    this.portraitMask = undefined;
     this.portraitKey = s.portrait;
     if (!s.portrait) return;
     const meta = SPRITES[s.portrait];
-    const cx = PANEL.x + 40 + PORTRAIT_R;
-    const cy = PANEL.y + PANEL.h / 2;
+    const r = BUBBLE.portraitR;
     // Encuadre de cara: cabeza en la mitad superior del círculo, centrada en el
     // eje del cuerpo (ancla de los pies), no en el lienzo.
     const frame = meta.portrait ?? { top: 0, height: meta.realHeightM < 0.5 ? 0.42 : 0.2 };
     const faceH = meta.frameHeight * frame.height;
-    const img = this.add.image(cx, cy - PORTRAIT_R + 8, s.portrait, 0)
-      .setOrigin(meta.originX, frame.top)
-      .setScale((PORTRAIT_R * 2) / faceH);
-    const mask = this.make.graphics({}, false).fillCircle(cx, cy, PORTRAIT_R - 4);
-    img.setMask(mask.createGeometryMask());
+    const img = this.add.image(0, 0, s.portrait, 0).setOrigin(meta.originX, frame.top).setScale((r * 2) / faceH);
+    this.portraitMask = this.make.graphics({}, false);
+    img.setMask(this.portraitMask.createGeometryMask());
     this.panel.addAt(img, 1);
     this.portrait = img;
+  }
+
+  /** Prepara el bocadillo para la frase: tamaño a medida del texto. */
+  private layoutLine(): void {
+    if (!this.bodyText || !this.nameText || !this.roleText) return;
+    const r = BUBBLE.portraitR;
+    const tx = BUBBLE.pad + r * 2 + 16;
+    const maxText = BUBBLE.maxW - tx - BUBBLE.pad;
+    this.bodyText.setWordWrapWidth(maxText, true);
+    this.wrapped = this.bodyText.getWrappedText(this.fullText).join("\n");
+    this.bodyText.setWordWrapWidth(0).setText(this.wrapped);
+    const textW = Math.max(this.bodyText.width, this.nameText.width + (this.roleText.text ? this.roleText.width + 12 : 0));
+    const w = Math.min(BUBBLE.maxW, tx + textW + BUBBLE.pad + 18);
+    const h = Math.max(BUBBLE.pad * 2 + r * 2, BUBBLE.pad + 30 + this.bodyText.height + BUBBLE.pad);
+    this.bodyText.setText("");
+    this.bubbleSize = { w, h };
+    this.hint?.setPosition(w - 12, h - 6);
+    this.placeBubble();
+  }
+
+  /**
+   * Sobre la cabeza de quien habla (y le sigue si se mueve). Si no está en la
+   * sala, subtítulo pequeño abajo. Nunca tapa las opciones.
+   */
+  private placeBubble(): void {
+    if (!this.panel || !this.bubbleBg) return;
+    const { w, h } = this.bubbleSize;
+    const anchorOf = this.registry.get("speakerAnchor") as SpeakerAnchor | null;
+    const a = this.speaker?.id && anchorOf ? anchorOf(this.speaker.id) : null;
+    const m = BUBBLE.margin;
+    let x: number;
+    let y: number;
+    let tip: { x: number; y: number } | null = null;
+    if (a) {
+      tip = { x: a.x, y: a.y - BUBBLE.gapHead };
+      x = Phaser.Math.Clamp(tip.x - w / 2, m, GAME_W - w - m);
+      y = Math.max(m, tip.y - h - 20);
+    } else {
+      x = this.choiceBox ? m * 2 : (GAME_W - w) / 2;
+      y = GAME_H - h - 26;
+    }
+    if (this.choiceBox && x + w > CHOICE.right - CHOICE.w && y + h > this.choiceTop - 10) y = Math.max(m, this.choiceTop - h - 16);
+    this.panel.setPosition(x, y);
+    const g = this.bubbleBg;
+    g.clear();
+    g.fillStyle(0x000000, 0.3).fillRoundedRect(4, 6, w, h, 20);
+    g.fillStyle(COLORS.panel, 0.9).fillRoundedRect(0, 0, w, h, 20);
+    g.lineStyle(2, COLORS.panelEdge, 0.55).strokeRoundedRect(0, 0, w, h, 20);
+    if (tip && tip.y - y > h + 4) {
+      const bx = Phaser.Math.Clamp(tip.x - x, 34, w - 34);
+      g.fillStyle(COLORS.panel, 0.9).fillTriangle(bx - 13, h - 1, bx + 13, h - 1, tip.x - x, Math.min(tip.y - y, h + 20));
+    }
+    const r = BUBBLE.portraitR;
+    const pcx = BUBBLE.pad + r;
+    const pcy = BUBBLE.pad + r;
+    g.fillStyle(0x16242a, 1).fillCircle(pcx, pcy, r);
+    g.lineStyle(3, COLORS.copper, 0.85).strokeCircle(pcx, pcy, r);
+    if (this.portrait) this.portrait.setPosition(pcx, pcy - r + 4);
+    if (this.portraitMask) this.portraitMask.clear().fillCircle(x + pcx, y + pcy, r - 3);
   }
 
   private nextLine(): void {
@@ -244,8 +326,8 @@ export class UIScene extends Phaser.Scene {
     this.setSpeaker(line.speaker);
     this.fullText = fill(line.text, session.state);
     this.shown = 0;
-    this.bodyText?.setText("");
     this.hint?.setVisible(false);
+    this.layoutLine();
   }
 
   /** Terminó de escribirse la frase: si es la última y hay opciones, se muestran ya. */
@@ -259,7 +341,7 @@ export class UIScene extends Phaser.Scene {
     if (this.shown < this.fullText.length) {
       // Primer toque: muestra la frase entera; el siguiente pasa a la próxima.
       this.shown = this.fullText.length;
-      this.bodyText.setText(this.fullText);
+      this.bodyText.setText(this.wrapped);
       this.lineFinished();
       return;
     }
@@ -272,30 +354,39 @@ export class UIScene extends Phaser.Scene {
     if (this.choiceBox || !this.choices.length) return;
     this.hint?.setVisible(false);
     const box = this.add.container(0, 0).setDepth(110);
-    const n = this.choices.length;
-    this.choices.forEach((choice, i) => {
-      const y = CHOICE.bottom - (n - i) * (CHOICE.h + CHOICE.gap) + CHOICE.gap;
-      const x = CHOICE.right - CHOICE.w;
+    let y = CHOICE.bottom;
+    const x = CHOICE.right - CHOICE.w;
+    // De abajo arriba: la última opción («Hasta luego») queda junto al borde.
+    [...this.choices].reverse().forEach((choice, ri) => {
+      const i = this.choices.length - 1 - ri;
+      const label = this.add.text(x + 58, 0, choice.text, {
+        fontFamily: FONT_UI, fontSize: fs(28), color: CSS.ivory,
+        wordWrap: { width: CHOICE.w - 80, useAdvancedWrap: true },
+      }).setOrigin(0, 0.5);
+      const h = Math.max(CHOICE.h, label.height + 22);
+      y -= h;
+      label.setY(y + h / 2);
+      const num = this.add.text(x + 30, y + h / 2, `${i + 1}`, { fontFamily: FONT_TITLE, fontSize: fs(26), color: CSS.copper }).setOrigin(0.5);
       const bg = this.add.graphics();
       const draw = (hover: boolean) => {
         bg.clear();
-        bg.fillStyle(hover ? 0x3a2716 : COLORS.panel, 0.96).fillRoundedRect(x, y, CHOICE.w, CHOICE.h, 20);
-        bg.lineStyle(3, COLORS.copper, hover ? 1 : 0.65).strokeRoundedRect(x, y, CHOICE.w, CHOICE.h, 20);
+        bg.fillStyle(hover ? 0x3a2716 : COLORS.panel, hover ? 0.97 : 0.88).fillRoundedRect(x, y, CHOICE.w, h, 18);
+        bg.lineStyle(2, COLORS.copper, hover ? 1 : 0.55).strokeRoundedRect(x, y, CHOICE.w, h, 18);
       };
       draw(false);
-      const label = this.add.text(x + 30, y + CHOICE.h / 2, `▸  ${choice.text}`, {
-        fontFamily: FONT_UI, fontSize: fs(32), color: CSS.ivory,
-        wordWrap: { width: CHOICE.w - 60, useAdvancedWrap: true },
-      }).setOrigin(0, 0.5);
-      const hit = this.add.zone(x, y, CHOICE.w, CHOICE.h).setOrigin(0).setInteractive({ useHandCursor: true });
+      const top = y;
+      const hit = this.add.zone(x, top, CHOICE.w, h).setOrigin(0).setInteractive({ useHandCursor: true });
       hit.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => draw(true));
       hit.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => draw(false));
       hit.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.pick(choice.id));
-      box.add([bg, label, hit]);
+      box.add([bg, num, label, hit]);
+      y -= CHOICE.gap;
     });
+    this.choiceTop = y;
     box.setAlpha(0);
     this.tweens.add({ targets: box, alpha: 1, duration: 150 });
     this.choiceBox = box;
+    this.placeBubble();
   }
 
   private pick(id: string): void {
@@ -328,6 +419,11 @@ export class UIScene extends Phaser.Scene {
     this.hint = undefined;
     this.choiceBox?.destroy();
     this.choiceBox = undefined;
+    this.choiceTop = GAME_H;
+    this.portraitMask?.destroy();
+    this.portraitMask = undefined;
+    this.bubbleBg = undefined;
+    this.speaker = undefined;
     this.queue = [];
     this.choices = [];
     this.runner = undefined;

@@ -3,6 +3,9 @@ import { COLORS, CSS, FONT_TITLE, GAME_H, GAME_W } from "../config";
 import { SPRITES, SPRITE_KEYS, spritePath } from "../content/sprites";
 import { NPCS } from "../content/npcs";
 import { makeGhostTexture } from "../world/ghostArt";
+import { installBgLife } from "../world/bgLife";
+import { installActorLight } from "../world/lighting";
+import { makeLifeTextures } from "../world/lifeTextures";
 
 /** Carga de recursos + texturas procedurales. */
 export class BootScene extends Phaser.Scene {
@@ -37,6 +40,9 @@ export class BootScene extends Phaser.Scene {
     this.makeRingTexture();
     this.makeGlintTexture();
     this.makeVignetteTexture();
+    makeLifeTextures(this);
+    installBgLife(this.game);
+    installActorLight(this.game);
     // Los criados fantasma se dibujan por código una sola vez.
     for (const npc of NPCS) if (npc.art) makeGhostTexture(this, npc.sprite, npc.art);
     this.scene.start("title");

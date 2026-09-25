@@ -13,9 +13,9 @@ const FIXED: Record<string, Speaker> = {
 };
 
 export function speakerFor(id: string): Speaker {
-  if (FIXED[id]) return FIXED[id];
+  if (FIXED[id]) return { ...FIXED[id], id };
   const npc = NPCS.find((n) => n.id === id);
-  return npc ? { name: npc.name, role: npc.role, portrait: npc.sprite } : { name: id };
+  return npc ? { id, name: npc.name, role: npc.role, portrait: npc.sprite } : { id, name: id };
 }
 
 /** Texto del aviso para la interfaz (o null si no hay que avisar). */

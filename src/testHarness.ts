@@ -33,6 +33,17 @@ export function installTestHarness(game: Phaser.Game): void {
       api.step(0.8);
       return api.untilReady();
     },
+    /** Captura a resolución completa, enviada a tools/video_server.py (frame n). */
+    async snap(n: number) {
+      api.step(1 / 60);
+      const c = document.createElement("canvas");
+      c.width = game.canvas.width;
+      c.height = game.canvas.height;
+      c.getContext("2d")!.drawImage(game.canvas, 0, 0);
+      const b = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.92));
+      if (b) await fetch(`http://127.0.0.1:8765/frame?n=${n}`, { method: "POST", body: b });
+      return !!b;
+    },
     /** Espera (tiempo real) a que la sala termine de cargar su imagen y montarse. */
     async untilReady(timeoutMs = 8000) {
       const t0 = realNow();

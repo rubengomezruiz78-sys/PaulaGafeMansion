@@ -21,7 +21,8 @@ export class Paula extends Actor {
   private walkMix = 0;
 
   constructor(scene: Phaser.Scene, proj: Projection, pos: Pt, tint?: number) {
-    super(scene, proj, pos, GAITS.paula, { shadowWidthM: 0.5, tint });
+    // Es una foto: algo menos de saturación y contraste la acercan al cuadro.
+    super(scene, proj, pos, GAITS.paula, { shadowWidthM: 0.5, tint, look: { saturation: 0.78, contrast: 0.9, rim: 0.75 } });
     this.walk = this.addPose("walk", "paula-walk");
     this.idle = this.addPose("idle", "paula-idle");
     this.walk.obj.setAlpha(0);
@@ -69,7 +70,7 @@ export class Gafe extends Actor {
   private paulaWasMoving = false;
 
   constructor(scene: Phaser.Scene, proj: Projection, pos: Pt, tint?: number) {
-    super(scene, proj, pos, GAITS.gafe, { shadowWidthM: 0.42, tint });
+    super(scene, proj, pos, GAITS.gafe, { shadowWidthM: 0.42, tint, look: { saturation: 0.9, contrast: 1, rim: 0.9 } });
     this.walk = this.addPose("walk", "gafe-walk");
     this.sit = this.addPose("sit", "gafe-sit");
     this.walk.obj.setAlpha(0);
@@ -128,6 +129,8 @@ export interface GhostStyle {
   /** Opacidad base. */
   alpha: number;
   tint?: number;
+  /** Cuánto brilla por sí mismo (0 = persona viva, ~0,3 fantasma pintado, ~0,7 criado). */
+  emissive?: number;
 }
 
 /**
@@ -145,10 +148,20 @@ export class Ghost extends Actor {
     readonly key: SpriteKey,
     private readonly style: GhostStyle,
   ) {
-    super(scene, proj, pos, GAITS.ghost, { shadowWidthM: 0.5, shadowAlpha: 0.32, tint: style.tint });
-    this.pose = this.addPose("body", key);
+    super(scene, proj, pos, GAITS.ghost, {
+      shadowWidthM: 0.5, shadowAlpha: 0.32, tint: style.tint,
+      look: { saturation: style.emissive ? 0.95 : 0.85, contrast: 0.95, emissive: style.emissive ?? 0, rim: style.emissive ? 0.35 : 0.6 },
+    });
     this.seed = (pos.x * 13.37 + pos.y * 7.1) % 10;
+    // Los fantasmas desprenden un resplandor frío alrededor.
+    if ((style.emissive ?? 0) > 0) {
+      this.halo = scene.add.image(0, 0, "halo").setBlendMode(Phaser.BlendModes.ADD).setTint(0xa8c4ff);
+      this.body.add(this.halo);
+    }
+    this.pose = this.addPose("body", key);
   }
+
+  private readonly halo?: Phaser.GameObjects.Image;
 
   heightM(): number {
     return SPRITES[this.key].realHeightM;
@@ -171,6 +184,10 @@ export class Ghost extends Actor {
     }
     this.liftM = this.style.floatM + 0.03 * Math.sin(t * 1.35);
     this.body.y = -this.liftM * ppm;
+    if (this.halo) {
+      const h = this.heightM() * ppm;
+      this.halo.setPosition(0, -h * 0.5).setScale((h * 1.9) / 256).setAlpha((this.style.emissive ?? 0) * 0.32 * (0.85 + 0.15 * Math.sin(t * 1.7)));
+    }
     // Se inclina un poco en la dirección del deslizamiento y oscila despacio.
     const target = 0.02 * Math.sin(t * 0.9) + this.walker.facing * 0.035 * sr;
     this.body.rotation = approach(this.body.rotation, target, dt * 0.6);

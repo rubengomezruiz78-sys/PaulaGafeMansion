@@ -34,7 +34,7 @@ export interface NpcDef {
 }
 
 const st = (zone: string, weight: number, stay: [number, number]) => ({ zone, weight, stay });
-const servant = (id: string, art: GhostArt) => ({ sprite: `ghost-${id}`, art, kind: "ghost" as const, floatM: 0.26, alpha: 0.9 });
+const servant = (id: string, art: GhostArt) => ({ sprite: `ghost-${id}`, art, kind: "ghost" as const, floatM: 0.26, alpha: 0.8 });
 
 export const NPCS: NpcDef[] = [
   // ============================================================ principales

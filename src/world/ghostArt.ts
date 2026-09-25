@@ -53,109 +53,120 @@ function draw(ctx: CanvasRenderingContext2D, art: GhostArt): void {
   const girth = art.girth ?? 0.72;
   const top = PAD + (art.accessory === "tophat" ? 70 : art.accessory === "chef" ? 80 : art.accessory === "strawhat" ? 30 : 12);
   const bottom = H - PAD;
-  const r = Math.min(120, ((bottom - top) * girth) / 2);
+  const r = Math.min(118, ((bottom - top) * girth) / 2);
   const domeY = top + r;
-  const light = `hsl(${art.hue} 70% 94%)`;
-  const mid = `hsla(${art.hue} 55% 82% / 0.78)`;
-  const tail = `hsla(${art.hue} 60% 72% / 0.18)`;
+  // Tonos fríos y pálidos (como los fantasmas de la portada): el color de
+  // cada criado es solo un matiz.
+  const sat = 32;
 
-  // Cuerpo: cúpula, costados que se abren un poco y bajo ondulado.
+  // Sábana: cúpula, costados que caen y jirones que se deshacen abajo.
   const body = new Path2D();
-  const flare = r * 0.14;
-  const hemY = bottom - 26;
+  const flare = r * 0.18;
+  const hemY = bottom - 70;
   body.moveTo(cx - r - flare, hemY);
-  body.bezierCurveTo(cx - r - flare * 0.6, domeY + (hemY - domeY) * 0.4, cx - r, domeY + 10, cx - r, domeY);
+  body.bezierCurveTo(cx - r - flare * 0.5, domeY + (hemY - domeY) * 0.45, cx - r, domeY + 12, cx - r, domeY);
   body.arc(cx, domeY, r, Math.PI, 0);
-  body.bezierCurveTo(cx + r, domeY + 10, cx + r + flare * 0.6, domeY + (hemY - domeY) * 0.4, cx + r + flare, hemY);
-  const waves = 4;
-  const span = (2 * (r + flare)) / waves;
-  for (let i = 0; i < waves; i += 1) {
+  body.bezierCurveTo(cx + r, domeY + 12, cx + r + flare * 0.5, domeY + (hemY - domeY) * 0.45, cx + r + flare, hemY);
+  const strands = 5;
+  const span = (2 * (r + flare)) / strands;
+  for (let i = 0; i < strands; i += 1) {
     const x0 = cx + r + flare - i * span;
-    const x1 = x0 - span;
-    body.quadraticCurveTo(x0 - span * 0.25, hemY + 24, x0 - span * 0.5, hemY + 4);
-    body.quadraticCurveTo(x1 + span * 0.25, hemY - 16, x1, hemY);
+    const tipX = x0 - span * (0.45 + 0.15 * Math.sin(i * 2.3 + art.hue));
+    const len = 30 + 36 * Math.abs(Math.sin(i * 1.7 + art.hue * 0.1));
+    body.quadraticCurveTo(x0 - span * 0.1, hemY + len * 0.7, tipX, hemY + len);
+    body.quadraticCurveTo(x0 - span * 0.9, hemY + len * 0.4, x0 - span, hemY);
   }
   body.closePath();
 
+  // Resplandor exterior.
   ctx.save();
-  ctx.shadowColor = `hsla(${art.hue} 90% 80% / 0.85)`;
-  ctx.shadowBlur = 34;
-  const g = ctx.createLinearGradient(0, top, 0, bottom);
-  g.addColorStop(0, light);
-  g.addColorStop(0.55, mid);
-  g.addColorStop(1, tail);
-  ctx.fillStyle = g;
+  ctx.filter = "blur(14px)";
+  ctx.fillStyle = `hsla(${art.hue} ${sat + 20}% 78% / 0.55)`;
   ctx.fill(body);
   ctx.restore();
-  // Brillo interior suave arriba a la izquierda.
-  const shine = ctx.createRadialGradient(cx - r * 0.35, domeY - r * 0.4, 4, cx - r * 0.35, domeY - r * 0.4, r * 0.8);
-  shine.addColorStop(0, "rgba(255,255,255,0.55)");
-  shine.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = shine;
-  ctx.fill(body);
 
-  // Bracitos.
-  ctx.fillStyle = mid;
-  for (const s of [-1, 1]) {
+  // Cuerpo translúcido: núcleo claro que se apaga hacia los bordes.
+  ctx.save();
+  ctx.filter = "blur(2.5px)";
+  const core = ctx.createRadialGradient(cx, domeY + r * 0.1, r * 0.1, cx, domeY + r * 0.35, r * 1.9);
+  core.addColorStop(0, `hsla(${art.hue} ${sat}% 97% / 0.97)`);
+  core.addColorStop(0.45, `hsla(${art.hue} ${sat}% 88% / 0.82)`);
+  core.addColorStop(1, `hsla(${art.hue} ${sat + 10}% 72% / 0.25)`);
+  ctx.fillStyle = core;
+  ctx.fill(body);
+  ctx.restore();
+
+  // Pliegues de la sábana: vetas algo más oscuras que bajan.
+  ctx.save();
+  ctx.clip(body);
+  ctx.filter = "blur(6px)";
+  ctx.strokeStyle = `hsla(${art.hue} ${sat}% 55% / 0.22)`;
+  ctx.lineWidth = 9;
+  for (const k of [-0.55, -0.15, 0.3, 0.65]) {
     ctx.beginPath();
-    ctx.ellipse(cx + s * (r + flare * 0.3), domeY + r * 0.75, 16, 26, s * 0.5, 0, Math.PI * 2);
+    ctx.moveTo(cx + k * r * 0.6, domeY + r * 0.5);
+    ctx.quadraticCurveTo(cx + k * r * 0.9, domeY + (hemY - domeY) * 0.6, cx + k * r * 1.15, hemY + 20);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Bracitos: jirones borrosos.
+  ctx.save();
+  ctx.filter = "blur(3px)";
+  ctx.fillStyle = `hsla(${art.hue} ${sat}% 86% / 0.6)`;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(cx + side * (r + flare * 0.2), domeY + r * 0.8, 15, 30, side * 0.55, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
 
-  drawFace(ctx, cx, domeY + 4, r, art.mood);
+  drawFace(ctx, cx, domeY + 6, r, art.mood);
+  ctx.save();
+  ctx.globalAlpha = 0.82;
   drawAccessory(ctx, cx, domeY, r, art);
+  ctx.restore();
+
+  // Todo se desvanece hacia abajo: los fantasmas no tienen pies.
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-in";
+  const fade = ctx.createLinearGradient(0, domeY + r * 0.6, 0, bottom);
+  fade.addColorStop(0, "rgba(0,0,0,1)");
+  fade.addColorStop(0.7, "rgba(0,0,0,0.45)");
+  fade.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = fade;
+  // (todo el lienzo: con destination-in, lo que no se cubre se borra)
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
 }
 
+/** Ojos oscuros y huecos (sin brillos de dibujo animado) y una boca discreta. */
 function drawFace(ctx: CanvasRenderingContext2D, cx: number, y: number, r: number, mood: Mood): void {
-  const ex = r * 0.32;
-  const eyeRy = mood === "sleepy" ? 6 : mood === "surprised" ? 24 : 20;
-  ctx.fillStyle = "#1b1f33";
+  const ex = r * 0.3;
+  const eyeRy = mood === "sleepy" ? 5 : mood === "surprised" ? 21 : 17;
+  ctx.save();
+  ctx.filter = "blur(1.6px)";
+  ctx.fillStyle = "rgba(18,22,40,0.88)";
   for (const s of [-1, 1]) {
     ctx.beginPath();
-    ctx.ellipse(cx + s * ex, y, 14, eyeRy, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + s * ex, y, 11, eyeRy, s * (mood === "stern" ? 0.25 : 0.05), 0, Math.PI * 2);
     ctx.fill();
   }
-  if (mood !== "sleepy") {
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.fillStyle = "rgba(18,22,40,0.65)";
+  ctx.beginPath();
+  if (mood === "surprised") ctx.ellipse(cx, y + 36, 7, 10, 0, 0, Math.PI * 2);
+  else if (mood === "shy") ctx.ellipse(cx, y + 30, 5, 3, 0, 0, Math.PI * 2);
+  else ctx.ellipse(cx, y + 32, mood === "stern" ? 11 : 9, mood === "smile" ? 5 : 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (mood === "shy") {
+    ctx.fillStyle = "rgba(255,150,170,0.18)";
     for (const s of [-1, 1]) {
       ctx.beginPath();
-      ctx.arc(cx + s * ex - 4, y - eyeRy * 0.4, 4.5, 0, Math.PI * 2);
+      ctx.ellipse(cx + s * (ex + 18), y + 20, 14, 7, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
-  if (mood === "stern") {
-    ctx.strokeStyle = "#1b1f33";
-    ctx.lineWidth = 4;
-    for (const s of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(cx + s * (ex - 16), y - 30);
-      ctx.lineTo(cx + s * (ex + 14), y - 24);
-      ctx.stroke();
-    }
-  }
-  // Coloretes.
-  ctx.fillStyle = mood === "shy" ? "rgba(255,120,150,0.5)" : "rgba(255,140,160,0.32)";
-  for (const s of [-1, 1]) {
-    ctx.beginPath();
-    ctx.ellipse(cx + s * (ex + 20), y + 22, 15, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // Boca.
-  ctx.strokeStyle = "#1b1f33";
-  ctx.fillStyle = "#1b1f33";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  if (mood === "surprised") {
-    ctx.ellipse(cx, y + 36, 8, 11, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (mood === "stern") {
-    ctx.moveTo(cx - 12, y + 34);
-    ctx.lineTo(cx + 12, y + 34);
-    ctx.stroke();
-  } else {
-    ctx.arc(cx, y + 26, mood === "shy" ? 8 : 13, 0.15 * Math.PI, 0.85 * Math.PI);
-    ctx.stroke();
-  }
+  ctx.restore();
 }
 
 function drawAccessory(ctx: CanvasRenderingContext2D, cx: number, domeY: number, r: number, art: GhostArt): void {

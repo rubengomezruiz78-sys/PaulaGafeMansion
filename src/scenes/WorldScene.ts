@@ -11,6 +11,7 @@ import { apply, check, type Notice } from "../core/rules";
 import { Rng } from "../core/rng";
 import type { SimEvent, SimNpc } from "../core/worldSim";
 import { ambienceFor, type ZoneAmbience } from "../content/ambience";
+import { LIFE } from "../content/life";
 import { DIALOGUES } from "../content/dialogues";
 import { GAFE_HINTS } from "../content/hints";
 import { ITEMS, itemName } from "../content/items";
@@ -24,8 +25,10 @@ import { pushBackHandler } from "../platform";
 import { Bubble } from "../world/Bubble";
 import { Gafe, Ghost, Paula } from "../world/characters";
 import { drawDebug } from "../world/debug";
+import { ZoneLifeFx, type LifeActor } from "../world/zoneLife";
+import type { Actor } from "../world/Actor";
 import type { PuzzleRequest } from "./PuzzleScene";
-import { UI_EVENTS, type ConversationRequest, type DialogueRequest } from "./UIScene";
+import { UI_EVENTS, type ConversationRequest, type DialogueRequest, type SpeakerAnchor } from "./UIScene";
 
 interface WorldData {
   zone: ZoneId;
@@ -121,6 +124,8 @@ export class WorldScene extends Phaser.Scene {
   private flashRect!: Phaser.GameObjects.Rectangle;
   private stepCount = 0;
   private fxObjects: Phaser.GameObjects.GameObject[] = [];
+  /** Todo lo que se mueve solo en la sala (luces, niebla, bichos, lluvia…). */
+  private life?: ZoneLifeFx;
   private perfClock = 0;
 
   constructor() {
@@ -173,10 +178,15 @@ export class WorldScene extends Phaser.Scene {
     this.chatIn = 6;
     this.tint = this.zoneDef.actorTint ?? 0xd2cfcc;
 
-    this.add.image(0, 0, `zone-${this.zoneDef.id}`).setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(-1000);
+    const bg = this.add.image(0, 0, `zone-${this.zoneDef.id}`).setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(-1000);
+    const lifeDef = LIFE[this.zoneDef.id];
+    this.life = lifeDef ? new ZoneLifeFx(this, this.zoneDef.id, lifeDef, this.proj, { lowFx, calm: session.state.flags.final === true }) : undefined;
+    this.life?.attachBackground(bg);
     this.addGlints();
     this.setupAmbience();
     this.placePaulaAndGafe(data);
+    this.dressActor(this.paula);
+    this.dressActor(this.gafe);
 
     // Quien esté en esta zona según la simulación aparece ya dentro (o en su puerta).
     worldSim.visibleZoneChanged(this.now, this.zoneDef.id);
@@ -190,11 +200,16 @@ export class WorldScene extends Phaser.Scene {
     });
 
     this.releaseBack = pushBackHandler(() => this.onBack());
+    // Los bocadillos de diálogo salen de la cabeza de quien habla.
+    this.registry.set("speakerAnchor", ((id: string) => this.anchorFor(id)) satisfies SpeakerAnchor);
     this.using = undefined;
     this.game.events.emit(UI_EVENTS.using, null);
     this.game.events.on(UI_EVENTS.use, this.setUsing, this);
+    this.game.events.on(UI_EVENTS.modal, this.onModal, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.registry.set("speakerAnchor", null);
       this.game.events.off(UI_EVENTS.use, this.setUsing, this);
+      this.game.events.off(UI_EVENTS.modal, this.onModal, this);
       this.releaseBack?.();
       this.abortChat();
       for (const rt of this.npcs) if (worldSim.isPaused(rt.def.id)) worldSim.resume(rt.def.id, this.now, false);
@@ -205,6 +220,31 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.fadeIn(360, 5, 6, 8);
     this.game.events.emit(UI_EVENTS.zone, this.zoneDef.name);
     this.ready = true;
+  }
+
+  /** Al abrirse una conversación o un puzzle, los demás se callan (nada de bocadillos encima). */
+  private onModal(on: boolean): void {
+    if (!on) return;
+    this.abortChat();
+    this.barks = [];
+    for (const rt of this.npcs) {
+      rt.bubble?.destroy();
+      rt.bubble = undefined;
+    }
+  }
+
+  /** Cabeza de un personaje presente (para colocar su bocadillo), o null. */
+  private anchorFor(id: string): { x: number; y: number } | null {
+    const actor = id === "paula" ? this.paula : id === "gafe" ? this.gafe
+      : this.npcs.find((n) => n.def.id === id && !n.gone)?.actor;
+    return actor ? { x: actor.pos.x, y: actor.headY() } : null;
+  }
+
+  /** Reflejo del suelo, niebla y sombras de la sala para un personaje. */
+  private dressActor(actor: Actor, castShadow = true): void {
+    const life = LIFE[this.zoneDef.id];
+    if (!life) return;
+    actor.setEnvironment({ reflect: life.reflect, fog: life.fog.amount, castShadow });
   }
 
   private placePaulaAndGafe(data: WorldData): void {
@@ -249,6 +289,11 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.watchPerformance(dt);
+    if (this.life) {
+      const actors: LifeActor[] = this.npcs.filter((n) => !n.gone && n.def.kind === "ghost")
+        .map((n) => ({ x: n.actor.pos.x, y: (n.actor.headY() + n.actor.pos.y) / 2, ghost: true }));
+      this.life.update(dt, actors, this.paula.pos);
+    }
     this.paula.update(dt);
     this.footsteps();
     this.updateLightning(dt);
@@ -454,7 +499,7 @@ export class WorldScene extends Phaser.Scene {
     };
     const tree = DIALOGUES[rt.def.id];
     if (!tree) {
-      this.say({ speaker: rt.def.name, role: rt.def.role, portrait: rt.def.sprite, lines: rt.def.greet, onClose: end });
+      this.say({ speaker: rt.def.name, speakerId: rt.def.id, role: rt.def.role, portrait: rt.def.sprite, lines: rt.def.greet, onClose: end });
       return;
     }
     this.game.events.emit(UI_EVENTS.conversation, {
@@ -549,7 +594,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private spawnActor(def: NpcDef, pos: Pt, fadeIn: boolean): NpcRuntime {
-    const actor = new Ghost(this, this.proj, pos, def.sprite, { floatM: def.floatM, alpha: def.alpha, tint: def.tint ?? this.tint });
+    const emissive = def.art ? 0.7 : def.kind === "ghost" ? 0.3 : 0;
+    const actor = new Ghost(this, this.proj, pos, def.sprite, { floatM: def.floatM, alpha: def.alpha, tint: def.tint ?? this.tint, emissive });
+    this.dressActor(actor, def.floatM <= 0);
     actor.walker.face(this.nav.nearestWalkable(toPx(this.zoneDef.spawn)));
     if (fadeIn) {
       actor.container.setAlpha(0);
@@ -860,18 +907,6 @@ export class WorldScene extends Phaser.Scene {
     if (lowFx) return;
     // Viñeta: oscurece los bordes y da profundidad al cuadro.
     this.fxObjects.push(this.add.image(0, 0, "vignette").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(4400).setAlpha(0.6));
-    for (let i = 0; i < 14; i += 1) {
-      const x = this.rng.range(0, GAME_W);
-      const y = this.rng.range(120, GAME_H * 0.8);
-      const m = this.add.image(x, y, "glint").setTint(0xd8e6ff).setBlendMode(Phaser.BlendModes.ADD)
-        .setScale(this.rng.range(0.04, 0.09)).setAlpha(0).setDepth(4300);
-      this.fxObjects.push(m);
-      this.tweens.add({
-        targets: m, x: x + this.rng.range(-80, 80), y: y - this.rng.range(40, 140),
-        alpha: { from: 0, to: this.rng.range(0.15, 0.4) },
-        duration: this.rng.range(6000, 11000), yoyo: true, repeat: -1, delay: this.rng.range(0, 6000), ease: "Sine.easeInOut",
-      });
-    }
   }
 
   /** Si va a tirones, pasa a modo ligero (se mide tras unos segundos en la sala). */
@@ -895,6 +930,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.lightningIn > 0) return;
     this.lightningIn = this.rng.range(22, 55);
     const power = this.rng.range(0.5, 1);
+    this.life?.flash(power);
     this.tweens.chain({
       targets: this.flashRect,
       tweens: [
