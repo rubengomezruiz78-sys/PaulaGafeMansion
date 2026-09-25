@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { sound } from "../audio/sound";
 import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
 import { NPCS } from "../content/npcs";
+import { pushBackHandler } from "../platform";
 import { setModal } from "../ui/modal";
 import { makeButton } from "../ui/widgets";
 
@@ -15,6 +16,7 @@ export class EndScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.closing = false;
     setModal(this, "end", true);
     const cover = this.add.image(0, 0, "cover").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setAlpha(0);
     const dawn = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xffc98a, 0).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
@@ -56,9 +58,19 @@ export class EndScene extends Phaser.Scene {
     again.container.setAlpha(0);
     this.tweens.add({ targets: again.container, alpha: 1, duration: 800, delay: 7500 });
     this.cameras.main.fadeIn(1200, 255, 244, 220);
+    // «Atrás» en el final vuelve a la casa (no cierra el juego de golpe).
+    const release = pushBackHandler(() => {
+      this.close();
+      return true;
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, release);
   }
 
+  private closing = false;
+
   private close(): void {
+    if (this.closing) return;
+    this.closing = true;
     this.cameras.main.fadeOut(700, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       setModal(this, "end", false);
