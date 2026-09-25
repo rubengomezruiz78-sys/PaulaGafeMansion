@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import { COLORS, CSS, FONT_TITLE, GAME_H, GAME_W } from "../config";
 import { SPRITES, SPRITE_KEYS, spritePath } from "../content/sprites";
 import { NPCS } from "../content/npcs";
-import { ZONES } from "../content/zones";
 import { makeGhostTexture } from "../world/ghostArt";
 
 /** Carga de recursos + texturas procedurales. */
@@ -23,9 +22,6 @@ export class BootScene extends Phaser.Scene {
     this.load.on("progress", (p: number) => bar.setSize(Math.max(1, w * p), 6));
 
     this.load.image("cover", "cover.webp");
-    for (const zone of Object.values(ZONES)) {
-      if (zone) this.load.image(`zone-${zone.id}`, zone.image);
-    }
     for (const key of SPRITE_KEYS) {
       const meta = SPRITES[key];
       if (meta.frames > 1) {

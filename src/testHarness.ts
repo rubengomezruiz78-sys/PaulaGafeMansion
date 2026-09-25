@@ -25,10 +25,33 @@ export function installTestHarness(game: Phaser.Game): void {
     world: () => game.scene.getScene("world") as unknown as Record<string, any>,
     ui: () => game.scene.getScene("ui") as unknown as Record<string, any>,
     puzzle: () => game.scene.getScene("puzzle") as unknown as Record<string, any>,
-    /** Desde la portada: empieza (fresh) o continúa la partida. */
-    start(fresh = true) {
+    /** Desde la portada: empieza (fresh) o continúa la partida (espera a la sala). */
+    async start(fresh = true) {
+      if (game.scene.getScene("world")) (game.scene.getScene("world") as unknown as { ready: boolean }).ready = false;
       (game.scene.getScene("title") as unknown as { start(f: boolean): void }).start(fresh);
-      api.step(1);
+      api.step(0.8);
+      return api.untilReady();
+    },
+    /** Espera (tiempo real) a que la sala termine de cargar su imagen y montarse. */
+    async untilReady(timeoutMs = 8000) {
+      const t0 = realNow();
+      while (realNow() - t0 < timeoutMs) {
+        if (game.scene.isActive("world") && api.world().ready) {
+          api.step(0.3);
+          return true;
+        }
+        await new Promise((r) => setTimeout(r, 25));
+        api.step(1 / 60);
+      }
+      return false;
+    },
+    /** Lleva a Paula a otra sala (como cruzar una puerta, sin caminar). */
+    async go(zone: string) {
+      // El reinicio se aplica en el siguiente fotograma: hasta entonces la
+      // escena vieja seguiría diciendo que está lista.
+      api.world().ready = false;
+      api.world().scene.restart({ zone });
+      return api.untilReady();
     },
     /** Avanza `seconds` de juego a 60 fps. */
     step(seconds: number) {
@@ -103,14 +126,14 @@ export function installTestHarness(game: Phaser.Game): void {
      * diálogos y resuelve los puzzles con el teclado. Las conversaciones y
      * charlas se aplican directamente (dependen de dónde estén los personajes).
      */
-    autoplay() {
+    async autoplay() {
       const plan = solveGame().log;
       const problems: string[] = [];
-      if (game.scene.isActive("title")) api.start(true);
+      let retries = 0;
+      if (game.scene.isActive("title")) await api.start(true);
       session.reset();
       session.state.flags["intro-visto"] = true;
-      api.world().scene.restart({ zone: "vestibulo" });
-      api.step(0.6);
+      await api.go("vestibulo");
       for (const entry of plan) {
         const m = /^([a-z]+): (examinar|hablar con|oír la charla|cruzar) (.+)$/.exec(entry);
         if (!m) {
@@ -120,14 +143,24 @@ export function installTestHarness(game: Phaser.Game): void {
         const [, zone, verb, what] = m;
         const s = session.state;
         if (verb === "examinar") {
-          if (api.world().zoneDef.id !== zone) {
-            api.world().scene.restart({ zone });
-            api.step(0.8);
+          if (api.world().zoneDef.id !== zone && !(await api.go(zone))) {
+            problems.push(`la sala ${zone} no cargó`);
+            continue;
           }
           const prop = (ZONES as Record<string, any>)[zone].props.find((p: PropDef) => p.id === what) as PropDef;
-          const pt = api.tapPointFor(prop);
-          api.tap(pt.x, pt.y);
-          if (!api.waitDialogue(25)) {
+          // Si alguien se cruza (se abre su conversación en vez del objeto),
+          // se cierra, se espera a que se aparte y se vuelve a intentar.
+          let reached = false;
+          for (let attempt = 0; attempt < 5 && !reached; attempt += 1) {
+            const ui = api.ui();
+            if (ui.panel) ui.close(true);
+            api.step(attempt ? 2.5 : 0.1);
+            const pt = api.tapPointFor(prop);
+            api.tap(pt.x, pt.y);
+            reached = api.waitDialogue(25) && ui.nameText?.text === "Paula";
+            if (attempt) retries += 1;
+          }
+          if (!reached) {
             problems.push(`no se llegó a ${zone}/${what}`);
             continue;
           }
@@ -135,7 +168,10 @@ export function installTestHarness(game: Phaser.Game): void {
           api.step(0.4);
           if (game.scene.isActive("puzzle") && !api.solvePuzzle()) problems.push(`puzzle sin resolver en ${zone}/${what}`);
           api.step(0.3);
-          if (!s.examined.includes(what)) problems.push(`${zone}/${what} no quedó examinado`);
+          if (!s.examined.includes(what)) {
+            const ui = api.ui();
+            problems.push(`${zone}/${what} no quedó examinado (panel: ${ui.panel ? ui.nameText?.text : "no"}, opciones: ${!!ui.choiceBox}, modal: ${JSON.stringify(game.registry.get("modalOwners"))})`);
+          }
         } else if (verb === "hablar con") {
           const here = s.zone;
           s.zone = zone;
@@ -152,7 +188,7 @@ export function installTestHarness(game: Phaser.Game): void {
         }
       }
       const ending = api.waitDialogue(5) ? api.drain(40) : [];
-      return { final: session.state.flags.final === true, problems, ending, steps: plan.length };
+      return { final: session.state.flags.final === true, problems, ending, steps: plan.length, retries };
     },
   };
   (window as unknown as { __test: typeof api }).__test = api;

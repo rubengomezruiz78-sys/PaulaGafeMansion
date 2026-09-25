@@ -7,6 +7,7 @@ import { PuzzleScene } from "./scenes/PuzzleScene";
 import { TitleScene } from "./scenes/TitleScene";
 import { EndScene } from "./scenes/EndScene";
 import { sound } from "./audio/sound";
+import { session } from "./game/session";
 import { UIScene } from "./scenes/UIScene";
 import { WorldScene } from "./scenes/WorldScene";
 
@@ -30,8 +31,11 @@ async function start(): Promise<void> {
   });
   // Pausar al irse a segundo plano (ahorra batería y evita saltos de tiempo).
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) game.loop.sleep();
-    else game.loop.wake();
+    if (document.hidden) {
+      // Solo se guarda si ya se está jugando (en la portada no hay nada nuevo).
+      if (game.scene.isActive("world")) session.flush();
+      game.loop.sleep();
+    } else game.loop.wake();
     sound.suspend(document.hidden);
   });
   (window as unknown as { __game?: Phaser.Game }).__game = game;

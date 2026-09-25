@@ -1,55 +1,65 @@
 package com.paulaygafe.mansion;
 
-import android.Manifest;
 import android.app.Activity;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.view.KeyEvent;
 import android.view.View;
-import android.webkit.JavascriptInterface;
+import android.view.WindowManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import org.json.JSONObject;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Envoltorio del juego. Todo se sirve desde los assets del APK (nada sale de
+ * la tablet: no hay permiso de Internet ni de micrófono).
+ */
 public class MainActivity extends Activity {
     private static final String LOCAL_HOST = "paula.local";
-    private static final int MICROPHONE_PERMISSION_REQUEST = 41;
 
     private WebView webView;
-    private VoiceBridge voiceBridge;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         enterImmersiveMode();
+        // La pantalla no se apaga mientras Paula piensa un puzzle.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Los botones de volumen suben y bajan el sonido del juego (no el del timbre).
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         webView = new WebView(this);
-        webView.setBackgroundColor(0xFF080A0C);
+        webView.setBackgroundColor(0xFF050608);
         configureWebView(webView);
-        voiceBridge = new VoiceBridge();
-        webView.addJavascriptInterface(voiceBridge, "AndroidVoice");
         setContentView(webView);
         webView.loadUrl("https://" + LOCAL_HOST + "/index.html");
+    }
+
+    // Al salir de la app (botón de inicio, otra app) el juego se pausa de verdad:
+    // guarda la partida, calla el sonido y deja de gastar batería.
+    @Override
+    protected void onPause() {
+        if (webView != null) webView.onPause();
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) webView.onResume();
+        enterImmersiveMode();
     }
 
     private void configureWebView(WebView view) {
@@ -61,6 +71,15 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // Nada de zoom ni de menú/vibración al dejar el dedo apretado.
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
+        settings.setTextZoom(100);
+        view.setLongClickable(false);
+        view.setOnLongClickListener(v -> true);
+        view.setHapticFeedbackEnabled(false);
+        view.setOverScrollMode(View.OVER_SCROLL_NEVER);
         view.setWebViewClient(new LocalAssetClient(getAssets()));
     }
 
@@ -106,124 +125,9 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != MICROPHONE_PERMISSION_REQUEST) return;
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            voiceBridge.beginListening();
-        } else {
-            voiceBridge.sendError("Permiso de micrófono denegado");
-        }
-    }
-
-    @Override
     protected void onDestroy() {
-        if (voiceBridge != null) voiceBridge.destroy();
-        if (webView != null) {
-            webView.removeJavascriptInterface("AndroidVoice");
-            webView.destroy();
-        }
+        if (webView != null) webView.destroy();
         super.onDestroy();
-    }
-
-    private final class VoiceBridge implements RecognitionListener {
-        private SpeechRecognizer recognizer;
-
-        @JavascriptInterface
-        public void startListening() {
-            runOnUiThread(() -> {
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MICROPHONE_PERMISSION_REQUEST);
-                    return;
-                }
-                beginListening();
-            });
-        }
-
-        @JavascriptInterface
-        public void cancelListening() {
-            runOnUiThread(() -> {
-                if (recognizer != null) recognizer.cancel();
-            });
-        }
-
-        @JavascriptInterface
-        public boolean isAvailable() {
-            return SpeechRecognizer.isRecognitionAvailable(MainActivity.this);
-        }
-
-        void beginListening() {
-            if (!SpeechRecognizer.isRecognitionAvailable(MainActivity.this)) {
-                sendError("El reconocimiento de voz no está disponible en esta tablet");
-                return;
-            }
-            destroy();
-            recognizer = SpeechRecognizer.createSpeechRecognizer(MainActivity.this);
-            recognizer.setRecognitionListener(this);
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
-            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
-            recognizer.startListening(intent);
-        }
-
-        void sendResult(String text) {
-            runOnUiThread(() -> webView.evaluateJavascript(
-                "window.__onAndroidVoiceResult&&window.__onAndroidVoiceResult(" + JSONObject.quote(text) + ")", null
-            ));
-        }
-
-        void sendError(String message) {
-            runOnUiThread(() -> webView.evaluateJavascript(
-                "window.__onAndroidVoiceError&&window.__onAndroidVoiceError(" + JSONObject.quote(message) + ")", null
-            ));
-        }
-
-        void destroy() {
-            if (recognizer != null) {
-                recognizer.destroy();
-                recognizer = null;
-            }
-        }
-
-        @Override public void onReadyForSpeech(Bundle params) {}
-        @Override public void onBeginningOfSpeech() {}
-        @Override public void onRmsChanged(float rmsdB) {}
-        @Override public void onBufferReceived(byte[] buffer) {}
-        @Override public void onEndOfSpeech() {}
-        @Override public void onPartialResults(Bundle partialResults) {}
-        @Override public void onEvent(int eventType, Bundle params) {}
-
-        @Override
-        public void onError(int error) {
-            String message;
-            switch (error) {
-                case SpeechRecognizer.ERROR_NO_MATCH:
-                case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                    message = "No he podido entenderte. Vuelve a intentarlo o escribe la respuesta.";
-                    break;
-                case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                    message = "Falta el permiso de micrófono. Puedes escribir la respuesta.";
-                    break;
-                case SpeechRecognizer.ERROR_NETWORK:
-                case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                    message = "El reconocimiento de voz necesita conexión y no la encuentra. Escribe la respuesta.";
-                    break;
-                default:
-                    message = "El micrófono no ha podido escuchar bien. Escribe la respuesta si prefieres.";
-            }
-            sendError(message);
-            destroy();
-        }
-
-        @Override
-        public void onResults(Bundle results) {
-            ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-            if (matches == null || matches.isEmpty()) sendError("No he podido oír la respuesta");
-            else sendResult(matches.get(0));
-            destroy();
-        }
     }
 
     private static final class LocalAssetClient extends WebViewClient {
@@ -265,8 +169,6 @@ public class MainActivity extends Activity {
                 if (mime == null && path.endsWith(".json")) mime = "application/json";
                 if (mime == null && path.endsWith(".ttf")) mime = "font/ttf";
                 if (mime == null && path.endsWith(".woff2")) mime = "font/woff2";
-                if (mime == null && path.endsWith(".ogg")) mime = "audio/ogg";
-                if (mime == null && path.endsWith(".mp3")) mime = "audio/mpeg";
                 if (mime == null) mime = "application/octet-stream";
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Cache-Control", "no-cache");

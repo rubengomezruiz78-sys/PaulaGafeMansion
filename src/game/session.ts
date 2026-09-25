@@ -31,14 +31,18 @@ export const session = {
   /** Guarda en breve (agrupa cambios seguidos en una sola escritura). */
   save(): void {
     if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      saveTimer = undefined;
-      try {
-        localStorage.setItem(SAVE_KEY, serialize(state));
-      } catch {
-        /* almacenamiento lleno o bloqueado: se sigue en memoria */
-      }
-    }, 250);
+    saveTimer = setTimeout(() => this.flush(), 250);
+  },
+
+  /** Guarda ya (al irse la app a segundo plano: Android puede cerrarla sin avisar). */
+  flush(): void {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = undefined;
+    try {
+      localStorage.setItem(SAVE_KEY, serialize(state));
+    } catch {
+      /* almacenamiento lleno o bloqueado: se sigue en memoria */
+    }
   },
 
   enterZone(zone: string): void {

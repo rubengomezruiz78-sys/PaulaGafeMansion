@@ -78,6 +78,12 @@ const SIM_STEP = 0.25;
 const CHAT_CHECK = 1.5;
 /** Hasta dónde oye Paula una charla (m). */
 const EARSHOT_M = 7;
+/**
+ * Salas cuya imagen se queda en memoria (la actual y las últimas visitadas).
+ * La tablet tiene poca RAM: las 12 imágenes a la vez ocuparían ~100 MB.
+ */
+const KEEP_ZONES = 3;
+const recentZones: string[] = [];
 
 export class WorldScene extends Phaser.Scene {
   private zoneDef!: ZoneDef;
@@ -102,6 +108,8 @@ export class WorldScene extends Phaser.Scene {
   private nextBarkAt = 0;
   /** Objeto de la mochila que Paula lleva en la mano para usarlo. */
   private using?: string;
+  /** Sitios desde los que Paula usa objetos y puertas: nadie se queda parado ahí. */
+  private useSpots: Pt[] = [];
   private amb!: ZoneAmbience;
   private lightningIn = 0;
   private flashRect!: Phaser.GameObjects.Rectangle;
@@ -115,11 +123,38 @@ export class WorldScene extends Phaser.Scene {
     return session.state.clock;
   }
 
+  /** true cuando la sala ya está montada (para las pruebas). */
+  ready = false;
+  private target!: ZoneId;
+
+  init(data: WorldData): void {
+    this.ready = false;
+    this.target = data.zone;
+  }
+
+  /** Solo se carga la imagen de la sala a la que se entra (durante el fundido). */
+  preload(): void {
+    const key = `zone-${this.target}`;
+    if (!this.textures.exists(key)) this.load.image(key, getZone(this.target).image);
+  }
+
+  /** Olvida las imágenes de las salas que hace rato que no se visitan. */
+  private trimZoneTextures(current: string): void {
+    const i = recentZones.indexOf(current);
+    if (i >= 0) recentZones.splice(i, 1);
+    recentZones.unshift(current);
+    for (const old of recentZones.splice(KEEP_ZONES)) {
+      if (this.textures.exists(`zone-${old}`)) this.textures.remove(`zone-${old}`);
+    }
+  }
+
   create(data: WorldData): void {
     this.zoneDef = getZone(data.zone);
+    this.trimZoneTextures(this.zoneDef.id);
     session.enterZone(this.zoneDef.id);
     this.proj = new Projection(this.zoneDef.perspective, GAME_W, GAME_H);
     this.nav = new NavGrid(walkAreaPx(this.zoneDef), this.proj);
+    this.useSpots = [...this.zoneDef.props, ...this.zoneDef.exits].map((x) => this.nav.nearestWalkable(toPx(x.approach)));
     this.npcs = [];
     this.pending = undefined;
     this.transitioning = false;
@@ -161,6 +196,7 @@ export class WorldScene extends Phaser.Scene {
     if (!session.state.flags["intro-visto"] && this.zoneDef.id === "vestibulo") this.time.delayedCall(1500, () => this.playIntro());
     this.cameras.main.fadeIn(360, 5, 6, 8);
     this.game.events.emit(UI_EVENTS.zone, this.zoneDef.name);
+    this.ready = true;
   }
 
   private placePaulaAndGafe(data: WorldData): void {
@@ -476,7 +512,7 @@ export class WorldScene extends Phaser.Scene {
     const far = pool.findIndex((p) => this.proj.floorDistance(p, this.paula.pos) > 1.6);
     const i = far >= 0 ? far : 0;
     const p = pool.length ? pool.splice(i, 1)[0] : this.nav.nearestWalkable(toPx(this.zoneDef.spawn));
-    return p;
+    return this.clearOfSpots(p);
   }
 
   private spawnFromSim(n: SimNpc, pois: Pt[]): void {
@@ -615,6 +651,25 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
+   * Si un destino cae justo donde Paula tiene que ponerse para usar un objeto o
+   * una puerta, lo corre ~1 m: así nadie le tapa las cosas ni le corta el paso.
+   */
+  private clearOfSpots(target: Pt): Pt {
+    const near = this.useSpots.find((sp) => this.proj.floorDistance(sp, target) < 0.7);
+    if (!near) return target;
+    const nf = this.proj.toFloor(near);
+    const tf = this.proj.toFloor(target);
+    const d = Math.hypot(tf.X - nf.X, tf.Z - nf.Z);
+    const base = d > 0.05 ? Math.atan2(tf.Z - nf.Z, tf.X - nf.X) : 0;
+    for (const turn of [0, 0.8, -0.8, 1.6, -1.6, Math.PI]) {
+      const a = base + turn;
+      const p = this.proj.fromFloor({ X: nf.X + Math.cos(a) * 1.0, Z: Math.max(0.6, nf.Z + Math.sin(a) * 1.0) });
+      if (this.nav.isWalkable(p) && this.useSpots.every((sp) => this.proj.floorDistance(sp, p) >= 0.7)) return p;
+    }
+    return target;
+  }
+
+  /**
    * Si un destino cae encima de Paula, lo cambia por un sitio a ~1 m de ella
    * donde no la tape: a un lado o detrás (nunca delante, entre ella y la cámara).
    */
@@ -634,7 +689,7 @@ export class WorldScene extends Phaser.Scene {
   private applyIntent(rt: NpcRuntime, intent: Intent): void {
     switch (intent.type) {
       case "moveTo":
-        if (rt.mode === "free") rt.actor.walker.setPath(this.nav.findPath(rt.actor.pos, this.clearOfPaula(intent.target)));
+        if (rt.mode === "free") rt.actor.walker.setPath(this.nav.findPath(rt.actor.pos, this.clearOfPaula(this.clearOfSpots(intent.target))));
         break;
       case "stop":
         rt.actor.walker.stop();
@@ -704,7 +759,8 @@ export class WorldScene extends Phaser.Scene {
     ]
       .filter((m) => m.Z > 0.8 && Math.hypot(m.X - pf.X, m.Z - pf.Z) > 1.4)
       .map((m) => [-0.6, 0.6].map((dx) => this.proj.fromFloor({ X: m.X + dx, Z: m.Z })))
-      .find(([l, r]) => this.nav.isWalkable(l) && this.nav.isWalkable(r));
+      .find(([l, r]) => this.nav.isWalkable(l) && this.nav.isWalkable(r)
+        && this.useSpots.every((sp) => this.proj.floorDistance(sp, l) >= 0.6 && this.proj.floorDistance(sp, r) >= 0.6));
     if (spots) {
       left.actor.walker.setPath(this.nav.findPath(left.actor.pos, spots[0]));
       right.actor.walker.setPath(this.nav.findPath(right.actor.pos, spots[1]));
