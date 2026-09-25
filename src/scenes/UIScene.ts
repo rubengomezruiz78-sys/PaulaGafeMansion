@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config";
 import type { DialogueRunner, Line, Step } from "../core/dialogue";
 import type { Notice } from "../core/rules";
 import { fill } from "../core/text";
@@ -195,11 +195,11 @@ export class UIScene extends Phaser.Scene {
     this.nameText = this.add.text(tx, PANEL.y + 30, "", { fontFamily: FONT_TITLE, fontSize: "40px", color: CSS.copper });
     this.roleText = this.add.text(tx, PANEL.y + 42, "", { fontFamily: FONT_UI, fontSize: "22px", color: CSS.muted, letterSpacing: 2 });
     this.bodyText = this.add.text(tx, PANEL.y + 92, "", {
-      fontFamily: FONT_UI, fontSize: "36px", color: CSS.ivory, lineSpacing: 10,
+      fontFamily: FONT_UI, fontSize: fs(36), color: CSS.ivory, lineSpacing: 10,
       wordWrap: { width: PANEL.x + PANEL.w - tx - 60, useAdvancedWrap: true },
     });
     this.hint = this.add.text(PANEL.x + PANEL.w - 40, PANEL.y + PANEL.h - 26, "toca para seguir  ▸", {
-      fontFamily: FONT_UI, fontSize: "24px", color: CSS.copper,
+      fontFamily: FONT_UI, fontSize: fs(24), color: CSS.copper,
     }).setOrigin(1, 1).setVisible(false);
     this.tweens.add({ targets: this.hint, alpha: 0.35, duration: 700, yoyo: true, repeat: -1 });
     c.add([this.nameText, this.roleText, this.bodyText, this.hint]);
@@ -284,7 +284,7 @@ export class UIScene extends Phaser.Scene {
       };
       draw(false);
       const label = this.add.text(x + 30, y + CHOICE.h / 2, `▸  ${choice.text}`, {
-        fontFamily: FONT_UI, fontSize: "32px", color: CSS.ivory,
+        fontFamily: FONT_UI, fontSize: fs(32), color: CSS.ivory,
         wordWrap: { width: CHOICE.w - 60, useAdvancedWrap: true },
       }).setOrigin(0, 0.5);
       const hit = this.add.zone(x, y, CHOICE.w, CHOICE.h).setOrigin(0).setInteractive({ useHandCursor: true });
@@ -403,7 +403,7 @@ export class UIScene extends Phaser.Scene {
   /** Avisos apilados arriba (objetos conseguidos, misiones), sin taparse entre sí. */
   private showToast(text: string): void {
     const label = this.add.text(0, 0, text, {
-      fontFamily: FONT_UI, fontSize: "30px", color: CSS.ivory,
+      fontFamily: FONT_UI, fontSize: fs(30), color: CSS.ivory,
       wordWrap: { width: 1200, useAdvancedWrap: true }, align: "center",
     }).setOrigin(0.5);
     const bg = this.add.graphics();

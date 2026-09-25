@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config";
 import { MAX_DIGITS, PuzzleRun } from "../core/puzzle";
 import { PUZZLES } from "../content/puzzles";
 import { describeNotice } from "../content/speakers";
@@ -19,6 +19,7 @@ const CARD = { x: 130, y: 50, w: GAME_W - 260, h: GAME_H - 100 };
 const LEFT = { x: CARD.x + 70, w: 930 };
 const RIGHT = { x: CARD.x + CARD.w - 70 - 500, w: 500, y: 250 };
 const KEY = { w: 152, h: 120, gap: 22 };
+const FIELD = { x: RIGHT.x, y: CARD.y + 60, w: RIGHT.w, h: 124 };
 
 /**
  * Pantalla de puzzle, encima de todo. Teclado numérico propio (sin teclado
@@ -90,52 +91,54 @@ export class PuzzleScene extends Phaser.Scene {
     }));
     let y = CARD.y + 170;
     const story = keep(this.add.text(LEFT.x, y, this.run.def.story, {
-      fontFamily: FONT_UI, fontSize: "30px", color: CSS.muted, lineSpacing: 6, wordWrap: { width: LEFT.w, useAdvancedWrap: true },
+      fontFamily: FONT_UI, fontSize: fs(30), color: CSS.muted, lineSpacing: 6, wordWrap: { width: LEFT.w, useAdvancedWrap: true },
     }));
     y += story.height + 18;
     for (const clue of this.run.clues()) {
       const t = keep(this.add.text(LEFT.x, y, `✎ ${clue}`, {
-        fontFamily: FONT_UI, fontSize: "28px", color: CSS.copper, fontStyle: "italic", lineSpacing: 4,
+        fontFamily: FONT_UI, fontSize: fs(28), color: CSS.copper, fontStyle: "italic", lineSpacing: 4,
         wordWrap: { width: LEFT.w, useAdvancedWrap: true },
       }));
       y += t.height + 10;
     }
 
-    // Enunciado en su recuadro.
-    y = Math.max(y + 16, CARD.y + 400);
+    // Enunciado en su recuadro (la columna izquierda es solo para leer; la
+    // respuesta, el teclado y los avisos van a la derecha).
+    y = Math.max(y + 16, CARD.y + 360);
     const prompt = this.add.text(LEFT.x + 34, y + 28, step.prompt, {
-      fontFamily: FONT_UI, fontSize: "40px", color: CSS.ivory, lineSpacing: 8, wordWrap: { width: LEFT.w - 68, useAdvancedWrap: true },
+      fontFamily: FONT_UI, fontSize: fs(40), color: CSS.ivory, lineSpacing: 8, wordWrap: { width: LEFT.w - 68, useAdvancedWrap: true },
     });
     const boxH = prompt.height + 56;
     const box = keep(this.add.graphics());
     box.fillStyle(0x16242a, 1).fillRoundedRect(LEFT.x, y, LEFT.w, boxH, 22);
     box.lineStyle(2, COLORS.panelEdge, 0.35).strokeRoundedRect(LEFT.x, y, LEFT.w, boxH, 22);
     keep(prompt).setDepth(1);
-    y += boxH + 26;
 
     if (step.kind === "number") {
-      // Casilla de la respuesta.
+      // Casilla de la respuesta, encima del teclado.
       this.fieldBg = keep(this.add.graphics());
-      this.drawField(0x0b1013, COLORS.copper, LEFT.x, y);
-      this.field = keep(this.add.text(LEFT.x + 230, y + 62, "?", { fontFamily: FONT_UI, fontSize: "80px", color: CSS.ivory, fontStyle: "bold" }).setOrigin(0.5));
-      this.fieldBg.setData("y", y);
-      y += 150;
+      this.drawField(0x0b1013, COLORS.copper);
+      this.field = keep(this.add.text(FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2, "?", {
+        fontFamily: FONT_UI, fontSize: "80px", color: CSS.ivory, fontStyle: "bold",
+      }).setOrigin(0.5));
       this.buildKeypad(keep);
     } else {
       this.field = undefined;
       this.fieldBg = undefined;
       this.buildChoices(step.options, keep);
     }
-    this.feedback = keep(this.add.text(LEFT.x, Math.min(y, CARD.y + CARD.h - 250), "", {
-      fontFamily: FONT_UI, fontSize: "32px", color: CSS.ivory, lineSpacing: 6, wordWrap: { width: LEFT.w, useAdvancedWrap: true },
+    // Avisos («¡Correcto!», la pista de Gafe) debajo del teclado.
+    const rows = step.kind === "number" ? 4 : Math.ceil(step.options.length / (step.options.length > 3 ? 2 : 1));
+    this.feedback = keep(this.add.text(RIGHT.x, RIGHT.y + rows * (KEY.h + KEY.gap) + 4, "", {
+      fontFamily: FONT_UI, fontSize: fs(30), color: CSS.ivory, lineSpacing: 6, wordWrap: { width: RIGHT.w, useAdvancedWrap: true },
     }));
   }
 
-  private drawField(fill: number, edge: number, x = LEFT.x, y = this.fieldBg?.getData("y") as number): void {
+  private drawField(fill: number, edge: number): void {
     if (!this.fieldBg) return;
     this.fieldBg.clear();
-    this.fieldBg.fillStyle(fill, 1).fillRoundedRect(x, y, 460, 124, 22);
-    this.fieldBg.lineStyle(4, edge, 0.9).strokeRoundedRect(x, y, 460, 124, 22);
+    this.fieldBg.fillStyle(fill, 1).fillRoundedRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h, 22);
+    this.fieldBg.lineStyle(4, edge, 0.9).strokeRoundedRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h, 22);
   }
 
   private buildKeypad(keep: <T extends Phaser.GameObjects.GameObject>(o: T) => T): void {

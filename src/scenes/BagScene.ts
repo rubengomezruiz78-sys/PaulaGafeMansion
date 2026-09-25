@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config";
 import { heardFlag } from "../core/chat";
 import { check } from "../core/rules";
 import { fill } from "../core/text";
@@ -39,6 +39,8 @@ export class BagScene extends Phaser.Scene {
   private tabs: Record<BagTab, Button | undefined> = { mochila: undefined, cuaderno: undefined, mapa: undefined };
   private selected?: string;
   private releaseBack?: () => void;
+  /** Contenido desplazable del cuaderno (si no cabe, se arrastra con el dedo). */
+  private scroll?: { box: Phaser.GameObjects.Container; max: number; hint?: Phaser.GameObjects.Text };
 
   constructor() {
     super("bag");
@@ -64,6 +66,12 @@ export class BagScene extends Phaser.Scene {
       return true;
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.releaseBack?.());
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
+      if (!p.isDown || !this.scroll) return;
+      const sc = this.scroll;
+      sc.box.y = Phaser.Math.Clamp(sc.box.y + (p.y - p.prevPosition.y), -sc.max, 0);
+      sc.hint?.setVisible(sc.box.y > -sc.max + 4);
+    });
     this.cameras.main.fadeIn(160, 2, 3, 4);
     this.show(this.tab);
   }
@@ -77,6 +85,7 @@ export class BagScene extends Phaser.Scene {
     this.tab = tab;
     for (const o of this.body) o.destroy();
     this.body = [];
+    this.scroll = undefined;
     for (const t of ["mochila", "cuaderno", "mapa"] as const) this.tabs[t]?.setStyle(t === tab ? 0x3a2716 : COLORS.panel);
     if (tab === "mochila") this.showBag();
     else if (tab === "cuaderno") this.showJournal();
@@ -89,7 +98,7 @@ export class BagScene extends Phaser.Scene {
     const items = session.state.inventory.filter((id) => ITEMS[id]);
     if (!items.length) {
       this.keep(this.add.text(GAME_W / 2, GAME_H / 2, "La mochila está vacía.\nToca las cosas de la casa: algunas se pueden guardar.", {
-        fontFamily: FONT_UI, fontSize: "36px", color: CSS.muted, align: "center", lineSpacing: 10,
+        fontFamily: FONT_UI, fontSize: fs(36), color: CSS.muted, align: "center", lineSpacing: 10,
       }).setOrigin(0.5));
       return;
     }
@@ -116,7 +125,7 @@ export class BagScene extends Phaser.Scene {
     this.keep(this.add.text(INNER.x + 110, y + 125, sel.icon, { fontSize: "120px", padding: { top: 14, bottom: 8 } }).setOrigin(0.5));
     this.keep(this.add.text(INNER.x + 220, y + 30, sel.name, { fontFamily: FONT_TITLE, fontSize: "44px", color: CSS.copper }));
     this.keep(this.add.text(INNER.x + 220, y + 92, (sel.memory ? "★ Recuerdo de Inés. " : "") + sel.description, {
-      fontFamily: FONT_UI, fontSize: "32px", color: CSS.ivory, lineSpacing: 6, wordWrap: { width: INNER.w - 220 - 380, useAdvancedWrap: true },
+      fontFamily: FONT_UI, fontSize: fs(32), color: CSS.ivory, lineSpacing: 6, wordWrap: { width: INNER.w - 220 - 380, useAdvancedWrap: true },
     }));
     const id = this.selected;
     const use = makeButton(this, INNER.x + INNER.w - 340, y + 80, 310, 100, "Usar aquí", () => {
@@ -131,9 +140,15 @@ export class BagScene extends Phaser.Scene {
   private showJournal(): void {
     const s = session.state;
     const colW = (INNER.w - 60) / 2;
+    const box = this.keep(this.add.container(0, 0));
+    const put = <T extends Phaser.GameObjects.GameObject>(o: T): T => {
+      box.add(o);
+      return o;
+    };
     const text = (x: number, y: number, t: string, size: number, color: string, w = colW) =>
-      this.keep(this.add.text(x, y, t, { fontFamily: FONT_UI, fontSize: `${size}px`, color, lineSpacing: 6, wordWrap: { width: w, useAdvancedWrap: true } }));
-    const title = (x: number, y: number, t: string) => this.keep(this.add.text(x, y, t, { fontFamily: FONT_TITLE, fontSize: "36px", color: CSS.copper }));
+      put(this.add.text(x, y, t, { fontFamily: FONT_UI, fontSize: fs(size), color, lineSpacing: 6, wordWrap: { width: w, useAdvancedWrap: true } }));
+    const title = (x: number, y: number, t: string) => put(this.add.text(x, y, t, { fontFamily: FONT_TITLE, fontSize: "36px", color: CSS.copper }));
+    let bottom = 0;
 
     // Columna izquierda: la historia y los encargos.
     let y = INNER.y;
@@ -157,8 +172,8 @@ export class BagScene extends Phaser.Scene {
       const stage = questStageText(id, q.stage);
       const t = text(INNER.x, y, q.done ? `✓  ${QUESTS[id].title}` : `•  ${QUESTS[id].title}: ${stage ? fill(stage, s) : ""}`, 30, q.done ? CSS.muted : CSS.ivory);
       y += t.height + 12;
-      if (y > CARD.y + CARD.h - 80) break;
     }
+    bottom = Math.max(bottom, y);
 
     // Columna derecha: recuerdos de Inés y lo que Paula ha oído.
     const rx = INNER.x + colW + 60;
@@ -168,10 +183,10 @@ export class BagScene extends Phaser.Scene {
     MEMORIES.forEach((id, i) => {
       const has = s.inventory.includes(id) || s.flags.final === true;
       const cx = rx + 60 + i * 130;
-      const g = this.keep(this.add.graphics());
+      const g = put(this.add.graphics());
       g.fillStyle(has ? 0x3a2716 : 0x121a1e, 1).fillCircle(cx, y + 56, 56);
       g.lineStyle(3, has ? 0xf0c860 : 0x3a4448, 1).strokeCircle(cx, y + 56, 56);
-      this.keep(this.add.text(cx, y + 56, has ? ITEMS[id].icon : "?", {
+      put(this.add.text(cx, y + 56, has ? ITEMS[id].icon : "?", {
         fontFamily: FONT_UI, fontSize: has ? "60px" : "48px", color: CSS.muted, padding: { top: 8, bottom: 6 },
       }).setOrigin(0.5));
     });
@@ -179,11 +194,23 @@ export class BagScene extends Phaser.Scene {
     title(rx, y, "Lo que has oído");
     y += 58;
     const notes = CHATS.filter((c) => c.note && s.flags[heardFlag(c.id)]).map((c) => c.note!);
-    if (!notes.length) text(rx, y, "Cuando los de la casa charlen entre ellos, acércate a escuchar: a veces se les escapan secretos.", 30, CSS.muted);
+    if (!notes.length) y += text(rx, y, "Cuando los de la casa charlen entre ellos, acércate a escuchar: a veces se les escapan secretos.", 30, CSS.muted).height;
     for (const note of notes) {
       const t = text(rx, y, `✎ ${note}`, 28, CSS.ivory);
       y += t.height + 12;
-      if (y > CARD.y + CARD.h - 80) break;
+    }
+    bottom = Math.max(bottom, y);
+
+    // Si no cabe, se recorta a la tarjeta y se arrastra con el dedo.
+    const view = { top: INNER.y - 10, bottom: CARD.y + CARD.h - 24 };
+    const shape = this.keep(this.make.graphics({}, false)).fillRect(CARD.x, view.top, CARD.w, view.bottom - view.top);
+    box.setMask(shape.createGeometryMask());
+    const max = Math.max(0, bottom - view.bottom + 20);
+    if (max > 0) {
+      const hint = this.keep(this.add.text(CARD.x + CARD.w - 60, view.bottom - 6, "desliza para ver más ▾", {
+        fontFamily: FONT_UI, fontSize: fs(24), color: CSS.copper, backgroundColor: "#0d1215", padding: { x: 10, y: 4 },
+      }).setOrigin(1, 1));
+      this.scroll = { box, max, hint };
     }
   }
 

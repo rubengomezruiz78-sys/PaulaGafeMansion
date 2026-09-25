@@ -1,8 +1,8 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_UI } from "../config";
+import { COLORS, CSS, FONT_UI, PHONE, fs } from "../config";
 import type { Actor } from "./Actor";
 
-const MAX_W = 620;
+const MAX_W = PHONE ? 740 : 620;
 
 /**
  * Bocadillo sobre la cabeza de un personaje (saludos, comentarios que Paula
@@ -17,7 +17,7 @@ export class Bubble {
 
   constructor(private readonly scene: Phaser.Scene, private readonly owner: Actor, text: string) {
     const label = scene.add.text(0, 0, text, {
-      fontFamily: FONT_UI, fontSize: "30px", color: CSS.ink, align: "center",
+      fontFamily: FONT_UI, fontSize: fs(30), color: CSS.ink, align: "center",
       wordWrap: { width: MAX_W - 48, useAdvancedWrap: true }, lineSpacing: 4,
     }).setOrigin(0.5);
     this.w = Math.min(MAX_W, label.width + 48);
