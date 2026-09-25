@@ -188,11 +188,18 @@ public class MainActivity extends Activity {
                 if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) r = tts.setLanguage(new Locale("es"));
                 if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) return;
                 try {
-                    // Una voz española que no necesite Internet (nada sale de la tablet).
+                    // Una voz de España (antes que la de otros países), ya descargada y
+                    // que no necesite Internet: nada sale de la tablet.
                     Voice best = null;
+                    int bestScore = -1;
                     for (Voice v : tts.getVoices()) {
                         if (!"es".equals(v.getLocale().getLanguage()) || v.isNetworkConnectionRequired()) continue;
-                        if (best == null || v.getQuality() > best.getQuality()) best = v;
+                        if (v.getFeatures() != null && v.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
+                        int score = ("ES".equals(v.getLocale().getCountry()) ? 10000 : 0) + v.getQuality();
+                        if (score > bestScore) {
+                            best = v;
+                            bestScore = score;
+                        }
                     }
                     if (best != null) tts.setVoice(best);
                 } catch (Exception ignored) {
@@ -210,6 +217,17 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean isReady() {
             return ready;
+        }
+
+        /** Qué voz se está usando (para comprobarlo desde el juego). */
+        @JavascriptInterface
+        public String voiceName() {
+            try {
+                Voice v = tts.getVoice();
+                return v == null ? "" : v.getName() + " " + v.getLocale();
+            } catch (Exception e) {
+                return "";
+            }
         }
 
         @JavascriptInterface
