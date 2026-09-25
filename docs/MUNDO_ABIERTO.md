@@ -67,6 +67,12 @@ tools/         build_sprites.py (limpieza de sprites + métricas)
   3. `python tools/calib_preview.py <zona> out.png "h,k" -- x,y,sprite ...`
      pega los sprites reales junto a muebles de referencia (sillas ~1 m, mesas
      ~0,8 m, puertas >2 m) y los ojos de un adulto deben caer en el horizonte.
+  4. Si el cuadro está pintado desde más abajo/arriba, resolver horizonte y k
+     con DOS referencias (una cerca, una lejos). Cámaras resultantes: 0,85 m
+     (dormitorio infantil), 0,91 m (música), 1,14 m (cocina), 1,6–1,7 m (resto),
+     2,9 m (torre, vista alta). Lote: `python tools/calib_batch.py`.
+  5. Capas de suelo/salidas/objetos sobre el cuadro: `npx vite-node
+     scripts/dump-zones.ts > z.json && python tools/zone_overlay.py z.json o.png zona…`
 - Sprites: recortados por alfa, ancla en los pies (centro de masa de las filas
   inferiores), hojas de caminar re-extraídas por manchas conectadas y alineadas
   por pies + centro del torso (sin temblor). Metadatos en `sprites.json`.
@@ -79,7 +85,7 @@ tools/         build_sprites.py (limpieza de sprites + métricas)
 - [ ] F4 Probar F3 en navegador (tablet/móvil) y en el Redmi
 - [x] F5 Motor de diálogo + condiciones + memoria/afinidad (tests) + guardado + arnés E2E
 - [ ] F6 IA de NPC: rutinas, percepción, deambular, charla NPC↔NPC (tests)
-- [ ] F7 Zonas: calibrar las 12, salidas, grafo, mapa del mundo
+- [x] F7 Zonas: las 12 calibradas, grafo de 13 conexiones con bucles, cierres de historia, test de integridad (el mapa del mundo pasa a F12)
 - [ ] F8 Reparto completo: 8 principales + 13 criados fantasma procedurales
 - [ ] F9 Objetos, inventario, combinar, interacción contextual
 - [ ] F10 Misiones + puzzles (teclado numérico) + pistas (Gafe/ECO offline)

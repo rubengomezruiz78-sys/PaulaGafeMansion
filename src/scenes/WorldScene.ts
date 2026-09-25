@@ -4,7 +4,7 @@ import { NavGrid } from "../core/navmesh";
 import { NpcBrain, type Intent } from "../core/npcBrain";
 import { DialogueRunner } from "../core/dialogue";
 import { Projection, type Pt } from "../core/perspective";
-import { apply } from "../core/rules";
+import { apply, check } from "../core/rules";
 import { Rng } from "../core/rng";
 import { DIALOGUES } from "../content/dialogues";
 import { NPCS_BY_ZONE, type NpcDef } from "../content/npcs";
@@ -140,7 +140,7 @@ export class WorldScene extends Phaser.Scene {
     const exit = this.zoneDef.exits.find((e) => Phaser.Geom.Polygon.Contains(new Phaser.Geom.Polygon(polyPx(e.hotspot)), pt.x, pt.y));
     if (exit) {
       this.pending = { kind: "exit", exit };
-      this.game.events.emit(UI_EVENTS.toast, `→ ${exit.label}`);
+      if (check(exit.requires, session.state)) this.game.events.emit(UI_EVENTS.toast, `→ ${exit.label}`);
       return this.walkTo(toPx(exit.approach));
     }
 
@@ -220,8 +220,10 @@ export class WorldScene extends Phaser.Scene {
   // -------------------------------------------------------------- zonas
 
   private travel(exit: ExitDef): void {
-    if (!ZONES[exit.to]) {
-      this.game.events.emit(UI_EVENTS.toast, `${exit.label}: zona en construcción`);
+    if (!ZONES[exit.to]) throw new Error(`Salida ${exit.id} hacia una zona inexistente: ${exit.to}`);
+    if (!check(exit.requires, session.state)) {
+      // Cerrada por la historia: Paula mira la puerta y dice por qué no puede pasar.
+      this.say({ speaker: "Paula", portrait: "paula-idle", lines: [exit.lockedText ?? "Por aquí no se puede pasar todavía."] });
       return;
     }
     this.transitioning = true;

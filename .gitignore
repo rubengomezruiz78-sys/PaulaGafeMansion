@@ -32,3 +32,4 @@ android/app/build/
 android/.gradle/
 *.apk
 _assets_backup_original/
+__pycache__/
