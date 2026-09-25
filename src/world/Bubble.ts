@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_UI, PHONE, fs } from "../config";
+import { COLORS, CSS, FONT_UI, GAME_W, PHONE, fs } from "../config";
 import type { Actor } from "./Actor";
 
 const MAX_W = PHONE ? 740 : 620;
@@ -41,7 +41,7 @@ export class Bubble {
 
   follow(): void {
     if (this.dead) return;
-    const x = Phaser.Math.Clamp(this.owner.pos.x, this.w / 2 + 16, this.scene.scale.gameSize.width - this.w / 2 - 16);
+    const x = Phaser.Math.Clamp(this.owner.pos.x, this.w / 2 + 16, GAME_W - this.w / 2 - 16);
     const y = Math.max(this.h + 24, this.owner.headY() - 26);
     this.c.setPosition(x, y);
   }

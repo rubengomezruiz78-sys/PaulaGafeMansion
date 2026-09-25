@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_TITLE, GAME_H, GAME_W } from "../config";
+import { COLORS, CSS, FONT_TITLE, GAME_H, GAME_W, fitCamera } from "../config";
 import { SPRITES, SPRITE_KEYS, spritePath } from "../content/sprites";
 import { NPCS } from "../content/npcs";
 import { makeGhostTexture } from "../world/ghostArt";
@@ -14,6 +14,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
+    fitCamera(this);
     const w = 720;
     const x = (GAME_W - w) / 2;
     const y = GAME_H / 2 + 60;

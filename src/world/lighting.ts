@@ -32,6 +32,8 @@ uniform vec3 uFogColor;
 uniform float uEmissive;
 uniform float uRimTexels;
 uniform float uKeyPower;
+/** Píxeles dibujados por píxel lógico (la tablet dibuja a 2/3). */
+uniform float uScale;
 varying vec2 outTexCoord;
 varying float outTintEffect;
 varying vec4 outTint;
@@ -46,7 +48,7 @@ void main() {
   c = max(c, vec3(0.0));
 
   vec3 light = uAmbient;
-  vec2 frag = gl_FragCoord.xy;
+  vec2 frag = gl_FragCoord.xy / uScale;
   for (int i = 0; i < ${MAX_LIGHTS}; i++) {
     if (float(i) >= uLightCount) break;
     vec4 L = uLights[i];
@@ -178,6 +180,7 @@ export class ActorLightPipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePi
     this.set1f("uEmissive", p?.emissive ?? 0);
     this.set1f("uRimTexels", p?.rimTexels ?? 3);
     this.set1f("uKeyPower", p?.keyPower ?? 0);
+    this.set1f("uScale", camera.zoom);
     super.batchSprite(go, camera, parent);
     this.flush();
   }

@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { sound } from "../audio/sound";
 import { listenErrorText, voice } from "../audio/voice";
 import { matchChoice, parseSpanishNumber } from "../core/speech";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera, fs } from "../config";
 import { MAX_DIGITS, PuzzleRun } from "../core/puzzle";
 import { PUZZLES } from "../content/puzzles";
 import { describeNotice } from "../content/speakers";
@@ -46,6 +46,7 @@ export class PuzzleScene extends Phaser.Scene {
   }
 
   create(req: PuzzleRequest): void {
+    fitCamera(this);
     const def = PUZZLES[req.id];
     if (!def) throw new Error(`Puzzle inexistente: ${req.id}`);
     this.req = req;

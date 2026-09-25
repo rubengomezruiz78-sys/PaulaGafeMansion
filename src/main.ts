@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { GAME_H, GAME_W } from "./config";
+import { RENDER_H, RENDER_W } from "./config";
 import { installBackBridge, loadFonts } from "./platform";
 import { BagScene } from "./scenes/BagScene";
 import { BootScene } from "./scenes/BootScene";
@@ -21,8 +21,8 @@ async function start(): Promise<void> {
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: GAME_W,
-      height: GAME_H,
+      width: RENDER_W,
+      height: RENDER_H,
     },
     render: { antialias: true, roundPixels: false, powerPreference: "high-performance" },
     input: { activePointers: 2 },

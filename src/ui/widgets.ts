@@ -5,7 +5,7 @@
  */
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
-import { COLORS, CSS, FONT_UI } from "../config";
+import { COLORS, CSS, FONT_UI, GAME_H, GAME_W } from "../config";
 
 export interface ButtonOptions {
   fontSize?: number;
@@ -90,6 +90,5 @@ export function drawPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, 
 
 /** Velo oscuro a pantalla completa que además se traga los toques. */
 export function addScrim(scene: Phaser.Scene, alpha = 0.72): Phaser.GameObjects.Rectangle {
-  const { width, height } = scene.scale.gameSize;
-  return scene.add.rectangle(0, 0, width, height, 0x020304, alpha).setOrigin(0).setInteractive();
+  return scene.add.rectangle(0, 0, GAME_W, GAME_H, 0x020304, alpha).setOrigin(0).setInteractive();
 }

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera, fs } from "../config";
 import { heardFlag } from "../core/chat";
 import { check } from "../core/rules";
 import { fill } from "../core/text";
@@ -49,6 +49,7 @@ export class BagScene extends Phaser.Scene {
   }
 
   create(req: BagRequest): void {
+    fitCamera(this);
     this.req = req;
     this.tab = req.tab;
     this.selected = undefined;
@@ -72,7 +73,7 @@ export class BagScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
       if (!p.isDown || !this.scroll) return;
       const sc = this.scroll;
-      sc.box.y = Phaser.Math.Clamp(sc.box.y + (p.y - p.prevPosition.y), -sc.max, 0);
+      sc.box.y = Phaser.Math.Clamp(sc.box.y + (p.y - p.prevPosition.y) / this.cameras.main.zoom, -sc.max, 0);
       sc.hint?.setVisible(sc.box.y > -sc.max + 4);
     });
     this.cameras.main.fadeIn(160, 2, 3, 4);

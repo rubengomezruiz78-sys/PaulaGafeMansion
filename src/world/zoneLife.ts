@@ -104,8 +104,18 @@ export class ZoneLifeFx {
     this.setupFog();
     this.setupTwinkles();
     this.setupCritters();
-    this.grain = scene.add.tileSprite(0, 0, W, H, "grain").setOrigin(0).setDepth(4450).setAlpha(0.055)
-      .setBlendMode(Phaser.BlendModes.SCREEN);
+    if (!opts.lowFx) {
+      this.grain = scene.add.tileSprite(0, 0, W, H, "grain").setOrigin(0).setDepth(4450).setAlpha(0.055)
+        .setBlendMode(Phaser.BlendModes.SCREEN);
+    }
+  }
+
+  /** Modo ligero (la gráfica no llega): fuera las capas a pantalla completa que menos se notan. */
+  lighten(): void {
+    this.grain?.destroy();
+    this.grain = undefined;
+    this.fogFront?.destroy();
+    this.fogFront = undefined;
   }
 
   /** El cuadro de fondo pasa por el shader de vida (si hay WebGL). */

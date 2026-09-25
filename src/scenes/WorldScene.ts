@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
-import { DEBUG, GAME_H, GAME_W } from "../config";
+import { DEBUG, GAME_H, GAME_W, fitCamera } from "../config";
 import { heardFlag, type ChatDef } from "../core/chat";
 import { DialogueRunner, type Line } from "../core/dialogue";
 import { resolveProp } from "../core/interact";
@@ -162,6 +162,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create(data: WorldData): void {
+    fitCamera(this);
     this.zoneDef = getZone(data.zone);
     this.trimZoneTextures(this.zoneDef.id);
     session.enterZone(this.zoneDef.id);
@@ -905,8 +906,9 @@ export class WorldScene extends Phaser.Scene {
     this.stepCount = 0;
     this.perfClock = 0;
     this.fxObjects = [];
-    this.flashRect = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xdde8ff, 0).setOrigin(0).setDepth(4500)
-      .setBlendMode(Phaser.BlendModes.ADD);
+    // Con alfa 0 no se dibuja (antes tenía el relleno a 0 y se pintaba siempre sin verse).
+    this.flashRect = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xdde8ff).setOrigin(0).setDepth(4500)
+      .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
     if (lowFx) return;
     // Viñeta: oscurece los bordes y da profundidad al cuadro.
     this.fxObjects.push(this.add.image(0, 0, "vignette").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(4400).setAlpha(0.6));
@@ -919,6 +921,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.perfClock < 6 || this.perfClock % 3 > dt) return;
     if (this.game.loop.actualFps >= LOW_FPS) return;
     lowFx = true;
+    this.life?.lighten();
     for (const o of this.fxObjects) {
       this.tweens.killTweensOf(o);
       o.destroy();
@@ -948,9 +951,9 @@ export class WorldScene extends Phaser.Scene {
     this.tweens.chain({
       targets: this.flashRect,
       tweens: [
-        { alpha: 0.3 * power, duration: 60 },
-        { alpha: 0.04, duration: 90 },
-        { alpha: 0.2 * power, duration: 60 },
+        { alpha: 0.16 * power, duration: 60 },
+        { alpha: 0.02, duration: 90 },
+        { alpha: 0.1 * power, duration: 60 },
         { alpha: 0, duration: 520, ease: "Sine.easeOut" },
       ],
     });

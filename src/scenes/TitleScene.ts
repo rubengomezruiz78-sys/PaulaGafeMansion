@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
 import { voice, type VoiceMode } from "../audio/voice";
-import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
+import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera } from "../config";
 import { session } from "../game/session";
 import { worldSim } from "../game/world";
 import { pushBackHandler } from "../platform";
@@ -23,6 +23,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
     this.leaving = false;
     this.add.image(0, 0, "cover").setOrigin(0).setDisplaySize(GAME_W, GAME_H);
     // Velo suave a la izquierda para que el texto se lea sin tapar a Paula ni a Gafe.

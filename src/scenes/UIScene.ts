@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera, fs } from "../config";
 import type { DialogueRunner, Line, Step } from "../core/dialogue";
 import type { Notice } from "../core/rules";
 import { fill } from "../core/text";
@@ -117,6 +117,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
     this.registry.set("modal", false);
     this.registry.set("modalOwners", []);
     const ev = this.game.events;

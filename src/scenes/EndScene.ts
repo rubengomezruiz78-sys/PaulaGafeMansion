@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
-import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
+import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera } from "../config";
 import { NPCS } from "../content/npcs";
 import { pushBackHandler } from "../platform";
 import { setModal } from "../ui/modal";
@@ -16,6 +16,7 @@ export class EndScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitCamera(this);
     this.closing = false;
     setModal(this, "end", true);
     const cover = this.add.image(0, 0, "cover").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setAlpha(0);
