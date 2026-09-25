@@ -210,6 +210,12 @@ export function installTestHarness(game: Phaser.Game): void {
       (window as unknown as { __demo: typeof rec }).__demo = rec;
       return rec.run();
     },
+    /** Graba el recorrido por la casa viva (demoRecorder.tour). */
+    recordTour() {
+      const rec = makeDemoRecorder(game, api);
+      (window as unknown as { __demo: typeof rec }).__demo = rec;
+      return rec.tour();
+    },
   };
   (window as unknown as { __test: typeof api & typeof demo }).__test = Object.assign(api, demo);
 }

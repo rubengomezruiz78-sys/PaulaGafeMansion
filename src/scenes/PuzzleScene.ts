@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
+import { listenErrorText, voice } from "../audio/voice";
+import { matchChoice, parseSpanishNumber } from "../core/speech";
 import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config";
 import { MAX_DIGITS, PuzzleRun } from "../core/puzzle";
 import { PUZZLES } from "../content/puzzles";
@@ -37,6 +39,7 @@ export class PuzzleScene extends Phaser.Scene {
   private busy = false;
   private releaseBack?: () => void;
   private hintButton?: Button;
+  private micButton?: Button;
 
   constructor() {
     super("puzzle");
@@ -59,6 +62,11 @@ export class PuzzleScene extends Phaser.Scene {
 
     this.hintButton = makeButton(this, LEFT.x, CARD.y + CARD.h - 120, 440, 90, "🐾  Pista de Gafe", () => this.showHint(), { fontSize: 34 });
     makeButton(this, LEFT.x + 470, CARD.y + CARD.h - 120, 260, 90, "Salir", () => this.close(false), { fontSize: 34 });
+    if (voice.mic && voice.canListen) {
+      this.micButton = makeButton(this, LEFT.x + 760, CARD.y + CARD.h - 120, 250, 90, "🎤  Decirlo", () => void this.listenAnswer(), {
+        fontSize: 32, fill: 0x1d3a2a, edge: 0x8fd6a0,
+      });
+    }
 
     this.releaseBack = pushBackHandler(() => {
       this.close(false);
@@ -129,6 +137,10 @@ export class PuzzleScene extends Phaser.Scene {
     }
     // Avisos («¡Correcto!», la pista de Gafe) debajo del teclado.
     const rows = step.kind === "number" ? 4 : Math.ceil(step.options.length / (step.options.length > 3 ? 2 : 1));
+    if (voice.mode !== "texto") {
+      const opts = step.kind === "choice" ? ` Opciones: ${step.options.join(", ")}.` : "";
+      void voice.speak(step.prompt + opts, "narrador");
+    }
     this.feedback = keep(this.add.text(RIGHT.x, RIGHT.y + rows * (KEY.h + KEY.gap) + 4, "", {
       fontFamily: FONT_UI, fontSize: fs(30), color: CSS.ivory, lineSpacing: 6, wordWrap: { width: RIGHT.w, useAdvancedWrap: true },
     }));
@@ -192,7 +204,9 @@ export class PuzzleScene extends Phaser.Scene {
       this.drawField(0x2a1212, 0xe07a6a);
       this.cameras.main.shake(160, 0.004);
       const n = this.run.mistakes;
-      this.feedback?.setColor("#f0b0a0").setText(n >= 2 ? `Mmm… no. 🐾 Gafe: ${this.run.step.hint}` : "Mmm… no es eso. Revisa la cuenta con calma.");
+      const msg = n >= 2 ? `Mmm… no. 🐾 Gafe: ${this.run.step.hint}` : "Mmm… no es eso. Revisa la cuenta con calma.";
+      this.feedback?.setColor("#f0b0a0").setText(msg);
+      if (voice.mode !== "texto") void voice.speak(n >= 2 ? `Mmm, no. Gafe dice: ${this.run.step.hint}` : "Mmm, no es eso. Revisa la cuenta con calma.", "narrador");
       this.typed = "";
       this.time.delayedCall(700, () => {
         this.drawField(0x0b1013, COLORS.copper);
@@ -204,6 +218,7 @@ export class PuzzleScene extends Phaser.Scene {
     sound.play(r.solved ? "solved" : "correct");
     this.drawField(0x12301c, 0x8fd6a0);
     this.feedback?.setColor("#a8e6b4").setText(r.solved ? "¡Resuelto!" : "¡Correcto!");
+    if (voice.mode !== "texto") void voice.speak(r.solved ? "¡Resuelto!" : "¡Correcto!", "paula");
     for (const n of r.notices) {
       const text = describeNotice(n, session.state);
       if (text) this.game.events.emit(UI_EVENTS.toast, text);
@@ -218,10 +233,46 @@ export class PuzzleScene extends Phaser.Scene {
   private showHint(): void {
     if (this.busy) return;
     this.feedback?.setColor(CSS.copper).setText(`🐾 Gafe: ${this.run.step.hint}`);
+    if (voice.mode !== "texto") void voice.speak(`Gafe dice: ${this.run.step.hint}`, "gafe");
+  }
+
+  /** Responder hablando: un número («sesenta y tres») o una de las opciones. */
+  private async listenAnswer(): Promise<void> {
+    if (this.busy || !this.micButton) return;
+    const btn = this.micButton;
+    btn.label.setText("👂  Te escucho…");
+    this.feedback?.setColor(CSS.copper).setText("Te escucho…");
+    const { alts, error } = await voice.listen();
+    if (!this.scene.isActive()) return;
+    btn.label.setText("🎤  Decirlo");
+    const step = this.run.step;
+    if (alts && step.kind === "number") {
+      const n = alts.map(parseSpanishNumber).find((x) => x !== null);
+      if (n !== undefined && n !== null) {
+        this.typed = String(n).slice(0, MAX_DIGITS);
+        this.field?.setText(this.typed);
+        this.feedback?.setText(`He oído: ${n}`);
+        this.time.delayedCall(450, () => this.submit(Number(this.typed)));
+        return;
+      }
+    }
+    if (alts && step.kind === "choice") {
+      const i = matchChoice(alts, step.options);
+      if (i !== null) {
+        this.feedback?.setText(`He oído: ${step.options[i]}`);
+        this.time.delayedCall(450, () => this.choose(i));
+        return;
+      }
+    }
+    const msg = alts ? listenErrorText("no-entendido") : listenErrorText(error);
+    this.feedback?.setColor("#f0b0a0").setText(msg);
+    if (voice.mode !== "texto") void voice.speak(msg, "narrador");
   }
 
   private close(solved: boolean): void {
     if (!this.scene.isActive()) return;
+    voice.stop();
+    voice.cancelListening();
     this.releaseBack?.();
     this.releaseBack = undefined;
     const done = this.req.onClose;

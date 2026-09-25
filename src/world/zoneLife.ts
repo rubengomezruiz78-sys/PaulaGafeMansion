@@ -120,6 +120,14 @@ export class ZoneLifeFx {
     bg.setPipeline(BG_LIFE);
   }
 
+  /** Provoca ya un bicho o una aparición (para el vídeo de muestra y pruebas). */
+  trigger(kind: "bat" | "spider" | "mouse" | "wisp"): void {
+    if (kind === "bat") this.bat();
+    else if (kind === "spider") this.spider();
+    else if (kind === "mouse") this.mouse();
+    else if (this.life.wisps) this.wisp();
+  }
+
   /** Relámpago: los cristales se encienden y los personajes reciben el fogonazo. */
   flash(power: number): void {
     this.flashT = 0;

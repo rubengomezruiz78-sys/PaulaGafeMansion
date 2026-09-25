@@ -1,35 +1,54 @@
 package com.paulaygafe.mansion;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import android.speech.tts.Voice;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import org.json.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
- * Envoltorio del juego. Todo se sirve desde los assets del APK (nada sale de
- * la tablet: no hay permiso de Internet ni de micrófono).
+ * Envoltorio del juego. Todo se sirve desde los assets del APK (no hay permiso
+ * de Internet). Voz de los personajes con el motor de voz del sistema (se
+ * eligen voces sin conexión) y, si Paula quiere, respuestas por micrófono
+ * (se pide reconocimiento sin conexión).
  */
 public class MainActivity extends Activity {
     private static final String LOCAL_HOST = "paula.local";
+    private static final int MICROPHONE_PERMISSION_REQUEST = 41;
 
     private WebView webView;
+    private SpeechBridge speech;
+    private VoiceBridge voice;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +62,10 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(0xFF050608);
         configureWebView(webView);
+        speech = new SpeechBridge();
+        voice = new VoiceBridge();
+        webView.addJavascriptInterface(speech, "AndroidTTS");
+        webView.addJavascriptInterface(voice, "AndroidVoice");
         setContentView(webView);
         webView.loadUrl("https://" + LOCAL_HOST + "/index.html");
     }
@@ -52,6 +75,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         if (webView != null) webView.onPause();
+        if (speech != null) speech.stop();
+        if (voice != null) voice.cancelListening();
         super.onPause();
     }
 
@@ -125,9 +150,186 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != MICROPHONE_PERMISSION_REQUEST) return;
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) voice.beginListening();
+        else voice.sendError("sin-permiso");
+    }
+
+    @Override
     protected void onDestroy() {
-        if (webView != null) webView.destroy();
+        if (speech != null) speech.shutdown();
+        if (voice != null) voice.destroy();
+        if (webView != null) {
+            webView.removeJavascriptInterface("AndroidTTS");
+            webView.removeJavascriptInterface("AndroidVoice");
+            webView.destroy();
+        }
         super.onDestroy();
+    }
+
+    private void js(String code) {
+        runOnUiThread(() -> {
+            if (webView != null) webView.evaluateJavascript(code, null);
+        });
+    }
+
+    /** Los personajes hablan: motor de voz del sistema, en español y sin conexión si se puede. */
+    private final class SpeechBridge {
+        private TextToSpeech tts;
+        private volatile boolean ready = false;
+
+        SpeechBridge() {
+            tts = new TextToSpeech(MainActivity.this, status -> {
+                if (status != TextToSpeech.SUCCESS) return;
+                Locale es = new Locale("es", "ES");
+                int r = tts.setLanguage(es);
+                if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) r = tts.setLanguage(new Locale("es"));
+                if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) return;
+                try {
+                    // Una voz española que no necesite Internet (nada sale de la tablet).
+                    Voice best = null;
+                    for (Voice v : tts.getVoices()) {
+                        if (!"es".equals(v.getLocale().getLanguage()) || v.isNetworkConnectionRequired()) continue;
+                        if (best == null || v.getQuality() > best.getQuality()) best = v;
+                    }
+                    if (best != null) tts.setVoice(best);
+                } catch (Exception ignored) {
+                    // Algunos motores no listan voces: se queda la de por defecto.
+                }
+                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override public void onStart(String id) {}
+                    @Override public void onDone(String id) { js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")"); }
+                    @Override public void onError(String id) { js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")"); }
+                });
+                ready = true;
+            });
+        }
+
+        @JavascriptInterface
+        public boolean isReady() {
+            return ready;
+        }
+
+        @JavascriptInterface
+        public void speak(String text, float pitch, float rate, String id) {
+            if (!ready) {
+                js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")");
+                return;
+            }
+            tts.setPitch(Math.max(0.5f, Math.min(2f, pitch)));
+            tts.setSpeechRate(Math.max(0.5f, Math.min(2f, rate)));
+            Bundle params = new Bundle();
+            params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1f);
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, id);
+        }
+
+        @JavascriptInterface
+        public void stop() {
+            if (tts != null && ready) tts.stop();
+        }
+
+        void shutdown() {
+            if (tts != null) tts.shutdown();
+            tts = null;
+            ready = false;
+        }
+    }
+
+    /** Respuestas con la voz: reconocimiento del sistema, pidiendo que sea sin conexión. */
+    private final class VoiceBridge implements RecognitionListener {
+        private SpeechRecognizer recognizer;
+
+        @JavascriptInterface
+        public boolean isAvailable() {
+            return SpeechRecognizer.isRecognitionAvailable(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void startListening() {
+            runOnUiThread(() -> {
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MICROPHONE_PERMISSION_REQUEST);
+                    return;
+                }
+                beginListening();
+            });
+        }
+
+        @JavascriptInterface
+        public void cancelListening() {
+            runOnUiThread(() -> {
+                if (recognizer != null) recognizer.cancel();
+            });
+        }
+
+        void beginListening() {
+            if (!SpeechRecognizer.isRecognitionAvailable(MainActivity.this)) {
+                sendError("no-disponible");
+                return;
+            }
+            destroy();
+            recognizer = SpeechRecognizer.createSpeechRecognizer(MainActivity.this);
+            recognizer.setRecognitionListener(this);
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
+            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+            intent.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
+            recognizer.startListening(intent);
+            js("window.__onAndroidVoiceStart&&window.__onAndroidVoiceStart()");
+        }
+
+        void sendResult(ArrayList<String> matches) {
+            StringBuilder arr = new StringBuilder("[");
+            for (int i = 0; i < matches.size(); i++) arr.append(i > 0 ? "," : "").append(JSONObject.quote(matches.get(i)));
+            arr.append("]");
+            js("window.__onAndroidVoiceResult&&window.__onAndroidVoiceResult(" + arr + ")");
+        }
+
+        void sendError(String code) {
+            js("window.__onAndroidVoiceError&&window.__onAndroidVoiceError(" + JSONObject.quote(code) + ")");
+        }
+
+        void destroy() {
+            if (recognizer != null) {
+                recognizer.destroy();
+                recognizer = null;
+            }
+        }
+
+        @Override public void onReadyForSpeech(Bundle params) {}
+        @Override public void onBeginningOfSpeech() {}
+        @Override public void onRmsChanged(float rmsdB) {}
+        @Override public void onBufferReceived(byte[] buffer) {}
+        @Override public void onEndOfSpeech() {}
+        @Override public void onPartialResults(Bundle partialResults) {}
+        @Override public void onEvent(int eventType, Bundle params) {}
+
+        @Override
+        public void onError(int error) {
+            String code;
+            switch (error) {
+                case SpeechRecognizer.ERROR_NO_MATCH:
+                case SpeechRecognizer.ERROR_SPEECH_TIMEOUT: code = "no-entendido"; break;
+                case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: code = "sin-permiso"; break;
+                case SpeechRecognizer.ERROR_NETWORK:
+                case SpeechRecognizer.ERROR_NETWORK_TIMEOUT: code = "sin-conexion"; break;
+                default: code = "fallo";
+            }
+            sendError(code);
+            destroy();
+        }
+
+        @Override
+        public void onResults(Bundle results) {
+            ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            if (matches == null || matches.isEmpty()) sendError("no-entendido");
+            else sendResult(matches);
+            destroy();
+        }
     }
 
     private static final class LocalAssetClient extends WebViewClient {

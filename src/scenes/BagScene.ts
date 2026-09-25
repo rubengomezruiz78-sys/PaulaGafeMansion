@@ -10,12 +10,14 @@ import { worldSim } from "../game/world";
 import { ITEMS, MEMORIES } from "../content/items";
 import { MAIN_GOALS, QUESTS, questStageText } from "../content/quests";
 import { session } from "../game/session";
+import { sound } from "../audio/sound";
+import { voice, type VoiceMode } from "../audio/voice";
 import { pushBackHandler } from "../platform";
 import { setModal } from "../ui/modal";
 import { addScrim, drawPanel, makeButton, type Button } from "../ui/widgets";
 import { UI_EVENTS } from "./UIScene";
 
-export type BagTab = "mochila" | "cuaderno" | "mapa";
+export type BagTab = "mochila" | "cuaderno" | "mapa" | "ajustes";
 
 export interface BagRequest {
   tab: BagTab;
@@ -36,7 +38,7 @@ export class BagScene extends Phaser.Scene {
   private req!: BagRequest;
   private tab: BagTab = "mochila";
   private body: Phaser.GameObjects.GameObject[] = [];
-  private tabs: Record<BagTab, Button | undefined> = { mochila: undefined, cuaderno: undefined, mapa: undefined };
+  private tabs: Record<BagTab, Button | undefined> = { mochila: undefined, cuaderno: undefined, mapa: undefined, ajustes: undefined };
   private selected?: string;
   private releaseBack?: () => void;
   /** Contenido desplazable del cuaderno (si no cabe, se arrastra con el dedo). */
@@ -56,9 +58,10 @@ export class BagScene extends Phaser.Scene {
     addScrim(this, 0.74);
     const g = this.add.graphics();
     drawPanel(g, CARD.x, CARD.y, CARD.w, CARD.h, 34);
-    this.tabs.mochila = makeButton(this, INNER.x, CARD.y + 34, 340, 90, "🎒  Mochila", () => this.show("mochila"), { fontSize: 36 });
-    this.tabs.cuaderno = makeButton(this, INNER.x + 370, CARD.y + 34, 340, 90, "📖  Cuaderno", () => this.show("cuaderno"), { fontSize: 36 });
-    this.tabs.mapa = makeButton(this, INNER.x + 740, CARD.y + 34, 300, 90, "🗺️  Mapa", () => this.show("mapa"), { fontSize: 36 });
+    this.tabs.mochila = makeButton(this, INNER.x, CARD.y + 34, 300, 90, "🎒  Mochila", () => this.show("mochila"), { fontSize: 34 });
+    this.tabs.cuaderno = makeButton(this, INNER.x + 320, CARD.y + 34, 320, 90, "📖  Cuaderno", () => this.show("cuaderno"), { fontSize: 34 });
+    this.tabs.mapa = makeButton(this, INNER.x + 660, CARD.y + 34, 250, 90, "🗺️  Mapa", () => this.show("mapa"), { fontSize: 34 });
+    this.tabs.ajustes = makeButton(this, INNER.x + 930, CARD.y + 34, 280, 90, "⚙️  Ajustes", () => this.show("ajustes"), { fontSize: 34 });
     makeButton(this, CARD.x + CARD.w - 70 - 110, CARD.y + 34, 110, 90, "✕", () => this.close(), { fontSize: 44 });
 
     this.releaseBack = pushBackHandler(() => {
@@ -86,10 +89,11 @@ export class BagScene extends Phaser.Scene {
     for (const o of this.body) o.destroy();
     this.body = [];
     this.scroll = undefined;
-    for (const t of ["mochila", "cuaderno", "mapa"] as const) this.tabs[t]?.setStyle(t === tab ? 0x3a2716 : COLORS.panel);
+    for (const t of ["mochila", "cuaderno", "mapa", "ajustes"] as const) this.tabs[t]?.setStyle(t === tab ? 0x3a2716 : COLORS.panel);
     if (tab === "mochila") this.showBag();
     else if (tab === "cuaderno") this.showJournal();
-    else this.showMap();
+    else if (tab === "mapa") this.showMap();
+    else this.showSettings();
   }
 
   // ---------------------------------------------------------------- mochila
@@ -278,6 +282,53 @@ export class BagScene extends Phaser.Scene {
       : "Las salas que aún no has visitado salen con «?». Quizá alguien dibujó un plano de la casa…", {
       fontFamily: FONT_UI, fontSize: "26px", color: CSS.muted, align: "center",
     }).setOrigin(0.5, 1));
+  }
+
+  // ---------------------------------------------------------------- ajustes
+
+  /** Cómo se cuenta la historia (texto, voz o las dos), micrófono y sonido. */
+  private showSettings(): void {
+    const x = INNER.x;
+    let y = INNER.y;
+    const title = (t: string) => {
+      this.keep(this.add.text(x, y, t, { fontFamily: FONT_TITLE, fontSize: "34px", color: CSS.copper }));
+      y += 60;
+    };
+    title("Cómo se cuenta la historia");
+    const modes: [VoiceMode, string][] = [["texto", "📖  Leerla"], ["ambos", "📖🔊  Leer y oír"], ["voz", "🔊  Solo oírla"]];
+    modes.forEach(([m, label], i) => {
+      const b = makeButton(this, x + i * 420, y, 400, 96, label, () => {
+        voice.setMode(m);
+        if (m !== "texto") void voice.speak("¡Hola! Soy Paula. ¿Me oyes bien?", "paula");
+        this.show("ajustes");
+      }, { fontSize: 32, fill: voice.mode === m ? 0x1d3a2a : COLORS.panel, edge: voice.mode === m ? 0x8fd6a0 : COLORS.copper });
+      this.keep(b.container);
+    });
+    y += 116;
+    if (!voice.canSpeak) {
+      this.keep(this.add.text(x, y, "Esta tablet no tiene voz instalada: solo se puede leer.", { fontFamily: FONT_UI, fontSize: fs(26), color: "#f0b0a0" }));
+      y += 44;
+    }
+    y += 20;
+    title("Responder con la voz");
+    const micOk = voice.canListen;
+    const mic = makeButton(this, x, y, 400, 96, !micOk ? "🎤  No disponible" : voice.mic ? "🎤  Sí" : "🎤  No", () => {
+      if (!micOk) return;
+      voice.setMic(!voice.mic);
+      this.show("ajustes");
+    }, { fontSize: 32, fill: voice.mic && micOk ? 0x1d3a2a : COLORS.panel, edge: voice.mic && micOk ? 0x8fd6a0 : COLORS.copper });
+    this.keep(mic.container);
+    this.keep(this.add.text(x + 430, y + 8, "En los puzzles y al elegir qué decir aparece «🎤». Paula dice el\nnúmero o la frase. Con el español descargado, no sale nada de la tablet.", {
+      fontFamily: FONT_UI, fontSize: fs(24), color: CSS.muted, lineSpacing: 6,
+    }));
+    y += 136;
+    title("Sonido y música");
+    const snd = makeButton(this, x, y, 400, 96, sound.muted ? "🔇  No" : "🔊  Sí", () => {
+      sound.unlock();
+      sound.setMuted(!sound.muted);
+      this.show("ajustes");
+    }, { fontSize: 32 });
+    this.keep(snd.container);
   }
 
   private close(): void {

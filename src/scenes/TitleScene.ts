@@ -1,10 +1,13 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
+import { voice, type VoiceMode } from "../audio/voice";
 import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
 import { session } from "../game/session";
 import { worldSim } from "../game/world";
 import { pushBackHandler } from "../platform";
 import { addScrim, drawPanel, makeButton } from "../ui/widgets";
+
+export const MODE_NAMES: Record<VoiceMode, string> = { texto: "Texto", ambos: "Texto y voz", voz: "Solo voz" };
 
 /**
  * Portada: la ilustración original de Paula y Gafe tal cual, con el título a
@@ -49,12 +52,25 @@ export class TitleScene extends Phaser.Scene {
         ]
       : [makeButton(this, 130, y0, 560, 116, "Empezar", () => this.start(true), { fontSize: 46, fill: 0x1d3a2a, edge: 0x8fd6a0, radius: 30 })];
     const soundLabel = () => (sound.muted ? "🔇  Sonido: no" : "🔊  Sonido: sí");
-    const soundBtn = makeButton(this, 130, GAME_H - 150, 400, 96, soundLabel(), () => {
+    const soundBtn = makeButton(this, 130, GAME_H - 150, 290, 90, soundLabel(), () => {
       sound.unlock();
       sound.setMuted(!sound.muted);
       soundBtn.label.setText(soundLabel());
-    }, { fontSize: 32, radius: 26 });
-    for (const [i, b] of [...buttons, soundBtn].entries()) {
+    }, { fontSize: 30, radius: 26 });
+    const micLabel = () => (!voice.canListen ? "🎤  Micro: no hay" : voice.mic ? "🎤  Micro: sí" : "🎤  Micro: no");
+    const micBtn = makeButton(this, 440, GAME_H - 150, 290, 90, micLabel(), () => {
+      if (!voice.canListen) return;
+      voice.setMic(!voice.mic);
+      micBtn.label.setText(micLabel());
+    }, { fontSize: 30, radius: 26 });
+    const modes: VoiceMode[] = ["texto", "ambos", "voz"];
+    const modeLabel = () => `🗣️  Diálogos: ${MODE_NAMES[voice.mode]}`;
+    const modeBtn = makeButton(this, 130, GAME_H - 256, 600, 90, modeLabel(), () => {
+      voice.setMode(modes[(modes.indexOf(voice.mode) + 1) % modes.length]);
+      modeBtn.label.setText(modeLabel());
+      if (voice.mode !== "texto") void voice.speak("¡Hola! Soy Paula. ¿Me oyes bien?", "paula");
+    }, { fontSize: 30, radius: 26 });
+    for (const [i, b] of [...buttons, modeBtn, soundBtn, micBtn].entries()) {
       b.container.setAlpha(0);
       this.tweens.add({ targets: b.container, alpha: 1, duration: 700, delay: 1100 + i * 150 });
     }

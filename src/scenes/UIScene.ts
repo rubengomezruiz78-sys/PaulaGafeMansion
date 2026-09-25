@@ -3,6 +3,8 @@ import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fs } from "../config"
 import type { DialogueRunner, Line, Step } from "../core/dialogue";
 import type { Notice } from "../core/rules";
 import { fill } from "../core/text";
+import { matchChoice } from "../core/speech";
+import { listenErrorText, voice } from "../audio/voice";
 import { ITEMS } from "../content/items";
 import { speakerFor } from "../content/speakers";
 import { SPRITES, type SpriteKey } from "../content/sprites";
@@ -84,6 +86,9 @@ export class UIScene extends Phaser.Scene {
   /** El texto de la frase ya partido en líneas (así no saltan palabras al escribirse). */
   private wrapped = "";
   private choiceTop = GAME_H;
+  /** Cambia con cada frase: así una voz que termina tarde no pasa la frase siguiente. */
+  private lineToken = 0;
+  private micButton?: Button;
   private portrait?: Phaser.GameObjects.Image;
   private portraitKey?: SpriteKey;
   private nameText?: Phaser.GameObjects.Text;
@@ -264,7 +269,7 @@ export class UIScene extends Phaser.Scene {
     const tx = BUBBLE.pad + r * 2 + 16;
     const maxText = BUBBLE.maxW - tx - BUBBLE.pad;
     this.bodyText.setWordWrapWidth(maxText, true);
-    this.wrapped = this.bodyText.getWrappedText(this.fullText).join("\n");
+    this.wrapped = voice.mode === "voz" ? "🔊  · · ·" : this.bodyText.getWrappedText(this.fullText).join("\n");
     this.bodyText.setWordWrapWidth(0).setText(this.wrapped);
     const textW = Math.max(this.bodyText.width, this.nameText.width + (this.roleText.text ? this.roleText.width + 12 : 0));
     const w = Math.min(BUBBLE.maxW, tx + textW + BUBBLE.pad + 18);
@@ -327,7 +332,29 @@ export class UIScene extends Phaser.Scene {
     this.fullText = fill(line.text, session.state);
     this.shown = 0;
     this.hint?.setVisible(false);
+    this.lineToken += 1;
+    const token = this.lineToken;
+    voice.stop();
     this.layoutLine();
+    if (voice.mode === "texto") return;
+    if (voice.mode === "voz") {
+      // Solo voz: el bocadillo dice quién habla, sin texto que leer.
+      this.shown = this.fullText.length;
+      this.bodyText?.setText("🔊  · · ·");
+    }
+    void voice.speak(this.fullText, line.speaker.id ?? "narrador").then(() => {
+      if (token !== this.lineToken || !this.panel) return;
+      // Al acabar de hablar, sigue sola (tocar la pantalla adelanta igualmente).
+      this.time.delayedCall(voice.mode === "voz" ? 450 : 750, () => {
+        if (token !== this.lineToken || !this.panel || this.choiceBox) return;
+        if (this.shown < this.fullText.length) {
+          this.shown = this.fullText.length;
+          this.bodyText?.setText(this.wrapped);
+        }
+        if (this.queue.length || !this.choices.length) this.nextLine();
+        else this.showChoices();
+      });
+    });
   }
 
   /** Terminó de escribirse la frase: si es la última y hay opciones, se muestran ya. */
@@ -338,6 +365,10 @@ export class UIScene extends Phaser.Scene {
 
   private advance(): void {
     if (!this.panel || !this.bodyText || this.choiceBox) return;
+    if (voice.mode === "voz") {
+      this.nextLine();
+      return;
+    }
     if (this.shown < this.fullText.length) {
       // Primer toque: muestra la frase entera; el siguiente pasa a la próxima.
       this.shown = this.fullText.length;
@@ -382,17 +413,50 @@ export class UIScene extends Phaser.Scene {
       box.add([bg, num, label, hit]);
       y -= CHOICE.gap;
     });
+    if (voice.mic && voice.canListen) {
+      const mh = 62;
+      y -= mh;
+      this.micButton = makeButton(this, CHOICE.right - 250, y, 250, mh, "🎤  Dilo", () => void this.listenChoice(), {
+        fontSize: 28, fill: 0x1d3a2a, edge: 0x8fd6a0, radius: 18,
+      });
+      box.add(this.micButton.container);
+      y -= CHOICE.gap;
+    }
     this.choiceTop = y;
     box.setAlpha(0);
     this.tweens.add({ targets: box, alpha: 1, duration: 150 });
     this.choiceBox = box;
     this.placeBubble();
+    if (voice.mode === "voz") {
+      const said = this.choices.map((c, i) => `${i + 1}: ${c.text}`).join(". ");
+      void voice.speak(`Puedes elegir. ${said}`, "narrador");
+    }
+  }
+
+  /** Paula dice la opción en voz alta (por su número o con sus palabras). */
+  private async listenChoice(): Promise<void> {
+    if (!this.choiceBox || !this.micButton) return;
+    const btn = this.micButton;
+    btn.label.setText("👂  Te escucho…");
+    const { alts, error } = await voice.listen();
+    if (!this.choiceBox || this.micButton !== btn) return;
+    btn.label.setText("🎤  Dilo");
+    const idx = alts ? matchChoice(alts, this.choices.map((c) => c.text)) : null;
+    if (idx !== null) {
+      this.pick(this.choices[idx].id);
+      return;
+    }
+    const msg = alts ? listenErrorText("no-entendido") : listenErrorText(error);
+    this.showToast(msg);
+    if (voice.mode !== "texto") void voice.speak(msg, "narrador");
   }
 
   private pick(id: string): void {
     if (!this.runner || !this.choiceBox) return;
     this.choiceBox.destroy();
     this.choiceBox = undefined;
+    this.micButton = undefined;
+    voice.cancelListening();
     this.choices = [];
     const step = this.runner.choose(id);
     this.onChange?.();
@@ -419,7 +483,11 @@ export class UIScene extends Phaser.Scene {
     this.hint = undefined;
     this.choiceBox?.destroy();
     this.choiceBox = undefined;
+    this.micButton = undefined;
     this.choiceTop = GAME_H;
+    this.lineToken += 1;
+    voice.stop();
+    voice.cancelListening();
     this.portraitMask?.destroy();
     this.portraitMask = undefined;
     this.bubbleBg = undefined;

@@ -155,6 +155,7 @@ export function makeDemoRecorder(game: Phaser.Game, api: DemoApi) {
 
   /** Corte de montaje: aparece en otra sala (con fundido). */
   async function cut(zone: string, caption?: string): Promise<void> {
+    if (ui().panel) ui().close(true);
     const w = api.world();
     w.cameras.main.fadeOut(400, 0, 0, 0);
     await wait(0.5);
@@ -164,9 +165,10 @@ export function makeDemoRecorder(game: Phaser.Game, api: DemoApi) {
     if (caption) game.events.emit("ui:toast", caption);
   }
 
+  /** Paseo: toque en el suelo (sin pasar por personajes ni objetos). */
   async function walkTo(xN: number, yN: number): Promise<void> {
     const pt = { x: xN * 1920, y: yN * 1080 };
-    await touch(pt.x, pt.y, () => api.world().onTap(pt));
+    await touch(pt.x, pt.y, () => api.world().walkTo(pt));
     await until(() => !api.world().paula.walker.moving, 12);
   }
 
@@ -328,5 +330,85 @@ export function makeDemoRecorder(game: Phaser.Game, api: DemoApi) {
     return { frames: n, seconds, log };
   }
 
-  return { run, progress: () => n };
+  /**
+   * Recorrido por la casa viva (unos 2 minutos): portada, introducción en
+   * bocadillos, luz de las velas sobre Paula, relámpago con sus reacciones,
+   * una conversación y siete salas con su vida propia.
+   */
+  async function tour(): Promise<{ frames: number; seconds: number; log: string[] }> {
+    n = 0;
+    game.loop.sleep();
+    sound.startTimeline(() => n / FPS);
+    const w = () => api.world();
+    const life = () => w().life as { trigger(k: string): void } | undefined;
+
+    await wait(4.5);
+    await touch(410, 579, () => (game.scene.getScene("title") as unknown as { start(f: boolean): void }).start(true));
+    await until(() => game.scene.isActive("world") && w().ready, 20);
+    await until(() => !!ui().panel, 6);
+    await read();
+
+    // Vestíbulo: hacia las velas (la luz cálida la ilumina), relámpago y murciélago.
+    await walkTo(0.17, 0.8);
+    await wait(2);
+    w().strikeLightning(1);
+    await wait(3.5);
+    await walkTo(0.6, 0.83);
+    life()?.trigger("bat");
+    await wait(3);
+    if (await talk("basilio")) {
+      await choose("quien");
+      await choose("adios");
+    }
+    await wait(1);
+
+    await cut("biblioteca");
+    await wait(1.5);
+    await walkTo(0.22, 0.86);
+    life()?.trigger("spider");
+    await wait(4.5);
+
+    await cut("invernadero");
+    await wait(1.5);
+    await walkTo(0.33, 0.9);
+    await wait(5);
+
+    await cut("cocina");
+    await wait(1);
+    life()?.trigger("mouse");
+    await wait(2);
+    await walkTo(0.62, 0.8);
+    await wait(3);
+
+    await cut("tuneles");
+    await wait(1.5);
+    life()?.trigger("bat");
+    await walkTo(0.83, 0.78);
+    await wait(4);
+
+    await cut("desvan");
+    await wait(1);
+    life()?.trigger("wisp");
+    life()?.trigger("spider");
+    await walkTo(0.5, 0.86);
+    await wait(4.5);
+
+    await cut("torre");
+    await wait(2.5);
+    w().strikeLightning(1);
+    await wait(5);
+    w().cameras.main.fadeOut(1500, 0, 0, 0);
+    await wait(2);
+
+    send();
+    await Promise.all(inflight);
+    const seconds = n / FPS;
+    const audio = await renderTimeline(sound.stopTimeline(), seconds);
+    await fetch(`${url}/audio`, { method: "POST", body: audioBufferToWav(audio) });
+    await fetch(`${url}/log`, { method: "POST", body: log.join(" | ") || "sin incidencias" });
+    game.loop.wake();
+    return { frames: n, seconds, log };
+  }
+
+  return { run, tour, progress: () => n };
 }

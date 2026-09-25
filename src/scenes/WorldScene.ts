@@ -771,6 +771,9 @@ export class WorldScene extends Phaser.Scene {
     const now = this.time.now;
     this.barks = this.barks.filter((b) => b.until > now && !b.rt.gone && b.rt.mode === "free");
     if (!this.barks.length || now < this.nextBarkAt || this.chat?.started || this.registry.get("modal")) return;
+    // Si hay otro bocadillo visible cerca, espera a que se vaya (no se pisan).
+    const next = this.barks[0].rt;
+    if (this.npcs.some((o) => o !== next && o.bubble?.alive && Math.abs(o.actor.pos.x - next.actor.pos.x) < 760)) return;
     const { rt, line } = this.barks.shift()!;
     rt.bubble?.destroy();
     rt.bubble = new Bubble(this, rt.actor, line);
@@ -929,8 +932,19 @@ export class WorldScene extends Phaser.Scene {
     this.lightningIn -= dt;
     if (this.lightningIn > 0) return;
     this.lightningIn = this.rng.range(22, 55);
-    const power = this.rng.range(0.5, 1);
+    this.strikeLightning(this.rng.range(0.5, 1));
+  }
+
+  /** Un relámpago de la fuerza dada (0..1), con su trueno y las reacciones. */
+  strikeLightning(power: number): void {
     this.life?.flash(power);
+    // Todos lo notan: Paula se sobresalta, los fantasmas titilan, Gafe mira.
+    this.time.delayedCall(120, () => {
+      if (power > 0.72 && !this.registry.get("modal")) this.paula.startle();
+      for (const rt of this.npcs) if (!rt.gone && rt.def.floatM > 0) rt.actor.flicker();
+      const win = LIFE[this.zoneDef.id]?.windows[0];
+      if (win && !this.gafe.walker.moving) this.gafe.walker.face({ x: win[0][0] * GAME_W, y: 0 });
+    });
     this.tweens.chain({
       targets: this.flashRect,
       tweens: [

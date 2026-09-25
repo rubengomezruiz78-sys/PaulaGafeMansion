@@ -18,14 +18,24 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export class Paula extends Actor {
   private readonly walk: Pose;
   private readonly idle: Pose;
+  private readonly startled: Pose;
   private walkMix = 0;
+  private startleMix = 0;
+  private startleFor = 0;
 
   constructor(scene: Phaser.Scene, proj: Projection, pos: Pt, tint?: number) {
     // Es una foto: algo menos de saturación y contraste la acercan al cuadro.
     super(scene, proj, pos, GAITS.paula, { shadowWidthM: 0.5, tint, look: { saturation: 0.78, contrast: 0.9, rim: 0.75 } });
     this.walk = this.addPose("walk", "paula-walk");
     this.idle = this.addPose("idle", "paula-idle");
+    this.startled = this.addPose("startled", "paula-startled");
     this.walk.obj.setAlpha(0);
+    this.startled.obj.setAlpha(0);
+  }
+
+  /** Un trueno fuerte: se sobresalta un momento (si está quieta). */
+  startle(): void {
+    if (!this.walker.moving) this.startleFor = 0.9;
   }
 
   heightM(): number {
@@ -42,9 +52,14 @@ export class Paula extends Actor {
 
     const sw = this.poseScale(this.walk);
     const si = this.poseScale(this.idle);
+    const ss = this.poseScale(this.startled);
+    this.startleFor = Math.max(0, this.startleFor - dt);
+    if (moving) this.startleFor = 0;
+    this.startleMix = approach(this.startleMix, this.startleFor > 0 ? 1 : 0, dt / (this.startleFor > 0 ? 0.06 : 0.3));
     const breathe = Math.sin(this.time * Math.PI * 2 * 0.28);
     this.walk.obj.setScale(sw * this.flip, sw).setAlpha(this.walkMix);
-    this.idle.obj.setScale(si * this.flip * (1 - 0.004 * breathe), si * (1 + 0.007 * breathe)).setAlpha(1 - this.walkMix);
+    this.idle.obj.setScale(si * this.flip * (1 - 0.004 * breathe), si * (1 + 0.007 * breathe)).setAlpha((1 - this.walkMix) * (1 - this.startleMix));
+    this.startled.obj.setScale(ss * this.flip, ss).setAlpha((1 - this.walkMix) * this.startleMix);
 
     // Balanceo: el cuerpo sube a media pisada y baja al apoyar (2 veces por ciclo).
     const ppm = this.proj.ppm(this.pos.y);
@@ -162,6 +177,12 @@ export class Ghost extends Actor {
   }
 
   private readonly halo?: Phaser.GameObjects.Image;
+  private flickerFor = 0;
+
+  /** Con el relámpago, el fantasma titila (como una bombilla). */
+  flicker(): void {
+    this.flickerFor = 0.35;
+  }
 
   heightM(): number {
     return SPRITES[this.key].realHeightM;
@@ -192,6 +213,8 @@ export class Ghost extends Actor {
     const target = 0.02 * Math.sin(t * 0.9) + this.walker.facing * 0.035 * sr;
     this.body.rotation = approach(this.body.rotation, target, dt * 0.6);
     const s = this.poseScale(this.pose);
-    this.pose.obj.setScale(s * this.flip, s).setAlpha(this.style.alpha + 0.05 * Math.sin(t * 0.6));
+    this.flickerFor = Math.max(0, this.flickerFor - dt);
+    const flick = this.flickerFor > 0 ? 0.35 + 0.65 * Math.abs(Math.sin(this.flickerFor * 40)) : 1;
+    this.pose.obj.setScale(s * this.flip, s).setAlpha((this.style.alpha + 0.05 * Math.sin(t * 0.6)) * flick);
   }
 }

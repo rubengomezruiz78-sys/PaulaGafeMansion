@@ -16,7 +16,18 @@ export interface Ambience {
   drip: number;
   /** 0..1 viento (desván, torre). */
   wind: number;
+  /** 0..1 agua corriendo (túneles, fuente). */
+  water?: number;
+  /** 0..1 tictac de reloj grande. */
+  tick?: number;
+  /** 0..1 grillos (invernadero). */
+  crickets?: number;
+  /** 0..1 resoplidos de vapor (caldera). */
+  hiss?: number;
 }
+
+/** Sonidos sueltos de ambiente que se repiten (vivo y al generar el vídeo). */
+type ExtraKind = "drip" | "tick" | "crickets" | "hiss";
 
 export type Sfx = "tap" | "pickup" | "correct" | "wrong" | "solved" | "door" | "note" | "whoosh";
 
@@ -42,6 +53,9 @@ class SoundEngine {
   private windGain?: GainNode;
   private windFilter?: BiquadFilterNode;
   private dripLevel = 0;
+  private levels: Record<ExtraKind, number> = { drip: 0, tick: 0, crickets: 0, hiss: 0 };
+  private waterGain?: GainNode;
+  private tickCount = 0;
   private timers: number[] = [];
   private musicOn = false;
   private _muted = false;
@@ -157,7 +171,31 @@ class SoundEngine {
     lfo.connect(lfoGain).connect(this.windFilter.frequency);
     lfo.start();
 
-    if (!this.offline) this.schedule(() => this.dripLoop(), 900);
+    // Agua: ruido por una banda media, con un vaivén lento de caudal.
+    const water = this.loopNoise();
+    const wb = ctx.createBiquadFilter();
+    wb.type = "bandpass";
+    wb.frequency.value = 950;
+    wb.Q.value = 0.6;
+    const wl = ctx.createBiquadFilter();
+    wl.type = "lowpass";
+    wl.frequency.value = 2400;
+    this.waterGain = ctx.createGain();
+    this.waterGain.gain.value = 0;
+    water.connect(wb).connect(wl).connect(this.waterGain).connect(this.ambBus);
+    const wlfo = ctx.createOscillator();
+    wlfo.frequency.value = 0.23;
+    const wlfoGain = ctx.createGain();
+    wlfoGain.gain.value = 380;
+    wlfo.connect(wlfoGain).connect(wb.frequency);
+    wlfo.start();
+
+    if (!this.offline) {
+      this.schedule(() => this.extraLoop("drip"), 900);
+      this.schedule(() => this.extraLoop("tick"), 1000);
+      this.schedule(() => this.extraLoop("crickets"), 1500);
+      this.schedule(() => this.extraLoop("hiss"), 2500);
+    }
   }
 
   private bus(level: number): GainNode {
@@ -192,17 +230,92 @@ class SoundEngine {
     const t = at ?? this.ctx.currentTime;
     this.rainGain?.gain.setTargetAtTime(a.rain * 0.5, t, 1.2);
     this.windGain?.gain.setTargetAtTime(a.wind * 0.35, t, 1.5);
+    this.waterGain?.gain.setTargetAtTime((a.water ?? 0) * 0.28, t, 1.2);
     this.dripLevel = a.drip;
+    this.levels = { drip: a.drip, tick: a.tick ?? 0, crickets: a.crickets ?? 0, hiss: a.hiss ?? 0 };
   }
 
-  private dripLoop(): void {
+  private extraLoop(kind: ExtraKind): void {
     if (!this.ctx) return;
-    if (this.dripLevel > 0 && this.live) this.dripAt(this.ctx.currentTime, this.dripLevel);
-    this.schedule(() => this.dripLoop(), this.dripGap(this.dripLevel));
+    const level = this.levels[kind];
+    if (level > 0 && this.live) this.extraAt(kind, this.ctx.currentTime, level);
+    this.schedule(() => this.extraLoop(kind), this.extraGap(kind, level));
+  }
+
+  /** Cada cuánto suena cada cosa (ms). */
+  private extraGap(kind: ExtraKind, level: number): number {
+    switch (kind) {
+      case "drip": return this.dripGap(level);
+      case "tick": return 1000;
+      case "crickets": return 1800 + Math.random() * 4200;
+      case "hiss": return 4000 + Math.random() * 6000;
+    }
+  }
+
+  private extraAt(kind: ExtraKind, t: number, level: number): void {
+    if (kind === "drip") this.dripAt(t, level);
+    else if (kind === "tick") this.tickAt(t, level);
+    else if (kind === "crickets") this.cricketsAt(t, level);
+    else this.hissAt(t, level);
   }
 
   private dripGap(level: number): number {
     return level > 0 ? 500 + Math.random() * (2600 / Math.max(0.2, level)) : 1500;
+  }
+
+  /** Tic… tac… de un reloj grande de madera. */
+  private tickAt(t: number, level: number): void {
+    if (!this.ctx || !this.noise || !this.ambBus) return;
+    this.tickCount += 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = this.tickCount % 2 ? 2600 : 1900;
+    bp.Q.value = 6;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.5 * level, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    src.connect(bp).connect(g).connect(this.ambBus);
+    src.start(t, Math.random());
+    src.stop(t + 0.08);
+  }
+
+  /** Un grupo de cri-cri. */
+  private cricketsAt(t: number, level: number): void {
+    if (!this.ctx || !this.ambBus) return;
+    const f = 4200 + Math.random() * 700;
+    const n = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i += 1) {
+      const at = t + i * 0.11;
+      const o = this.ctx.createOscillator();
+      o.frequency.value = f;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(0.035 * level, at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.06);
+      o.connect(g).connect(this.ambBus);
+      o.start(at);
+      o.stop(at + 0.07);
+    }
+  }
+
+  /** Resoplido de vapor de la caldera. */
+  private hissAt(t: number, level: number): void {
+    if (!this.ctx || !this.noise || !this.ambBus) return;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 2200;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16 * level, t + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+    src.connect(hp).connect(g).connect(this.ambBus);
+    src.start(t, Math.random());
+    src.stop(t + 1.5);
   }
 
   private dripAt(t: number, level: number): void {
@@ -377,9 +490,12 @@ class SoundEngine {
     let musicFrom = -1;
     // Goteo: nivel vigente en cada instante según los cambios de ambiente.
     const ambChanges = sorted.filter((e): e is Extract<TimelineEvent, { kind: "ambience" }> => e.kind === "ambience");
-    const dripAt = (t: number) => {
+    const levelAt = (kind: ExtraKind, t: number) => {
       let level = 0;
-      for (const c of ambChanges) if (c.t <= t) level = c.a.drip;
+      for (const c of ambChanges) {
+        if (c.t > t) break;
+        level = kind === "drip" ? c.a.drip : c.a[kind] ?? 0;
+      }
       return level;
     };
     for (const e of sorted) {
@@ -402,10 +518,12 @@ class SoundEngine {
           break;
       }
     }
-    for (let t = 0.9; t < duration; ) {
-      const level = dripAt(t);
-      if (level > 0) eng.dripAt(t, level);
-      t += eng.dripGap(level) / 1000;
+    for (const kind of ["drip", "tick", "crickets", "hiss"] as ExtraKind[]) {
+      for (let t = 0.9; t < duration; ) {
+        const level = levelAt(kind, t);
+        if (level > 0) eng.extraAt(kind, t, level);
+        t += eng.extraGap(kind, level) / 1000;
+      }
     }
     if (musicFrom >= 0) for (let t = musicFrom + 2.5; t < duration - 3; t += 9 + Math.random() * 9) eng.phraseAt(t);
     return ctx.startRendering();
