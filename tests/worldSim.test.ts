@@ -172,4 +172,16 @@ describe("WorldSim", () => {
     sim.resume("elvira", 100, true);
     expect(n.phase.kind === "stay" && n.phase.until).toBeGreaterThanOrEqual(120);
   });
+
+  it("reset devuelve a todos a casa y quita las pausas", () => {
+    const sim = new WorldSim(graph, routines, new Rng(7), 0);
+    run(sim, 0, 600);
+    sim.pause("pepito");
+    sim.reset(600);
+    expect(sim.isPaused("pepito")).toBe(false);
+    for (const [id, n] of sim.npcs) {
+      expect(n.zone).toBe(routines[id].home);
+      expect(n.phase.kind).toBe("stay");
+    }
+  });
 });

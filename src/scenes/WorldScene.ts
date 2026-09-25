@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { sound } from "../audio/sound";
 import { DEBUG, GAME_H, GAME_W } from "../config";
 import { heardFlag, type ChatDef } from "../core/chat";
 import { DialogueRunner, type Line } from "../core/dialogue";
@@ -9,6 +10,7 @@ import { Projection, type Pt } from "../core/perspective";
 import { apply, check, type Notice } from "../core/rules";
 import { Rng } from "../core/rng";
 import type { SimEvent, SimNpc } from "../core/worldSim";
+import { ambienceFor, type ZoneAmbience } from "../content/ambience";
 import { DIALOGUES } from "../content/dialogues";
 import { GAFE_HINTS } from "../content/hints";
 import { ITEMS, itemName } from "../content/items";
@@ -100,6 +102,10 @@ export class WorldScene extends Phaser.Scene {
   private nextBarkAt = 0;
   /** Objeto de la mochila que Paula lleva en la mano para usarlo. */
   private using?: string;
+  private amb!: ZoneAmbience;
+  private lightningIn = 0;
+  private flashRect!: Phaser.GameObjects.Rectangle;
+  private stepCount = 0;
 
   constructor() {
     super("world");
@@ -126,6 +132,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.add.image(0, 0, `zone-${this.zoneDef.id}`).setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(-1000);
     this.addGlints();
+    this.setupAmbience();
     this.placePaulaAndGafe(data);
 
     // Quien esté en esta zona según la simulación aparece ya dentro (o en su puerta).
@@ -151,6 +158,7 @@ export class WorldScene extends Phaser.Scene {
     });
 
     if (DEBUG) drawDebug(this, this.zoneDef, this.proj);
+    if (!session.state.flags["intro-visto"] && this.zoneDef.id === "vestibulo") this.time.delayedCall(1500, () => this.playIntro());
     this.cameras.main.fadeIn(360, 5, 6, 8);
     this.game.events.emit(UI_EVENTS.zone, this.zoneDef.name);
   }
@@ -197,6 +205,8 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.paula.update(dt);
+    this.footsteps();
+    this.updateLightning(dt);
     this.gafe.follow(dt, this.paula, this.nav);
     this.gafe.update(dt);
     for (const rt of [...this.npcs]) this.updateNpc(rt, dt);
@@ -315,6 +325,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private toastNotices(notices: Notice[]): void {
+    if (notices.some((n) => n.type === "item")) sound.play("pickup");
+    else if (notices.some((n) => n.type === "questDone")) sound.play("solved");
     for (const n of notices) {
       const text = describeNotice(n, session.state);
       if (text) this.game.events.emit(UI_EVENTS.toast, text);
@@ -346,7 +358,25 @@ export class WorldScene extends Phaser.Scene {
     this.say({ speaker: "Gafe", role: "Gato negro", portrait: "gafe-sit", lines: [hint?.text ?? "Miau."] });
   }
 
-  /** La decimotercera campanada (el final completo llega con el ambiente, F12). */
+  /** Al empezar: dónde está Paula y cómo se juega, dicho por ella y por Gafe. */
+  private playIntro(): void {
+    if (session.state.flags["intro-visto"] || this.registry.get("modal")) return;
+    session.state.flags["intro-visto"] = true;
+    session.save();
+    this.say({
+      speaker: "Paula", portrait: "paula-idle",
+      lines: [
+        "¿Hola? La puerta estaba abierta… y fuera no para de llover.",
+        { by: "gafe", text: "Miau. (Gafe se sacude la lluvia encima de la alfombra.)" },
+        "Vale, Gafe. Toco el suelo para ir a los sitios, y dos veces rápido para correr.",
+        "Si toco a alguien, hablo con él. Si toco algo, lo miro de cerca.",
+        "En la mochila guardo lo que encuentre, y en el cuaderno apunto lo importante.",
+        { by: "gafe", text: "Miau. (Si no sabes qué hacer, tócame a mí.)" },
+      ],
+    });
+  }
+
+  /** La decimotercera campanada: Inés recuerda y amanece. */
   private playEnding(): void {
     const lines: Line[] = [
       "Cinco recuerdos… y trece campanadas contadas sin dar un solo golpe.",
@@ -359,8 +389,9 @@ export class WorldScene extends Phaser.Scene {
     this.say({
       speaker: "Paula", portrait: "paula-idle", lines,
       onClose: () => {
-        this.cameras.main.flash(1600, 255, 244, 220);
-        this.game.events.emit(UI_EVENTS.toast, "✦ FIN ✦  Gracias por jugar, Paula. La casa sigue abierta para explorar.");
+        this.amb = ambienceFor(this.zoneDef.id, true);
+        sound.setAmbience(this.amb);
+        this.scene.launch("end");
       },
     });
   }
@@ -404,6 +435,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.toastNotices(apply(exit.onUse, session.state));
+    sound.play("door");
     this.transitioning = true;
     this.cameras.main.fadeOut(300, 5, 6, 8);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
@@ -717,6 +749,7 @@ export class WorldScene extends Phaser.Scene {
       session.state.flags[heardFlag(c.def.id)] = true;
       apply(c.def.effects, session.state);
       session.save();
+      sound.play("pickup");
       this.game.events.emit(UI_EVENTS.toast, "✎ Paula apunta lo que ha oído en su cuaderno");
     }
   }
@@ -745,6 +778,60 @@ export class WorldScene extends Phaser.Scene {
       targets: ring, displayWidth: w, displayHeight: w * flatten, alpha: 0, duration: 520, ease: "Cubic.easeOut",
       onComplete: () => ring.destroy(),
     });
+  }
+
+  // ------------------------------------------------------------- ambiente
+
+  /** Lluvia/viento/goteo de la sala, relámpagos, viñeta y motas de polvo. */
+  private setupAmbience(): void {
+    this.amb = ambienceFor(this.zoneDef.id, session.state.flags.final === true);
+    sound.setAmbience(this.amb);
+    this.lightningIn = this.rng.range(6, 18);
+    this.stepCount = 0;
+    // Viñeta: oscurece los bordes y da profundidad al cuadro.
+    this.add.image(0, 0, "vignette").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(4400).setAlpha(0.6);
+    this.flashRect = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xdde8ff, 0).setOrigin(0).setDepth(4500)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    for (let i = 0; i < 14; i += 1) {
+      const x = this.rng.range(0, GAME_W);
+      const y = this.rng.range(120, GAME_H * 0.8);
+      const m = this.add.image(x, y, "glint").setTint(0xd8e6ff).setBlendMode(Phaser.BlendModes.ADD)
+        .setScale(this.rng.range(0.04, 0.09)).setAlpha(0).setDepth(4300);
+      this.tweens.add({
+        targets: m, x: x + this.rng.range(-80, 80), y: y - this.rng.range(40, 140),
+        alpha: { from: 0, to: this.rng.range(0.15, 0.4) },
+        duration: this.rng.range(6000, 11000), yoyo: true, repeat: -1, delay: this.rng.range(0, 6000), ease: "Sine.easeInOut",
+      });
+    }
+  }
+
+  /** Un relámpago cada tanto (en las salas con ventanas) y su trueno después. */
+  private updateLightning(dt: number): void {
+    if (!this.amb.lightning) return;
+    this.lightningIn -= dt;
+    if (this.lightningIn > 0) return;
+    this.lightningIn = this.rng.range(22, 55);
+    const power = this.rng.range(0.5, 1);
+    this.tweens.chain({
+      targets: this.flashRect,
+      tweens: [
+        { alpha: 0.3 * power, duration: 60 },
+        { alpha: 0.04, duration: 90 },
+        { alpha: 0.2 * power, duration: 60 },
+        { alpha: 0, duration: 520, ease: "Sine.easeOut" },
+      ],
+    });
+    this.time.delayedCall(this.rng.range(500, 2200), () => sound.thunder(power));
+  }
+
+  /** Pisadas de Paula al ritmo real de su zancada (dos por ciclo). */
+  private footsteps(): void {
+    const w = this.paula.walker;
+    const n = Math.floor(w.distance / (w.gait.strideCycleM / 2));
+    if (n !== this.stepCount) {
+      this.stepCount = n;
+      if (w.moving) sound.step(0.6 + 0.4 * Math.min(1, w.speedRatio()), this.amb.floor);
+    }
   }
 
   /** Destellos suaves en lo que se puede tocar (cada uno a su ritmo). */

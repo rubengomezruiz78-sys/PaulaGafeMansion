@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { sound } from "../audio/sound";
 import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W } from "../config";
 import { MAX_DIGITS, PuzzleRun } from "../core/puzzle";
 import { PUZZLES } from "../content/puzzles";
@@ -184,6 +185,7 @@ export class PuzzleScene extends Phaser.Scene {
     const r = this.run.answer(value);
     session.save();
     if (!r.correct) {
+      sound.play("wrong");
       this.drawField(0x2a1212, 0xe07a6a);
       this.cameras.main.shake(160, 0.004);
       const n = this.run.mistakes;
@@ -196,6 +198,7 @@ export class PuzzleScene extends Phaser.Scene {
       return;
     }
     this.busy = true;
+    sound.play(r.solved ? "solved" : "correct");
     this.drawField(0x12301c, 0x8fd6a0);
     this.feedback?.setColor("#a8e6b4").setText(r.solved ? "¡Resuelto!" : "¡Correcto!");
     for (const n of r.notices) {

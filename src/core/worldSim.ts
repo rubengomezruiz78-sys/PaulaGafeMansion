@@ -122,7 +122,14 @@ export class WorldSim {
     private readonly rng: Rng,
     now = 0,
   ) {
-    for (const [id, r] of Object.entries(routines)) {
+    this.reset(now);
+  }
+
+  /** Todos en casa, como al empezar una partida nueva. */
+  reset(now: number): void {
+    this.npcs.clear();
+    this.paused.clear();
+    for (const [id, r] of Object.entries(this.routines)) {
       this.npcs.set(id, { id, zone: r.home, route: [], phase: { kind: "stay", until: now + this.stayFor(r, r.home) } });
     }
   }

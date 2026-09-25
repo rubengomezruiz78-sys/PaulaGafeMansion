@@ -4,6 +4,7 @@
  * Los botones reaccionan al soltar (como los nativos) y se ven pulsados al tocar.
  */
 import Phaser from "phaser";
+import { sound } from "../audio/sound";
 import { COLORS, CSS, FONT_UI } from "../config";
 
 export interface ButtonOptions {
@@ -60,6 +61,7 @@ export function makeButton(
     if (!enabled || !down) return;
     down = false;
     draw(false);
+    sound.play("tap");
     onTap();
   });
   const container = scene.add.container(x, y, [bg, label, hit]);

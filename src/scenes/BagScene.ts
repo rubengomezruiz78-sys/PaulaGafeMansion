@@ -4,6 +4,9 @@ import { heardFlag } from "../core/chat";
 import { check } from "../core/rules";
 import { fill } from "../core/text";
 import { CHATS } from "../content/chats";
+import { npcById } from "../content/npcs";
+import { ZONES, zoneLinks } from "../content/zones";
+import { worldSim } from "../game/world";
 import { ITEMS, MEMORIES } from "../content/items";
 import { MAIN_GOALS, QUESTS, questStageText } from "../content/quests";
 import { session } from "../game/session";
@@ -12,7 +15,7 @@ import { setModal } from "../ui/modal";
 import { addScrim, drawPanel, makeButton, type Button } from "../ui/widgets";
 import { UI_EVENTS } from "./UIScene";
 
-export type BagTab = "mochila" | "cuaderno";
+export type BagTab = "mochila" | "cuaderno" | "mapa";
 
 export interface BagRequest {
   tab: BagTab;
@@ -33,7 +36,7 @@ export class BagScene extends Phaser.Scene {
   private req!: BagRequest;
   private tab: BagTab = "mochila";
   private body: Phaser.GameObjects.GameObject[] = [];
-  private tabs: Record<BagTab, Button | undefined> = { mochila: undefined, cuaderno: undefined };
+  private tabs: Record<BagTab, Button | undefined> = { mochila: undefined, cuaderno: undefined, mapa: undefined };
   private selected?: string;
   private releaseBack?: () => void;
 
@@ -53,6 +56,7 @@ export class BagScene extends Phaser.Scene {
     drawPanel(g, CARD.x, CARD.y, CARD.w, CARD.h, 34);
     this.tabs.mochila = makeButton(this, INNER.x, CARD.y + 34, 340, 90, "🎒  Mochila", () => this.show("mochila"), { fontSize: 36 });
     this.tabs.cuaderno = makeButton(this, INNER.x + 370, CARD.y + 34, 340, 90, "📖  Cuaderno", () => this.show("cuaderno"), { fontSize: 36 });
+    this.tabs.mapa = makeButton(this, INNER.x + 740, CARD.y + 34, 300, 90, "🗺️  Mapa", () => this.show("mapa"), { fontSize: 36 });
     makeButton(this, CARD.x + CARD.w - 70 - 110, CARD.y + 34, 110, 90, "✕", () => this.close(), { fontSize: 44 });
 
     this.releaseBack = pushBackHandler(() => {
@@ -73,9 +77,10 @@ export class BagScene extends Phaser.Scene {
     this.tab = tab;
     for (const o of this.body) o.destroy();
     this.body = [];
-    for (const t of ["mochila", "cuaderno"] as const) this.tabs[t]?.setStyle(t === tab ? 0x3a2716 : COLORS.panel);
+    for (const t of ["mochila", "cuaderno", "mapa"] as const) this.tabs[t]?.setStyle(t === tab ? 0x3a2716 : COLORS.panel);
     if (tab === "mochila") this.showBag();
-    else this.showJournal();
+    else if (tab === "cuaderno") this.showJournal();
+    else this.showMap();
   }
 
   // ---------------------------------------------------------------- mochila
@@ -182,11 +187,110 @@ export class BagScene extends Phaser.Scene {
     }
   }
 
+  // ------------------------------------------------------------------ mapa
+
+  /**
+   * Esquema de la casa por plantas. Se ven las salas visitadas y sus puertas
+   * (las cerradas, en rojo discontinuo). Con el plano de Inés se ve la casa
+   * entera… y quién anda ahora por cada sala.
+   */
+  private showMap(): void {
+    const s = session.state;
+    const plano = s.inventory.includes("plano-ines");
+    const known = (z: string) => plano || s.visited.includes(z);
+    const N = { w: 300, h: 120 };
+    const g = this.keep(this.add.graphics());
+
+    for (const [label, y] of [["Planta alta", 320], ["Planta baja", 655], ["Sótano", 880]] as const) {
+      this.keep(this.add.text(INNER.x, y, label, { fontFamily: FONT_TITLE, fontSize: "30px", color: CSS.muted }).setOrigin(0, 0.5));
+    }
+
+    // Puertas: una línea por pareja de salas (abierta si se puede cruzar en algún sentido).
+    const done = new Set<string>();
+    for (const l of zoneLinks()) {
+      const key = [l.from, l.to].sort().join("|");
+      if (done.has(key)) continue;
+      done.add(key);
+      if (!known(l.from) && !known(l.to)) continue;
+      const a = MAP_POS[l.from];
+      const b = MAP_POS[l.to];
+      if (!a || !b) continue;
+      const open = zoneLinks().some((x) => [x.from, x.to].sort().join("|") === key
+        && check((ZONES as Record<string, { exits: { id: string; requires?: Parameters<typeof check>[0] }[] }>)[x.from]?.exits.find((e) => e.id === x.exitId)?.requires, s));
+      const pts = key === "torre|tuneles" ? [a, { x: 1765, y: a.y }, { x: 1765, y: b.y }, b] : [a, b];
+      g.lineStyle(open ? 6 : 4, open ? 0x8c7a5c : 0xb0544a, open ? 0.9 : 0.8);
+      for (let i = 0; i < pts.length - 1; i += 1) dashedLine(g, pts[i], pts[i + 1], open ? 0 : 16);
+    }
+
+    // Salas.
+    for (const [id, p] of Object.entries(MAP_POS)) {
+      const zone = (ZONES as Record<string, { name: string } | undefined>)[id];
+      if (!zone) continue;
+      const here = s.zone === id;
+      const seen = known(id);
+      const x = p.x - N.w / 2;
+      const y = p.y - N.h / 2;
+      g.fillStyle(here ? 0x1d3a2a : seen ? 0x1a2328 : 0x0e1316, 1).fillRoundedRect(x, y, N.w, N.h, 18);
+      g.lineStyle(here ? 5 : 3, here ? 0x8fd6a0 : seen ? COLORS.copper : 0x2c3438, 1).strokeRoundedRect(x, y, N.w, N.h, 18);
+      this.keep(this.add.text(p.x, y + (plano ? 30 : N.h / 2), seen ? zone.name : "?", {
+        fontFamily: FONT_UI, fontSize: "25px", color: seen ? CSS.ivory : CSS.muted, align: "center",
+        wordWrap: { width: N.w - 24, useAdvancedWrap: true },
+      }).setOrigin(0.5));
+      if (here) this.keep(this.add.text(p.x, y - 6, "Estás aquí", { fontFamily: FONT_UI, fontSize: "22px", color: "#a8e6b4" }).setOrigin(0.5, 1));
+      if (plano) {
+        const names = worldSim.presentIn(id).map((n) => shortName(npcById(n.id)?.name ?? n.id));
+        const shown = names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3}` : names.join(", ");
+        this.keep(this.add.text(p.x, y + 84, shown || "(nadie)", {
+          fontFamily: FONT_UI, fontSize: "20px", color: shown ? CSS.copper : CSS.muted, align: "center",
+          wordWrap: { width: N.w - 20, useAdvancedWrap: true },
+        }).setOrigin(0.5));
+      }
+    }
+    this.keep(this.add.text(GAME_W / 2, CARD.y + CARD.h - 34, plano
+      ? "El plano de Inés muestra dónde está cada uno ahora mismo."
+      : "Las salas que aún no has visitado salen con «?». Quizá alguien dibujó un plano de la casa…", {
+      fontFamily: FONT_UI, fontSize: "26px", color: CSS.muted, align: "center",
+    }).setOrigin(0.5, 1));
+  }
+
   private close(): void {
     if (!this.scene.isActive()) return;
     this.releaseBack?.();
     this.releaseBack = undefined;
     this.scene.stop();
     setModal(this, "bag", false);
+  }
+}
+
+/** Centro de cada sala en el esquema del mapa (por plantas). */
+const MAP_POS: Record<string, { x: number; y: number }> = {
+  desvan: { x: 760, y: 245 },
+  observatorio: { x: 1140, y: 245 },
+  torre: { x: 1520, y: 245 },
+  galeria: { x: 560, y: 405 },
+  dormitorio: { x: 940, y: 405 },
+  cocina: { x: 480, y: 590 },
+  vestibulo: { x: 860, y: 590 },
+  biblioteca: { x: 1240, y: 590 },
+  musica: { x: 1620, y: 590 },
+  invernadero: { x: 1620, y: 740 },
+  archivo: { x: 860, y: 880 },
+  tuneles: { x: 1240, y: 880 },
+};
+
+/** Nombre corto para el mapa: sin tratamiento («Don», «Doña»…) y sin apellido. */
+const shortName = (name: string): string => name.replace(/^(Don|Doña|Señora|Señor|La señora|El señor)\s+/i, "").split(" ")[0];
+
+function dashedLine(g: Phaser.GameObjects.Graphics, a: { x: number; y: number }, b: { x: number; y: number }, dash: number): void {
+  if (!dash) {
+    g.lineBetween(a.x, a.y, b.x, b.y);
+    return;
+  }
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  const ux = (b.x - a.x) / len;
+  const uy = (b.y - a.y) / len;
+  for (let d = 0; d < len; d += dash * 2) {
+    const e = Math.min(len, d + dash);
+    g.lineBetween(a.x + ux * d, a.y + uy * d, a.x + ux * e, a.y + uy * e);
   }
 }

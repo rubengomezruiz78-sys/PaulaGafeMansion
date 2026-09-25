@@ -110,7 +110,14 @@ tools/         build_sprites.py (limpieza de sprites + métricas)
       charlas y sin Clotilde) y `__test.autoplay()` en el navegador (juega por
       la interfaz real: 102 pasos, todos los objetos y los 11 puzzles).
       Recorrido: `npx vite-node scripts/solve-log.ts`.
-- [ ] F12 Ambiente: sonido, lluvia, luz, partículas, título, final
+- [x] F12 Ambiente: sonido, lluvia, luz, partículas, título, final:
+      `audio/sound.ts` (Web Audio procedural: lluvia, viento, goteo, truenos,
+      pisadas al ritmo de la zancada, caja de música do-mi-sol, efectos),
+      `content/ambience.ts` por sala, relámpagos, viñeta y motas; portada con la
+      ilustración original intacta (`TitleScene`, Continuar/Nueva partida,
+      sonido sí/no), introducción que explica cómo se juega, final con
+      amanecer y créditos (`EndScene`) y mapa por plantas en la mochila (con el
+      plano de Inés muestra quién está en cada sala).
 - [ ] F13 QA completo en tablet/móvil + APK + instalar
 
 ## Guion jugable (F9–F11)

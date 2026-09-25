@@ -22,6 +22,7 @@ export class BootScene extends Phaser.Scene {
     const bar = this.add.rectangle(x, y, 1, 6, COLORS.copper).setOrigin(0, 0.5);
     this.load.on("progress", (p: number) => bar.setSize(Math.max(1, w * p), 6));
 
+    this.load.image("cover", "cover.webp");
     for (const zone of Object.values(ZONES)) {
       if (zone) this.load.image(`zone-${zone.id}`, zone.image);
     }
@@ -39,10 +40,10 @@ export class BootScene extends Phaser.Scene {
     this.makeShadowTexture();
     this.makeRingTexture();
     this.makeGlintTexture();
+    this.makeVignetteTexture();
     // Los criados fantasma se dibujan por código una sola vez.
     for (const npc of NPCS) if (npc.art) makeGhostTexture(this, npc.sprite, npc.art);
-    this.scene.start("world", { zone: "vestibulo" });
-    this.scene.launch("ui");
+    this.scene.start("title");
   }
 
   /** Sombra de contacto: elipse con degradado radial suave (se escala por perspectiva). */
@@ -71,6 +72,22 @@ export class BootScene extends Phaser.Scene {
     ctx.beginPath();
     ctx.arc(size / 2, size / 2, size / 2 - 12, 0, Math.PI * 2);
     ctx.stroke();
+    tex.refresh();
+  }
+
+  /** Viñeta: transparente en el centro, oscura en los bordes (profundidad de cuadro). */
+  private makeVignetteTexture(): void {
+    const w = 480;
+    const h = 270;
+    const tex = this.textures.createCanvas("vignette", w, h);
+    if (!tex) return;
+    const ctx = tex.getContext();
+    const g = ctx.createRadialGradient(w / 2, h * 0.45, h * 0.35, w / 2, h / 2, w * 0.62);
+    g.addColorStop(0, "rgba(2,3,5,0)");
+    g.addColorStop(0.6, "rgba(2,3,5,0.25)");
+    g.addColorStop(1, "rgba(2,3,5,0.8)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
     tex.refresh();
   }
 

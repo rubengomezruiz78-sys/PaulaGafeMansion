@@ -13,18 +13,31 @@ import { session } from "./game/session";
 
 export function installTestHarness(game: Phaser.Game): void {
   let t = 0;
+  // Las animaciones (tweens) de Phaser miden el tiempo con Date.now: al
+  // avanzar fotogramas a mano, ese reloj también tiene que avanzar. Nunca va
+  // hacia atrás respecto al real, así que el juego normal no se ve afectado.
+  const realNow = Date.now.bind(Date);
+  let virtualNow = realNow();
+  Date.now = () => Math.max(realNow(), virtualNow);
   const api = {
     game,
     session,
     world: () => game.scene.getScene("world") as unknown as Record<string, any>,
     ui: () => game.scene.getScene("ui") as unknown as Record<string, any>,
     puzzle: () => game.scene.getScene("puzzle") as unknown as Record<string, any>,
+    /** Desde la portada: empieza (fresh) o continúa la partida. */
+    start(fresh = true) {
+      (game.scene.getScene("title") as unknown as { start(f: boolean): void }).start(fresh);
+      api.step(1);
+    },
     /** Avanza `seconds` de juego a 60 fps. */
     step(seconds: number) {
       t = Math.max(t, game.loop.time);
+      virtualNow = Math.max(virtualNow, realNow());
       const n = Math.round(seconds * 60);
       for (let i = 0; i < n; i += 1) {
         t += 1000 / 60;
+        virtualNow += 1000 / 60;
         game.step(t, 1000 / 60);
       }
     },
@@ -93,7 +106,9 @@ export function installTestHarness(game: Phaser.Game): void {
     autoplay() {
       const plan = solveGame().log;
       const problems: string[] = [];
+      if (game.scene.isActive("title")) api.start(true);
       session.reset();
+      session.state.flags["intro-visto"] = true;
       api.world().scene.restart({ zone: "vestibulo" });
       api.step(0.6);
       for (const entry of plan) {

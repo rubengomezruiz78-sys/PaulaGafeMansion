@@ -4,6 +4,9 @@ import { installBackBridge, loadFonts } from "./platform";
 import { BagScene } from "./scenes/BagScene";
 import { BootScene } from "./scenes/BootScene";
 import { PuzzleScene } from "./scenes/PuzzleScene";
+import { TitleScene } from "./scenes/TitleScene";
+import { EndScene } from "./scenes/EndScene";
+import { sound } from "./audio/sound";
 import { UIScene } from "./scenes/UIScene";
 import { WorldScene } from "./scenes/WorldScene";
 
@@ -23,12 +26,13 @@ async function start(): Promise<void> {
     render: { antialias: true, roundPixels: false, powerPreference: "high-performance" },
     input: { activePointers: 2 },
     fps: { target: 60, smoothStep: true },
-    scene: [BootScene, WorldScene, UIScene, PuzzleScene, BagScene],
+    scene: [BootScene, TitleScene, WorldScene, UIScene, PuzzleScene, BagScene, EndScene],
   });
   // Pausar al irse a segundo plano (ahorra batería y evita saltos de tiempo).
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) game.loop.sleep();
     else game.loop.wake();
+    sound.suspend(document.hidden);
   });
   (window as unknown as { __game?: Phaser.Game }).__game = game;
   if (import.meta.env.DEV) {

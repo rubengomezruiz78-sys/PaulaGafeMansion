@@ -47,6 +47,11 @@ export const session = {
     this.save();
   },
 
+  /** Hay algo que merezca «Continuar» (si no, la portada solo ofrece empezar). */
+  hasProgress(): boolean {
+    return state.visited.length > 1 || state.inventory.length > 0 || state.examined.length > 0 || Object.keys(state.npc).length > 0;
+  },
+
   reset(): void {
     state = newGame();
     try {
