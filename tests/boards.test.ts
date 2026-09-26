@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodeMix, encodeSeq, expectedAnswer, isGameStep, mazePath, PuzzleRun, type PuzzleDef } from "../src/core/puzzle";
-import { matchTwo, parseDirections, parseNotes } from "../src/core/speech";
+import { matchTwo, parseClockTime, parseDirections, parseNotes } from "../src/core/speech";
 import { newGame } from "../src/core/state";
 
 const juegos: PuzzleDef = {
@@ -59,5 +59,23 @@ describe("respuestas habladas de los juegos", () => {
   it("entiende dos pinturas en la misma frase", () => {
     expect(matchTwo(["mezclo amarillo con rojo"], ["rojo", "azul", "amarillo"])).toEqual([2, 0]);
     expect(matchTwo(["solo azul"], ["rojo", "azul", "amarillo"])).toBeNull();
+  });
+});
+
+describe("el reloj de agujas", () => {
+  it("la respuesta es la hora como número", () => {
+    const step = { kind: "clock" as const, prompt: "", hour: 4, minute: 30, hint: "h" };
+    expect(expectedAnswer(step)).toBe(430);
+  });
+
+  it("entiende la hora dicha como en España", () => {
+    expect(parseClockTime(["Son las cuatro y media"])).toEqual({ hour: 4, minute: 30 });
+    expect(parseClockTime(["las nueve y cuarto"])).toEqual({ hour: 9, minute: 15 });
+    expect(parseClockTime(["las tres menos cuarto"])).toEqual({ hour: 2, minute: 45 });
+    expect(parseClockTime(["la una menos diez"])).toEqual({ hour: 12, minute: 50 });
+    expect(parseClockTime(["las doce en punto"])).toEqual({ hour: 12, minute: 0 });
+    expect(parseClockTime(["las cinco y veinte"])).toEqual({ hour: 5, minute: 20 });
+    expect(parseClockTime(["4:30"])).toEqual({ hour: 4, minute: 30 });
+    expect(parseClockTime(["hola"])).toBeNull();
   });
 });

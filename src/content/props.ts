@@ -401,6 +401,138 @@ export const PROPS: Record<string, PropAction[]> = {
     { lines: ["Es una puerta pintada en la pared, de decorado. Tiene hasta el pomo pintado.", gafe("Miau. (Gafe intenta rascarla. No se abre.)")] },
   ],
 
+  // ------------------------------------------------------ rellano del reloj
+  "reloj-pie": [
+    { if: { flag: "reloj-en-hora" }, lines: ["Tic, tac. El reloj de pie vuelve a andar. Da gusto oírlo."] },
+    {
+      lines: [
+        "Un reloj de pie más alto que Basilio. Las agujas están paradas a una hora rarísima.",
+        "Dentro de la caja, detrás del péndulo, asoma una esquina de papel azul.",
+      ],
+      puzzle: "hora",
+    },
+  ],
+  "ventana-redonda": [
+    { lines: ["Una ventana redonda como un ojo de buey. Desde aquí se ve la torre, con su reloj de trece horas.", gafe("Miau. (Gafe se sube al alféizar y cuenta gotas.)")] },
+  ],
+  "fotos-rellano": [
+    { lines: ["Fotografías antiguas: una familia de 1913 muy seria… y una niña que no puede estarse quieta y sale movida. Es Inés."] },
+  ],
+  "papel-alfombra": [
+    { if: seen("papel-alfombra"), lines: ["Aquí estaba la primera página. La alfombra aún huele a tinta."] },
+    {
+      lines: [
+        "Una hoja arrancada de un diario: «Hoy la señorita Rosalía me ha puesto un diez. Mañana es mi cumpleaños y la bisabuela me ha prometido una sorpresa»…",
+        "Está firmada con una I. ¡Es el diario de Inés! Si hay una página, habrá más.",
+      ],
+      effects: [{ give: "diario-ines" }, { count: "diario" }, { stage: ["diario", 1] }],
+    },
+  ],
+
+  // ------------------------------------------------------ aula de la institutriz
+  pizarra: [
+    { if: solved("leccion"), lines: ["La lección está terminada y hay un diez dibujado con tiza. Inés estaría orgullosa."] },
+    {
+      lines: ["La última lección de Inés, a medio hacer. Alguien ha escrito debajo: «Terminar antes de la fiesta»."],
+      puzzle: "leccion",
+    },
+  ],
+  "mesa-maestra": [
+    { lines: ["Una campanilla, un tintero y una manzana roja que no se estropea nunca.", gafe("Miau. (Gafe le da un golpecito a la campanilla. ¡Tilín! Todos a clase.)")] },
+  ],
+  pupitres: [
+    { lines: ["Tres pupitres. En el de en medio alguien ha tallado: «I + G = amigos». ¿G de… Gafe?", gafe("Miau. (Gafe disimula mirando al techo.)")] },
+  ],
+  esqueleto: [
+    { lines: ["El esqueleto de la clase. Tiene una etiqueta: «Huesitos, 206 huesos». Lleva una bufanda que alguien le puso para que no pase frío."] },
+  ],
+  abaco: [
+    { lines: ["Un ábaco de bolitas de colores. Cuento las rojas: diez. Las amarillas: diez. ¡Cien en total, si todas las filas tienen diez!"] },
+  ],
+  "mapa-aula": [
+    { lines: ["Un mapa del mundo antiguo. España está marcada con una estrellita y una flecha: «¡Aquí vivo yo!»."] },
+  ],
+  "ventana-aula": [
+    { lines: ["Por el ventanal se ve el jardín del laberinto, allá abajo, con sus farolillos."] },
+  ],
+
+  // ------------------------------------------------------ cuarto de costura
+  maniqui: [
+    { if: solved("vestido"), lines: ["El vestido rosa ya tiene todos sus botones y sus lazos. Es precioso."] },
+    {
+      lines: ["El vestido de la fiesta de Inés, rosa y con lazos. Le faltan todos los botones.", "Hay un papel azul prendido con un alfiler en el dobladillo… otra página del diario."],
+      puzzle: "vestido",
+    },
+  ],
+  "maquina-coser": [
+    { lines: ["Una máquina de coser de pedal. Piso el pedal y la aguja hace tac-tac-tac, sola, aunque no hay nadie."] },
+  ],
+  hilos: [
+    { lines: ["Cientos de carretes de hilo, de todos los colores. El rosa está casi gastado: se usó para el vestido."] },
+  ],
+  "tarro-botones": [
+    { lines: ["Un tarro lleno de botones. Hay uno con forma de gato negro.", gafe("Miau. (Gafe mira el botón como si fuera un retrato suyo.)")] },
+  ],
+  mecedora: [
+    { lines: ["La mecedora se mueve un poquito, como si alguien acabara de levantarse. Todavía está calentita."] },
+  ],
+  "libro-patrones": [
+    { lines: ["Un libro de patrones. En la página del vestido rosa pone: «Para Inés, talla nueve años»."] },
+  ],
+
+  // ------------------------------------------------------ alcoba de Aurelia
+  "retrato-oval": [
+    { if: { flag: "aurelia-recuerda" }, lines: ["La Aurelia del retrato sonríe. A su lado, en el marco, ha aparecido una niña pequeñita con una cinta roja."] },
+    { lines: ["Aurelia de joven. En el marco hay un hueco vacío al lado, como si faltara alguien en el cuadro."] },
+  ],
+  tocador: [
+    { if: solved("nana"), lines: ["El joyero está abierto y suena la nana, bajito. Huele a lavanda."] },
+    { if: { flag: "joyero-probado" }, use: "pajarito-papel", lines: ["Acerco el pajarito de papel al joyero… ¡y se pone a cantar la nana!"], puzzle: "nana" },
+    {
+      use: "pajarito-papel",
+      lines: ["El pajarito de papel se me escapa de la mano, se posa en el joyero y empieza a cantar bajito…"],
+      effects: [{ set: "joyero-probado" }],
+      puzzle: "nana",
+    },
+    {
+      lines: ["Un tocador con perfumes y un joyero que es una cajita de música. Está cerrado.", "Tiene una ranura con forma de pájaro. Solo se abrirá con su canción."],
+      effects: [{ set: "joyero-probado" }],
+    },
+  ],
+  "chimenea-alcoba": [
+    { lines: ["Un fuego que no quema y no se apaga. Delante hay una butaca con una manta de cuadros.", gafe("Prrr. (Gafe se enrosca delante del fuego.)")] },
+  ],
+  "cama-dosel": [
+    { lines: ["Una cama enorme con cortinas de terciopelo. Encima de la almohada, un camisón doblado y un libro de cuentos para leer a una niña."] },
+  ],
+  "armario-alcoba": [
+    { lines: ["Un armario tallado con pájaros. Dentro, vestidos de otra época y una caja de sombreros que ronca un poquito."] },
+  ],
+  "espejo-ovalado": [
+    { lines: ["En el espejo me veo a mí… y detrás, por un segundo, a una señora mayor que me guiña un ojo."] },
+  ],
+  "puerta-vestidor": [
+    { lines: ["La puerta del vestidor. Está cerrada, y dentro se oye un reloj de cuco que se ha quedado dormido."] },
+  ],
+
+  // ------------------------------------------------------ pajarera de cristal
+  "jaula-grande": [
+    { if: solved("pajaros"), lines: ["El pajarito de papel ya no está en la jaula: vuela conmigo en la mochila."] },
+    {
+      lines: ["Una jaula enorme con la puerta abierta. Dentro no hay ningún pájaro… pero algo de papel aletea entre las macetas."],
+      puzzle: "pajaros",
+    },
+  ],
+  "fuente-pajaros": [
+    { lines: ["Un bebedero de piedra con una vela encendida. El agua tiene plumitas de papel flotando."] },
+  ],
+  "jaulas-colgadas": [
+    { lines: ["Jaulas colgando del techo de cristal. Se mecen solas, como si los pájaros acabaran de salir volando."] },
+  ],
+  "torre-lejana": [
+    { lines: ["Desde aquí se ve la torre del reloj, bajo la lluvia. Su esfera tiene trece horas."] },
+  ],
+
   "esfera-reloj": [
     { if: seen("esfera-reloj"), lines: ["La esfera marca las doce menos un minuto. Siempre."] },
     {

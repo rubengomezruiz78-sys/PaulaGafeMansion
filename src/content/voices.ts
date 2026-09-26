@@ -37,4 +37,6 @@ export const PROFILES: Record<string, Profile> = {
   fermin: { pitch: 0.88, rate: 0.9 },
   bartolo: { pitch: 1.05, rate: 1.14 },
   ramona: { pitch: 1.3, rate: 0.84 },
+  aurelia: { pitch: 0.92, rate: 0.82 },
+  rosalia: { pitch: 1.18, rate: 1.02 },
 };

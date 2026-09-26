@@ -26,10 +26,10 @@ function offFloorM(z: ZoneDef, p: readonly [number, number]): number {
 }
 
 describe("mundo", () => {
-  it("tiene las 18 zonas (las 12 de la casa y las 6 del ala de la fiesta)", () => {
+  it("tiene las 23 zonas (casa, ala de la fiesta y segunda planta)", () => {
     expect(zones.map((z) => z.id).sort()).toEqual(
-      ["archivo", "baile", "biblioteca", "cocina", "comedor", "desvan", "dormitorio", "estudio", "galeria", "invernadero",
-        "jardin", "musica", "observatorio", "taller", "teatro", "torre", "tuneles", "vestibulo"],
+      ["alcoba", "archivo", "aula", "baile", "biblioteca", "cocina", "comedor", "costura", "desvan", "dormitorio", "estudio", "galeria",
+        "invernadero", "jardin", "musica", "observatorio", "pajarera", "rellano", "taller", "teatro", "torre", "tuneles", "vestibulo"],
     );
   });
 
@@ -142,7 +142,7 @@ describe("mundo", () => {
     expect(seen.size).toBe(zones.length);
   });
 
-  it("al empezar hay 16 zonas abiertas y solo túneles y torre esperan a la historia", () => {
+  it("al empezar hay 21 zonas abiertas y solo túneles y torre esperan a la historia", () => {
     const seen = new Set<ZoneId>(["vestibulo"]);
     const queue: ZoneId[] = ["vestibulo"];
     while (queue.length) {
@@ -153,8 +153,8 @@ describe("mundo", () => {
       }
     }
     expect([...seen].sort()).toEqual(
-      ["archivo", "baile", "biblioteca", "cocina", "comedor", "desvan", "dormitorio", "estudio", "galeria", "invernadero",
-        "jardin", "musica", "observatorio", "taller", "teatro", "vestibulo"],
+      ["alcoba", "archivo", "aula", "baile", "biblioteca", "cocina", "comedor", "costura", "desvan", "dormitorio", "estudio", "galeria",
+        "invernadero", "jardin", "musica", "observatorio", "pajarera", "rellano", "taller", "teatro", "vestibulo"],
     );
   });
 });

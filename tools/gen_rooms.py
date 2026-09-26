@@ -63,6 +63,38 @@ ROOMS = {
         "garlands of little paper flags, a trunk full of costumes and hats, candle footlights on the front of the stage, "
         "a door on the left wall and a narrow door on the right wall."
     ),
+    # ------------------------------------------------ segunda planta (2.2)
+    "rellano": (
+        "A new room of the same haunted mansion: the upper landing of the second floor. " + VIEW +
+        "A wide landing with a worn red carpet on dark floorboards. On the left, the top of a wide wooden staircase that comes up from the floor below, "
+        "with a carved wooden banister. At the back right, a narrower wooden staircase going further up into a dark attic hatch. "
+        "A tall grandfather clock with a brass pendulum stands against the back wall in the middle. Two tall closed wooden doors: one on the left wall, one on the right wall, "
+        "and a third smaller door at the back left. A small round window with moonlight and rain, candle wall sconces, old framed photographs."
+    ),
+    "aula": (
+        "A new room of the same haunted mansion: an old children's schoolroom from 1913. " + VIEW +
+        "A big blackboard on the back wall with chalk sums and a drawing of a cat, a teacher's wooden desk with a brass hand bell, an inkwell and a red apple, "
+        "three small wooden school desks with benches in a row, a big wooden abacus with colored beads on a stand, a globe, an old map on the wall, "
+        "shelves with books and a skeleton model, a tall window with rain on the right, a door on the left wall."
+    ),
+    "costura": (
+        "A new room of the same haunted mansion: a cosy sewing room. " + VIEW +
+        "An old black treadle sewing machine by a tall rainy window on the left, a dress form mannequin in the middle wearing a half-made pale pink party dress with pins, "
+        "a wall full of spools of colored thread, a big wooden table with folded fabrics, scissors, a pincushion and a glass jar full of buttons, "
+        "a wicker basket of yarn, a rocking chair, a warm oil lamp, a door on the right wall."
+    ),
+    "alcoba": (
+        "A new room of the same haunted mansion: the grand bedroom of the great-grandmother Aurelia. " + VIEW +
+        "A big four-poster bed with dark red velvet curtains at the back left, a vanity table with a round mirror, perfume bottles and a small jewelry box, "
+        "a tall carved wardrobe, a big oval portrait of an elegant old lady on the wall, a marble fireplace with a small fire, "
+        "a glass double door on the right wall leading out to a roof terrace, a door at the back, a thick rug."
+    ),
+    "pajarera": (
+        "The glass aviary on the roof terrace of the same haunted mansion, at night: an iron and glass Victorian birdhouse pavilion. " + VIEW +
+        "Many old empty bird cages hanging from the iron frame at different heights, one big round central cage with its little door open, wooden perches, "
+        "potted palms and ferns, a small stone birdbath fountain, moonlight through the glass roof, rain running down the glass panes, "
+        "the dark silhouette of the clock tower visible through the glass at the back, a door back into the house on the left."
+    ),
 }
 
 

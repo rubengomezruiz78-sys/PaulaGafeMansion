@@ -24,7 +24,7 @@ export const PLANTA_ALTA: Partial<Record<ZoneId, ZoneDef>> = {
         hotspot: [[0.775, 0.44], [0.82, 0.44], [0.82, 0.64], [0.775, 0.64]], approach: [0.8, 0.66],
       },
       {
-        id: "escalera-desvan", to: "desvan", toExit: "hueco-escalera", label: "Escalera del desván",
+        id: "escalera-desvan", to: "rellano", toExit: "escalera-galeria", label: "Subir a la segunda planta",
         hotspot: [[0.68, 0.5], [0.77, 0.5], [0.77, 0.62], [0.68, 0.62]], approach: [0.72, 0.64],
       },
       {
@@ -95,7 +95,7 @@ export const PLANTA_ALTA: Partial<Record<ZoneId, ZoneDef>> = {
     },
     exits: [
       {
-        id: "hueco-escalera", to: "galeria", toExit: "escalera-desvan", label: "Bajar a la galería",
+        id: "hueco-escalera", to: "rellano", toExit: "escalera-desvan", label: "Bajar a la segunda planta",
         hotspot: [[0.47, 0.58], [0.6, 0.58], [0.6, 0.72], [0.47, 0.72]], approach: [0.52, 0.74],
       },
       {

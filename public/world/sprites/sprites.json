@@ -149,6 +149,26 @@
     "refHeightPx": 266,
     "realHeightM": 0.38
   },
+  "aurelia": {
+    "file": "aurelia.webp",
+    "frames": 1,
+    "frameWidth": 371,
+    "frameHeight": 927,
+    "originX": 0.5204,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.52
+  },
+  "rosalia": {
+    "file": "rosalia.webp",
+    "frames": 1,
+    "frameWidth": 449,
+    "frameHeight": 927,
+    "originX": 0.4555,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.64
+  },
   "ghost-remedios": {
     "file": "ghost-remedios.webp",
     "frames": 1,

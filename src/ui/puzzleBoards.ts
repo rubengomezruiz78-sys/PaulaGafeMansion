@@ -8,8 +8,8 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
 import { COLORS, CSS, FONT_TITLE, FONT_UI } from "../config";
-import { encodeMix, encodeSeq, expectedAnswer, mazeFind, mazeOpen, NOTES, type PuzzleStep } from "../core/puzzle";
-import { matchChoice, matchTwo, parseDirections, parseNotes, type Dir } from "../core/speech";
+import { encodeMix, encodeSeq, encodeTime, expectedAnswer, mazeFind, mazeOpen, NOTES, type PuzzleStep } from "../core/puzzle";
+import { matchChoice, matchTwo, parseClockTime, parseDirections, parseNotes, type Dir } from "../core/speech";
 import { makeButton } from "./widgets";
 
 export interface BoardHost {
@@ -47,6 +47,7 @@ export function makeBoard(host: BoardHost, step: PuzzleStep): Board | null {
     case "pairs": return new PairsBoard(host, step);
     case "maze": return new MazeBoard(host, step);
     case "mix": return new MixBoard(host, step);
+    case "clock": return new ClockBoard(host, step);
     default: return null;
   }
 }
@@ -599,6 +600,118 @@ class MixBoard extends BaseBoard {
   }
 
   solve(): void {
+    this.host.submit(expectedAnswer(this.step));
+  }
+}
+
+// -------------------------------------------------------------------- reloj
+
+/**
+ * Reloj de agujas: Paula mueve la aguja de las horas y la de los minutos (de 5
+ * en 5) con flechas grandes y pulsa «¡Así!». La aguja corta avanza un poco con
+ * los minutos, como en un reloj de verdad (a las cuatro y media está entre el 4 y el 5).
+ */
+class ClockBoard extends BaseBoard {
+  private hour = 12;
+  private minute = 0;
+  private readonly hands: Phaser.GameObjects.Graphics;
+  private readonly readout: Phaser.GameObjects.Text;
+  private readonly c: { x: number; y: number; r: number };
+
+  constructor(host: BoardHost, private readonly step: Step<"clock">) {
+    super(host);
+    const { x, y, w, h } = host.area;
+    const r = Math.min(h / 2 - 8, 190);
+    this.c = { x: x + r + 60, y: y + h / 2, r };
+    const face = host.keep(this.scene.add.graphics());
+    face.fillStyle(0x000000, 0.35).fillCircle(this.c.x + 5, this.c.y + 9, r + 14);
+    face.fillStyle(0x5a3a1e, 1).fillCircle(this.c.x, this.c.y, r + 14);
+    face.fillStyle(0xf3ead8, 1).fillCircle(this.c.x, this.c.y, r);
+    face.lineStyle(4, 0x3a2716, 1).strokeCircle(this.c.x, this.c.y, r);
+    for (let i = 0; i < 60; i += 1) {
+      const a = (i / 60) * Math.PI * 2;
+      const long = i % 5 === 0;
+      const r0 = r - (long ? 22 : 10);
+      face.lineStyle(long ? 4 : 2, 0x3a2716, long ? 1 : 0.5)
+        .lineBetween(this.c.x + Math.sin(a) * r0, this.c.y - Math.cos(a) * r0, this.c.x + Math.sin(a) * (r - 4), this.c.y - Math.cos(a) * (r - 4));
+    }
+    for (let n = 1; n <= 12; n += 1) {
+      const a = (n / 12) * Math.PI * 2;
+      this.text(this.c.x + Math.sin(a) * (r - 50), this.c.y - Math.cos(a) * (r - 50), String(n), Math.round(r * 0.2), "#2a1d10").setFontFamily(FONT_TITLE);
+    }
+    this.hands = host.keep(this.scene.add.graphics());
+    // Controles a la derecha: horas y minutos, cada uno con sus flechas.
+    const px = this.c.x + r + 110;
+    const bw = 110;
+    const row = (label: string, yy: number, minus: () => void, plus: () => void) => {
+      this.text(px, yy - 58, label, 30, CSS.copper, 0);
+      host.keep(makeButton(this.scene, px, yy - 30, bw, 100, "◀", minus, { fontSize: 48, radius: 24 }).container);
+      host.keep(makeButton(this.scene, px + bw + 20, yy - 30, bw, 100, "▶", plus, { fontSize: 48, radius: 24 }).container);
+    };
+    row("Aguja corta (horas)", this.c.y - 120, () => this.turn(-1, 0), () => this.turn(1, 0));
+    row("Aguja larga (minutos)", this.c.y + 60, () => this.turn(0, -5), () => this.turn(0, 5));
+    this.readout = this.text(px + bw * 2 + 70, this.c.y - 150, "", 34, CSS.muted, 0);
+    const ok = makeButton(this.scene, px + bw * 2 + 70, this.c.y + 30, 230, 100, "¡Así!", () => this.answer(), {
+      fontSize: 40, fill: 0x1d3a2a, edge: 0x8fd6a0, radius: 24,
+    });
+    host.keep(ok.container);
+    this.draw();
+  }
+
+  private answer(): void {
+    if (this.done) return;
+    this.done = true;
+    this.host.submit(encodeTime(this.hour, this.minute));
+  }
+
+  private turn(dh: number, dm: number): void {
+    if (this.done) return;
+    this.hour = ((this.hour - 1 + dh + 12) % 12) + 1;
+    this.minute = (this.minute + dm + 60) % 60;
+    sound.play("tap");
+    this.draw();
+  }
+
+  private draw(): void {
+    const { x, y, r } = this.c;
+    const g = this.hands;
+    g.clear();
+    const hand = (angle: number, len: number, width: number, color: number) => {
+      const ex = x + Math.sin(angle) * len;
+      const ey = y - Math.cos(angle) * len;
+      g.lineStyle(width + 4, 0x000000, 0.25).lineBetween(x + 3, y + 4, ex + 3, ey + 4);
+      g.lineStyle(width, color, 1).lineBetween(x, y, ex, ey);
+      g.fillStyle(color, 1).fillCircle(ex, ey, width * 0.55);
+    };
+    hand(((this.hour % 12) + this.minute / 60) / 12 * Math.PI * 2, r * 0.5, 14, 0x2a1d10);
+    hand((this.minute / 60) * Math.PI * 2, r * 0.8, 8, 0x8a2f24);
+    g.fillStyle(0xc9a15a, 1).fillCircle(x, y, 14);
+    const mm = String(this.minute).padStart(2, "0");
+    this.readout.setText(`${this.hour}:${mm}`);
+  }
+
+  start(): void {}
+
+  wrong(): void {
+    this.later(900, () => {
+      this.done = false;
+    });
+  }
+
+  hear(alts: readonly string[]): boolean {
+    const t = parseClockTime(alts);
+    if (!t || this.done) return false;
+    this.hour = t.hour;
+    this.minute = Math.round(t.minute / 5) * 5 % 60;
+    this.draw();
+    this.later(500, () => this.answer());
+    return true;
+  }
+
+  solve(): void {
+    this.hour = this.step.hour;
+    this.minute = this.step.minute;
+    this.draw();
     this.host.submit(expectedAnswer(this.step));
   }
 }

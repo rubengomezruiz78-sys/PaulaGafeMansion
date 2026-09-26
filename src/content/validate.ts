@@ -145,6 +145,8 @@ export function validateContent(): string[] {
         if (a === b || [a, b].some((x) => !Number.isInteger(x) || x < 0 || x >= s.paints.length))
           errors.push(`${at}: la mezcla correcta no son dos pinturas distintas`);
       }
+      if (s.kind === "clock" && (!Number.isInteger(s.hour) || s.hour < 1 || s.hour > 12 || s.minute < 0 || s.minute > 55 || s.minute % 5 !== 0))
+        errors.push(`${at}: la hora del reloj tiene que ser de 1 a 12 y los minutos de 5 en 5`);
       if (!s.hint.trim()) errors.push(`${at}: sin pista`);
     });
   }

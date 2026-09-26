@@ -31,6 +31,10 @@ export const QUESTS: Record<string, QuestDef> = {
     title: "La fiesta de Inés",
     stages: { 1: "Preparar la fiesta de cumpleaños que Inés nunca tuvo ({fiesta}/6)." },
   },
+  diario: {
+    title: "El diario de Inés",
+    stages: { 1: "Encontrar las páginas del diario de Inés por la segunda planta ({diario}/4) y enseñárselas a la bisabuela Aurelia." },
+  },
   escondite: {
     title: "El escondite de Pepito",
     stages: { 1: "Encontrar a Pepito en tres salas distintas ({pepito-pillado}/3) y contárselo." },
@@ -57,6 +61,7 @@ export const MAIN_GOALS: { text: string; done: Cond; show?: Cond }[] = [
 export const MILESTONES: { counter: string; at: number; quest: string; text: string }[] = [
   { counter: "recuerdos", at: 5, quest: "recuerdos", text: "★ ¡Ya tienes los cinco recuerdos de Inés!" },
   { counter: "fiesta", at: 6, quest: "fiesta", text: "🎉 ¡La fiesta de Inés está lista! Ya solo falta que suene la campana." },
+  { counter: "diario", at: 4, quest: "diario", text: "📔 ¡Tienes las cuatro páginas del diario de Inés! Llévaselo a la bisabuela Aurelia." },
 ];
 
 export function questStageText(quest: string, stage: number): string | null {

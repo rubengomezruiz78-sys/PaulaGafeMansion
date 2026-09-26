@@ -41,5 +41,12 @@ export const GAFE_HINTS: { if: Cond; text: string }[] = [
   { if: no({ visited: "torre" }), text: "Miau. (¡El camino a la torre está abierto! Gafe mira hacia arriba, muy arriba.)" },
   { if: no({ has: "cinta-roja" }), text: "Miau. (Gafe mira la esfera del reloj de la torre. Algo rojo cuelga de la aguja.)" },
   { if: no({ flag: "final" }), text: "Miau. (Gafe se sienta junto a la campana de las trece. Es el momento.)" },
+  { if: no({ counter: ["diario", ">=", 1] }), text: "Miau. (Gafe sube la escalera del fondo de la galería. En el rellano hay un papel azul en la alfombra.)" },
+  { if: no(solved("hora")), text: "Miau. (Gafe se sienta delante del reloj de pie del rellano y mueve la cola: tic, tac… no, no hace tic, tac.)" },
+  { if: no(solved("leccion")), text: "Miau. (Gafe araña la puerta del aula. En la pizarra hay una lección sin terminar.)" },
+  { if: no(solved("vestido")), text: "Miau. (Gafe juega con un botón que ha rodado desde el cuarto de costura.)" },
+  { if: no(solved("pajaros")), text: "Miau. (Gafe mira hacia arriba: por la escalerilla del rellano se sube a la pajarera, y algo de papel aletea.)" },
+  { if: no(solved("nana")), text: "Miau. (Gafe olfatea el joyero del tocador de Aurelia. Tiene una ranura con forma de pájaro.)" },
+  { if: no({ flag: "aurelia-recuerda" }), text: "Miau. (Gafe tira hacia la alcoba: Aurelia querrá oír el diario entero.)" },
   { if: { flag: "final" }, text: "Prrr. (Gafe ronronea. Todo ha salido bien.)" },
 ];

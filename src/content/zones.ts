@@ -19,12 +19,14 @@ import type { Cond, Effect } from "../core/rules";
 import { ALA_FIESTA } from "./zones/alaFiesta";
 import { PLANTA_ALTA } from "./zones/plantaAlta";
 import { PLANTA_BAJA } from "./zones/plantaBaja";
+import { SEGUNDA_PLANTA } from "./zones/segundaPlanta";
 import { SOTANO } from "./zones/sotano";
 
 export type ZoneId =
   | "vestibulo" | "biblioteca" | "cocina" | "archivo" | "invernadero" | "galeria"
   | "dormitorio" | "observatorio" | "musica" | "desvan" | "tuneles" | "torre"
-  | "baile" | "comedor" | "jardin" | "taller" | "estudio" | "teatro";
+  | "baile" | "comedor" | "jardin" | "taller" | "estudio" | "teatro"
+  | "rellano" | "aula" | "costura" | "alcoba" | "pajarera";
 
 export type NPt = readonly [number, number];
 
@@ -76,7 +78,7 @@ export const walkAreaPx = (zone: ZoneDef): WalkArea => ({
   holes: (zone.walk.holes ?? []).map(polyPx),
 });
 
-export const ZONES: Partial<Record<ZoneId, ZoneDef>> = { ...PLANTA_BAJA, ...SOTANO, ...PLANTA_ALTA, ...ALA_FIESTA };
+export const ZONES: Partial<Record<ZoneId, ZoneDef>> = { ...PLANTA_BAJA, ...SOTANO, ...PLANTA_ALTA, ...ALA_FIESTA, ...SEGUNDA_PLANTA };
 
 export const zone = (id: ZoneId): ZoneDef => {
   const z = ZONES[id];

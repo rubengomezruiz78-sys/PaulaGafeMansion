@@ -48,6 +48,99 @@ const gafeSays = (text: string): Line => ({ by: "gafe", text });
 const empieza = { stage: ["fiesta", 1] as [string, number] };
 
 export const DIALOGUES: Record<string, DialogueTree> = {
+  // ======================================================== segunda planta
+  aurelia: {
+    npc: "aurelia",
+    entries: [
+      { if: { all: [{ counter: ["diario", ">=", 4] }, { not: { seen: ["aurelia", "recuerda"] } }] }, node: "recuerda" },
+      { if: { met: "aurelia" }, node: "otra-vez" },
+      { node: "hola" },
+    ],
+    nodes: [
+      {
+        id: "hola",
+        lines: [
+          "Soy Aurelia Valcárcel, la bisabuela de esta casa. O lo que queda de ella.",
+          "Perdona que te mire tanto, niña. Me recuerdas a alguien… pero no sé a quién. La casa me borra las caras.",
+        ],
+        next: "menu",
+      },
+      { id: "otra-vez", lines: ["Otra vez tú, niña de la brújula. Me alegra: se me olvidan las cosas, pero tú no."], next: "menu" },
+      {
+        id: "menu",
+        lines: ["¿Qué quieres preguntarle a esta vieja?"],
+        choices: [
+          { id: "quien", text: "¿A quién le recuerdo?", once: true, goto: "quien", effects: [{ stage: ["diario", 1] }, { affinity: ["aurelia", 3] }] },
+          { id: "diario", text: "He encontrado páginas de un diario.", if: { has: "diario-ines" }, goto: "diario" },
+          { id: "pajaros", text: "¿Qué les pasó a sus pájaros?", goto: "pajaros" },
+          { id: "medallon", text: "Mire lo que había en su joyero.", if: { has: "medallon-aurelia" }, once: true, goto: "medallon", effects: [{ affinity: ["aurelia", 6] }] },
+          { id: "adios", text: "Hasta luego." },
+        ],
+      },
+      {
+        id: "quien",
+        lines: [
+          "A una niña que corría por los pasillos con una cinta roja en el pelo. Escribía en un diario de tapas azules…",
+          "Se le rompió con la tormenta y las páginas volaron por toda la segunda planta. Si las encuentras, quizá me acuerde de ella.",
+        ],
+        next: "menu",
+      },
+      { id: "diario", lines: ["Llevas {diario} de 4 páginas. Léemelas cuando las tengas todas, que mis ojos ya no dan para tanto."], next: "menu" },
+      {
+        id: "pajaros",
+        lines: [
+          "Eran de papel, hechos por Inés… digo, por alguien. Cantaban la nana que abre mi joyero.",
+          "Con la tormenta se escaparon de la pajarera, arriba, en el tejado. Sube por la escalerilla del rellano.",
+        ],
+        next: "menu",
+      },
+      {
+        id: "medallon",
+        lines: [
+          "Mi medallón… Aquí estoy yo, de joven. Y aquí… esta niña que se ríe…",
+          { by: "paula", text: "Es Inés, doña Aurelia. Su bisnieta." },
+          "Inés. ¡Inés! Claro que sí. ¿Cómo pude olvidarla?",
+        ],
+        next: "menu",
+      },
+      {
+        id: "recuerda",
+        lines: [
+          { by: "paula", text: "Tengo las cuatro páginas. ¿Se las leo?" },
+          "«Mañana es mi cumpleaños. La bisabuela me enseñará la nana de los pájaros y la señorita Rosalía dice que ya sé sumar con llevadas».",
+          "Inés… Mi Inés. Ya me acuerdo de su cara. Tenía tus mismos ojos de querer saberlo todo.",
+          "Gracias, niña. Guarda el diario: se lo daremos a ella en su fiesta.",
+        ],
+        effects: [{ set: "aurelia-recuerda" }, { affinity: ["aurelia", 10] }, { complete: "diario" }],
+        next: "menu",
+      },
+    ],
+  },
+  rosalia: tree(
+    "rosalia",
+    ["Buenas noches, alumna. Soy la señorita Rosalía, institutriz de esta casa desde 1911. Y desde 1913… también."],
+    ["¡Mi alumna preferida! Siéntate, que empezamos."],
+    "¿Tienes alguna pregunta? Levanta la mano.",
+    [
+      {
+        id: "leccion", text: "¿Qué hay en la pizarra?", effects: [{ stage: ["diario", 1] }],
+        lines: [
+          "La última lección de Inés: sumas con llevadas, ordenar números y un poquito de geometría.",
+          "Se quedó sin terminar la noche de la tormenta. Despacito y con buena letra, y lo que te llevas no se olvida.",
+        ],
+      },
+      {
+        id: "ines", text: "¿Cómo era Inés en clase?", once: true, effects: [{ affinity: ["rosalia", 3] }],
+        lines: ["Preguntona, risueña y con los dedos siempre manchados de tinta. Escribía un diario de tapas azules que escondía debajo del pupitre."],
+      },
+      {
+        id: "reloj", text: "¿Por qué está parado el reloj del rellano?",
+        lines: ["Se paró a las cuatro y media, la hora de la merienda de Inés. Si alguien lo pone en hora, dicen que suelta lo que guarda dentro."],
+        effects: [{ set: "pista-hora" }],
+      },
+    ],
+  ),
+
   // ======================================================== ala de la fiesta
   anacleto: tree(
     "anacleto",
@@ -484,6 +577,8 @@ export const DIALOGUES: Record<string, DialogueTree> = {
       { id: "muneca", text: "¿Para quién es la muñeca?", lines: ["Para Inés. Le faltan los ojos de botón.", "Y la cinta roja. La cinta era lo más importante."] },
       { id: "cinta", text: "¿Dónde está la cinta roja?", if: { flag: "sabe-cinta-roja" },
         lines: ["En la torre. Atada lejos de la campana.", "Inés decía que la respuesta no necesita golpes."] },
+      { id: "vestido", text: "¿Qué vestido está cosiendo?",
+        lines: ["El vestido rosa de la fiesta de Inés. Siete filas de seis botones, y los lazos: dos rosas y uno blanco.", "Se me cayeron los botones con el trueno. ¿Me ayudas a encontrar las parejas? Está en el maniquí de mi cuarto de costura."] },
     ]),
 
   nicanor: tree("nicanor",

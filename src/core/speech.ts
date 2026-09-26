@@ -149,3 +149,38 @@ export function matchTwo(heard: readonly string[], options: readonly string[]): 
   }
   return null;
 }
+
+const HOUR_WORDS: Record<string, number> = {
+  una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12,
+};
+
+/**
+ * Una hora dicha como se dice en España: «las cuatro y media», «las nueve y
+ * cuarto», «las tres menos cuarto», «las doce en punto», «las cinco y diez»,
+ * o en cifras («4:30»). Devuelve { hour 1..12, minute } o null.
+ */
+export function parseClockTime(heard: readonly string[]): { hour: number; minute: number } | null {
+  for (const raw of heard) {
+    const digits = raw.match(/(\d{1,2})[:.h ](\d{2})/);
+    if (digits) {
+      const h = Number(digits[1]) % 12 || 12;
+      return { hour: h, minute: Number(digits[2]) };
+    }
+    const words = normalize(raw).split(" ");
+    const hi = words.findIndex((w) => w in HOUR_WORDS);
+    if (hi < 0) continue;
+    let hour = HOUR_WORDS[words[hi]];
+    const rest = words.slice(hi + 1).join(" ");
+    let minute = 0;
+    const menos = /\bmenos\b/.test(rest);
+    if (/\bmedia\b/.test(rest)) minute = 30;
+    else if (/\bcuarto\b/.test(rest)) minute = menos ? 45 : 15;
+    else {
+      const n = parseSpanishNumber(rest);
+      if (n !== null && n > 0 && n < 60) minute = menos ? 60 - n : n;
+    }
+    if (menos && minute > 0) hour = hour === 1 ? 12 : hour - 1;
+    return { hour, minute };
+  }
+  return null;
+}

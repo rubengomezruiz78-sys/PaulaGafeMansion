@@ -123,8 +123,8 @@ export const NPCS: NpcDef[] = [
   {
     id: "florentina", name: "Florentina", role: "Costurera", ...servant("florentina"),
     personality: { restlessness: 0.3, chattiness: 0.35, noticeRadiusM: 2, attendRadiusM: 2.5 },
-    routine: { home: "dormitorio", stations: [st("dormitorio", 5, [150, 300]), st("desvan", 1, [60, 120])] },
-    greet: ["Oh… hola. Perdona, estaba cosiendo la muñeca de Inés."],
+    routine: { home: "costura", stations: [st("costura", 5, [150, 300]), st("dormitorio", 2, [60, 120]), st("rellano", 1, [50, 90])] },
+    greet: ["Oh… hola. Perdona, estaba cosiendo el vestido de Inés."],
     ambient: ["Una puntada por cada noche que Inés no está.", "La cinta roja era su favorita.", "No me gusta la torre. Hace demasiado ruido."],
   },
   {
@@ -251,6 +251,34 @@ NPCS.push(
       "Uuh-uuh. Desde arriba, el laberinto parece una oreja.",
       "Las luciérnagas se pierden siempre en el mismo rincón.",
       "Anoche vi una batuta en la fuente. Las ranas la usan para dirigir el coro.",
+    ],
+  },
+);
+
+/** La segunda planta: la bisabuela y la maestra de Inés. */
+NPCS.push(
+  {
+    id: "aurelia", name: "Doña Aurelia", role: "La bisabuela", sprite: "aurelia", kind: "ghost",
+    floatM: 0.06, alpha: 0.86,
+    personality: { restlessness: 0.2, chattiness: 0.55, noticeRadiusM: 2.4, attendRadiusM: 3.2 },
+    routine: { home: "alcoba", stations: [st("alcoba", 6, [200, 420]), st("rellano", 1, [60, 120]), st("pajarera", 1, [60, 120])] },
+    greet: ["¿Quién anda ahí? Ah… una niña con una brújula. Acércate, que ya no veo bien. Me llamo Aurelia."],
+    ambient: [
+      "Tenía una bisnieta… o eso creo. Se me borra su cara, como la tiza.",
+      "Mis pájaros de papel cantaban la nana. Ahora la pajarera está muda.",
+      "Este reloj de la casa cuenta demasiado. Trece, trece, trece…",
+    ],
+  },
+  {
+    id: "rosalia", name: "Señorita Rosalía", role: "Institutriz", sprite: "rosalia", kind: "ghost",
+    floatM: 0.07, alpha: 0.86,
+    personality: { restlessness: 0.45, chattiness: 0.8, noticeRadiusM: 2.6, attendRadiusM: 3.2 },
+    routine: { home: "aula", stations: [st("aula", 6, [180, 360]), st("rellano", 1, [60, 120]), st("biblioteca", 1, [60, 120])] },
+    greet: ["¡Una alumna nueva! Siéntate derecha, por favor. Soy la señorita Rosalía."],
+    ambient: [
+      "Despacito y con buena letra.",
+      "Inés era mi mejor alumna. Y la que más preguntaba.",
+      "¿Siete por ocho? Cincuenta y seis. Siempre se me olvida a mí también.",
     ],
   },
 );

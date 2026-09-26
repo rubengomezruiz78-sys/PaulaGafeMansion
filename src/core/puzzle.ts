@@ -27,7 +27,9 @@ export type PuzzleStep =
   /** Llevar la luz por el laberinto: «#» seto, «S» salida, «E» meta, «.» camino. */
   | { kind: "maze"; prompt: string; grid: string[]; hint: string }
   /** Mezclar dos pinturas para conseguir el color pedido (`answer`: las dos). */
-  | { kind: "mix"; prompt: string; target: Paint; paints: Paint[]; answer: [number, number]; hint: string };
+  | { kind: "mix"; prompt: string; target: Paint; paints: Paint[]; answer: [number, number]; hint: string }
+  /** Poner en hora un reloj de agujas (hora 1..12, minutos de 5 en 5). */
+  | { kind: "clock"; prompt: string; hour: number; minute: number; hint: string };
 
 export type PuzzleKind = PuzzleStep["kind"];
 
@@ -38,6 +40,9 @@ export const isGameStep = (s: PuzzleStep): boolean => !(s.kind === "number" || s
 export const encodeSeq = (seq: readonly number[]): number => Number(seq.map((n) => n + 1).join("") || "0");
 /** Dos pinturas, sin importar el orden: (2, 0) → 13. */
 export const encodeMix = (a: number, b: number): number => encodeSeq([Math.min(a, b), Math.max(a, b)]);
+
+/** Una hora de reloj como número: 4:30 → 430 (las 12 cuentan como 12). */
+export const encodeTime = (hour: number, minute: number): number => hour * 100 + minute;
 
 /** Lo que hay que responder en un paso, sea del tipo que sea (un número). */
 export function expectedAnswer(step: PuzzleStep): number {
@@ -55,6 +60,8 @@ export function expectedAnswer(step: PuzzleStep): number {
       return 1;
     case "mix":
       return encodeMix(step.answer[0], step.answer[1]);
+    case "clock":
+      return encodeTime(step.hour, step.minute);
   }
 }
 

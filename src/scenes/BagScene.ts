@@ -5,7 +5,7 @@ import { check } from "../core/rules";
 import { fill } from "../core/text";
 import { CHATS } from "../content/chats";
 import { npcById } from "../content/npcs";
-import { MAP_POS } from "../content/mapLayout";
+import { MAP_NODE, MAP_POS, MAP_ROWS } from "../content/mapLayout";
 import { ZONES, zoneLinks } from "../content/zones";
 import { worldSim } from "../game/world";
 import { ITEMS, MEMORIES, PARTY_ITEMS } from "../content/items";
@@ -136,7 +136,7 @@ export class BagScene extends Phaser.Scene {
     g.fillStyle(0x16242a, 1).fillRoundedRect(INNER.x, y, INNER.w, DETAIL_H, 24);
     this.keep(this.add.text(INNER.x + 110, y + 125, sel.icon, { fontSize: "120px", padding: { top: 14, bottom: 8 } }).setOrigin(0.5));
     this.keep(this.add.text(INNER.x + 220, y + 30, sel.name, { fontFamily: FONT_TITLE, fontSize: "44px", color: CSS.copper }));
-    this.keep(this.add.text(INNER.x + 220, y + 92, (sel.memory ? "★ Recuerdo de Inés. " : sel.party ? "🎉 Para la fiesta de Inés. " : "") + sel.description, {
+    this.keep(this.add.text(INNER.x + 220, y + 92, (sel.memory ? "★ Recuerdo de Inés. " : sel.party ? "🎉 Para la fiesta de Inés. " : "") + fill(sel.description, session.state), {
       fontFamily: FONT_UI, fontSize: fs(32), color: CSS.ivory, lineSpacing: 6, wordWrap: { width: INNER.w - 220 - 380, useAdvancedWrap: true },
     }));
     const id = this.selected;
@@ -253,11 +253,11 @@ export class BagScene extends Phaser.Scene {
     const s = session.state;
     const plano = s.inventory.includes("plano-ines");
     const known = (z: string) => plano || s.visited.includes(z);
-    const N = { w: 250, h: 96 };
+    const N = MAP_NODE;
     const g = this.keep(this.add.graphics());
 
-    for (const [label, y] of [["Planta alta", 205], ["Planta baja", 490], ["Sótano", 850]] as const) {
-      this.keep(this.add.text(INNER.x, y, label, { fontFamily: FONT_TITLE, fontSize: "30px", color: CSS.muted }).setOrigin(0, 0.5));
+    for (const { label, y } of MAP_ROWS) {
+      this.keep(this.add.text(INNER.x - 30, y, label, { fontFamily: FONT_UI, fontSize: "22px", color: CSS.muted, fontStyle: "bold" }).setOrigin(0, 0.5));
     }
 
     // Puertas: una línea por pareja de salas (abierta si se puede cruzar en algún sentido).
@@ -272,7 +272,8 @@ export class BagScene extends Phaser.Scene {
       if (!a || !b) continue;
       const open = zoneLinks().some((x) => [x.from, x.to].sort().join("|") === key
         && check((ZONES as Record<string, { exits: { id: string; requires?: Parameters<typeof check>[0] }[] }>)[x.from]?.exits.find((e) => e.id === x.exitId)?.requires, s));
-      const pts = key === "torre|tuneles" ? [a, { x: 1785, y: a.y }, { x: 1785, y: b.y }, b] : [a, b];
+      // Torre ↔ túneles: el pasadizo baja por fuera de la casa (por la derecha del esquema).
+      const pts = key === "torre|tuneles" ? [a, { x: 1790, y: a.y }, { x: 1790, y: b.y }, b] : [a, b];
       g.lineStyle(open ? 6 : 4, open ? 0x8c7a5c : 0xb0544a, open ? 0.9 : 0.8);
       for (let i = 0; i < pts.length - 1; i += 1) dashedLine(g, pts[i], pts[i + 1], open ? 0 : 16);
     }
@@ -287,16 +288,16 @@ export class BagScene extends Phaser.Scene {
       const y = p.y - N.h / 2;
       g.fillStyle(here ? 0x1d3a2a : seen ? 0x1a2328 : 0x0e1316, 1).fillRoundedRect(x, y, N.w, N.h, 18);
       g.lineStyle(here ? 5 : 3, here ? 0x8fd6a0 : seen ? COLORS.copper : 0x2c3438, 1).strokeRoundedRect(x, y, N.w, N.h, 18);
-      this.keep(this.add.text(p.x, y + (plano ? 28 : N.h / 2), seen ? zone.name : "?", {
-        fontFamily: FONT_UI, fontSize: "22px", color: seen ? CSS.ivory : CSS.muted, align: "center",
+      this.keep(this.add.text(p.x, y + (plano ? 24 : N.h / 2), seen ? zone.name : "?", {
+        fontFamily: FONT_UI, fontSize: "19px", color: seen ? CSS.ivory : CSS.muted, align: "center", lineSpacing: -2,
         wordWrap: { width: N.w - 24, useAdvancedWrap: true },
       }).setOrigin(0.5));
-      if (here) this.keep(this.add.text(p.x, y - 6, "Estás aquí", { fontFamily: FONT_UI, fontSize: "22px", color: "#a8e6b4" }).setOrigin(0.5, 1));
+      if (here) this.keep(this.add.text(p.x, y - 4, "Estás aquí", { fontFamily: FONT_UI, fontSize: "17px", color: "#a8e6b4" }).setOrigin(0.5, 1));
       if (plano) {
         const names = worldSim.presentIn(id).map((n) => shortName(npcById(n.id)?.name ?? n.id));
         const shown = names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3}` : names.join(", ");
-        this.keep(this.add.text(p.x, y + 70, shown || "(nadie)", {
-          fontFamily: FONT_UI, fontSize: "18px", color: shown ? CSS.copper : CSS.muted, align: "center",
+        this.keep(this.add.text(p.x, y + 62, shown || "(nadie)", {
+          fontFamily: FONT_UI, fontSize: "16px", color: shown ? CSS.copper : CSS.muted, align: "center",
           wordWrap: { width: N.w - 20, useAdvancedWrap: true },
         }).setOrigin(0.5));
       }

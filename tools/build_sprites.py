@@ -44,6 +44,9 @@ STATIC = {
     "fermin": ("pintados/fermin.png", 1.76),
     "bartolo": ("pintados/bartolo.png", 1.72),
     "ramona": ("pintados/ramona.png", 0.38),
+    # Segunda planta.
+    "aurelia": ("pintados/aurelia.png", 1.52),
+    "rosalia": ("pintados/rosalia.png", 1.64),
     # Los doce criados fantasma (sábanas pintadas).
     "ghost-remedios": ("pintados/ghost-remedios.png", 1.05),
     "ghost-anselmo": ("pintados/ghost-anselmo.png", 1.15),

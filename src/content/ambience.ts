@@ -30,6 +30,11 @@ export const AMBIENCE: Record<string, ZoneAmbience> = {
   taller: { rain: 0.35, drip: 0, wind: 0.1, lightning: false, floor: 0.85, tick: 1 },
   estudio: { rain: 0.8, drip: 0.15, wind: 0.2, lightning: true, floor: 0.85 },
   teatro: { rain: 0.2, drip: 0, wind: 0, lightning: false, floor: 1.05 },
+  rellano: { rain: 0.5, drip: 0, wind: 0.2, lightning: true, floor: 0.95, tick: 1 },
+  aula: { rain: 0.6, drip: 0, wind: 0.1, lightning: true, floor: 0.95 },
+  costura: { rain: 0.8, drip: 0, wind: 0.1, lightning: true, floor: 1.1 },
+  alcoba: { rain: 0.6, drip: 0, wind: 0.2, lightning: true, floor: 1.1, hiss: 0.2 },
+  pajarera: { rain: 1, drip: 0.5, wind: 0.4, lightning: true, floor: 1.3, water: 0.3 },
 };
 
 export function ambienceFor(zone: string, afterEnding: boolean): ZoneAmbience {

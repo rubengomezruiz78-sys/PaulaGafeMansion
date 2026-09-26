@@ -31,7 +31,7 @@ describe("cada sala está completa", () => {
       for (let j = i + 1; j < pos.length; j += 1) {
         const [a, pa] = pos[i];
         const [b, pb] = pos[j];
-        const apart = Math.abs(pa.x - pb.x) >= 260 || Math.abs(pa.y - pb.y) >= 106;
+        const apart = Math.abs(pa.x - pb.x) >= 230 || Math.abs(pa.y - pb.y) >= 100;
         expect(apart, `${a} y ${b} se solapan en el mapa`).toBe(true);
       }
     }

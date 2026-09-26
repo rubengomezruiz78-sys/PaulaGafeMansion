@@ -101,6 +101,13 @@ SPECS = {
     "ghost-tadeo": (ghost("holding a small old lantern that glows warm orange, happy face"), ["@cover"], WIDE),
     "ghost-engracia": (ghost("carrying a wicker laundry basket full of folded sheets, sleepy face"), ["@cover"], WIDE),
     "ghost-gumersindo": (ghost("wearing white gloves and holding a silver tray, surprised face with round mouth"), ["@cover"], WIDE),
+    # Segunda planta (2.2): fantasmas pálidos como Elvira e Inés.
+    "aurelia": (new("a very old great-grandmother ghost, about 90 years old: a wrinkled kind face with a warm smile, silver hair in a bun held by a tortoiseshell comb, "
+                    "a black lace shawl over a deep plum-purple Victorian dress, a cameo brooch at the collar, leaning on a silver-topped walking cane; "
+                    "her whole figure is pale, softly glowing and slightly see-through, like a friendly ghost"), ["@paula"], TALL),
+    "rosalia": (new("a young governess teacher ghost, about 25 years old: freckles, auburn hair in a neat bun, small round glasses, a white blouse with a navy ribbon tie, "
+                    "a long navy blue skirt, holding an open book in one arm and a wooden pointer in the other hand, a lively friendly face; "
+                    "her whole figure is pale, softly glowing and slightly see-through, like a friendly ghost"), ["@paula"], TALL),
     # Parejas que bailan el vals en el salón de baile.
     "dancers-1": ("Two cute little ghosts made of flowing white sheets, like the small ghosts in image 1, dancing a waltz together, holding hands, "
                   "one wears a small black top hat and the other a tiny flower crown, happy faces, softly glowing pale blue-white, painted " + STY +
@@ -123,6 +130,8 @@ def refs_for(names):
     for n in names:
         if n == "@paula":
             out.append(PAULA)
+        elif n == "elvira-ghost":
+            out.append(os.path.join(OUT, "elvira_s3.png"))
         elif n == "@room":
             out.append(ROOM)
         elif n == "@cover":

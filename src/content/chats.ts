@@ -174,6 +174,41 @@ export const CHATS: ChatDef[] = [
     ],
   },
 
+  // ------------------------------------------------------ segunda planta
+  {
+    id: "nana",
+    between: ["aurelia", "florentina"],
+    lines: [
+      ["florentina", "Doña Aurelia, ¿se acuerda de la nana de los pájaros?"],
+      ["aurelia", "Un poco. Sol, mi, sol, mi, do… como una mecedora."],
+      ["florentina", "Y al final subía: do, re, mi, sol… y volvía a casa."],
+    ],
+    effects: [{ set: "pista-nana" }],
+    note: "Aurelia y Florentina: la nana del joyero empieza «sol, mi, sol, mi, do», como una mecedora.",
+  },
+  {
+    id: "llevadas",
+    between: ["rosalia", "nicanor"],
+    lines: [
+      ["nicanor", "Señorita Rosalía, ¿todavía corrige sumas?"],
+      ["rosalia", "Siempre. Primero las unidades; si pasan de nueve, me llevo una a las decenas."],
+      ["nicanor", "Y lo que te llevas no se olvida. Como en los relojes."],
+    ],
+    effects: [{ set: "pista-leccion" }],
+    note: "Rosalía y Nicanor: en las sumas, primero las unidades; si pasan de nueve, te llevas una a las decenas.",
+  },
+  {
+    id: "merienda",
+    between: ["rosalia", "aurelia"],
+    lines: [
+      ["rosalia", "Doña Aurelia, el reloj del rellano sigue parado."],
+      ["aurelia", "A las cuatro y media. La hora de la merienda de… de alguien."],
+      ["rosalia", "De Inés. Siempre llegaba tarde a merendar."],
+    ],
+    effects: [{ set: "pista-hora" }],
+    note: "Rosalía y Aurelia: el reloj del rellano se paró a las cuatro y media, la hora de la merienda de Inés.",
+  },
+
   // ------------------------------------------------------------ ambiente
   {
     id: "bandeja", between: ["basilio", "gumersindo"], repeatable: true,
