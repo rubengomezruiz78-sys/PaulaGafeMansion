@@ -493,6 +493,12 @@ export class WorldScene extends Phaser.Scene {
       "Cinco recuerdos, una fiesta preparada… y trece campanadas contadas sin dar un solo golpe.",
       { by: "ines", text: "¡Me acuerdo! Me acuerdo de todo: de mi casa, de mi cinta, de mi canción." },
       { by: "ines", text: "Y de tu voz, Paula. Gracias por no irte." },
+      ...(session.state.flags["aurelia-recuerda"]
+        ? [{ by: "aurelia", text: "Inés, tesoro… Aquí tienes tu diario. Paula encontró todas las páginas." } as Line]
+        : []),
+      ...(session.state.flags["vestido-listo"]
+        ? [{ by: "ines", text: "¿Y ese vestido rosa con lazos? ¿Es… para mí? ¡Es el de mi fiesta!" } as Line]
+        : []),
       { by: "basilio", text: "Señorita… ha dejado de llover. Por primera vez en cien años, en esta casa amanece." },
       { by: "gafe", text: "Prrr. (Gafe ronronea tan fuerte que tiembla la torre.)" },
       "Vamos, Gafe. Hay que contarle a todo el mundo que esta casa ya no da miedo.",

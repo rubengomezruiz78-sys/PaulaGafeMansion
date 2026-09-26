@@ -19,7 +19,8 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 B = 60
 W, H = 1920, 1080
 ROOMS = ["vestibulo", "biblioteca", "cocina", "archivo", "invernadero", "galeria", "dormitorio", "observatorio",
-         "musica", "desvan", "tuneles", "torre", "baile", "comedor", "jardin", "taller", "estudio", "teatro"]
+         "musica", "desvan", "tuneles", "torre", "baile", "comedor", "jardin", "taller", "estudio", "teatro",
+         "rellano", "aula", "costura", "alcoba", "pajarera"]
 EXTRA = {
     "cover": (os.path.join(ROOT, "art", "cover-paula-gafe-v2.png"), os.path.join(ROOT, "public", "cover.webp")),
     "fiesta": (os.path.join(ROOT, "art", "salas-nuevas", "fiesta.webp"), os.path.join(ROOT, "public", "world", "fiesta.webp")),
