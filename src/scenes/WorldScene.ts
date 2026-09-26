@@ -28,6 +28,8 @@ import { Gafe, Ghost, Paula } from "../world/characters";
 import { drawDebug } from "../world/debug";
 import { ZoneLifeFx, type LifeActor } from "../world/zoneLife";
 import type { Actor } from "../world/Actor";
+import { lighting } from "../world/lighting";
+import { LightProbe } from "../world/probe";
 import type { PuzzleRequest } from "./PuzzleScene";
 import { UI_EVENTS, type ConversationRequest, type DialogueRequest, type SpeakerAnchor } from "./UIScene";
 
@@ -77,6 +79,8 @@ type Pending =
   | { kind: "npc"; npc: NpcRuntime };
 
 const TAP_MAX_MOVE = 28;
+/** Tiempo con el dedo apretado para que Paula empiece a seguirlo (ms). */
+const HOLD_MS = 260;
 /** Marca de «ya saludó a Paula» (se guarda con la partida). */
 const greetedFlag = (npc: string) => `saludo:${npc}`;
 const DOUBLE_TAP_MS = 330;
@@ -130,6 +134,9 @@ export class WorldScene extends Phaser.Scene {
   /** Todo lo que se mueve solo en la sala (luces, niebla, bichos, lluvia…). */
   private life?: ZoneLifeFx;
   private perfClock = 0;
+  private probe?: LightProbe;
+  /** Dedo apretado sobre el suelo (para andar siguiéndolo). */
+  private hold?: { t: number; active: boolean; plannedAt: number };
 
   constructor() {
     super("world");
@@ -188,6 +195,15 @@ export class WorldScene extends Phaser.Scene {
     const lifeDef = LIFE[this.zoneDef.id];
     this.life = lifeDef ? new ZoneLifeFx(this, this.zoneDef.id, lifeDef, this.proj, { lowFx, calm: session.state.flags.final === true }) : undefined;
     this.life?.attachBackground(bg);
+    // Sonda de luz: el color del cuadro en cada sitio tiñe a quien esté allí.
+    try {
+      const src = this.textures.get(`zone-${this.zoneDef.id}`).getSourceImage() as HTMLImageElement;
+      this.probe = new LightProbe(src, bg.y, GAME_W, bg.displayHeight);
+      const [ar, ag, ab] = lighting.ambient;
+      this.probe.calibrate(ar * 0.2126 + ag * 0.7152 + ab * 0.0722);
+    } catch {
+      this.probe = undefined; // sin lectura de píxeles: se queda la luz ambiente de siempre
+    }
     this.addGlints();
     this.setupAmbience();
     this.placePaulaAndGafe(data);
@@ -199,8 +215,18 @@ export class WorldScene extends Phaser.Scene {
     const pois = this.shuffledPois();
     for (const n of worldSim.presentIn(this.zoneDef.id)) this.spawnFromSim(n, pois);
 
-    this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer) => {
+    this.hold = undefined;
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       if (this.registry.get("modal") || this.transitioning) return;
+      // Los botones de la mochila y el cuaderno (arriba a la derecha) no cuentan.
+      if (p.worldY < VIEW_TOP + 160 && p.worldX > GAME_W - 330) return;
+      this.hold = { t: this.time.now, active: false, plannedAt: 0 };
+    });
+    this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer) => {
+      const held = this.hold;
+      this.hold = undefined;
+      if (this.registry.get("modal") || this.transitioning) return;
+      if (held?.active) return; // era «dedo apretado»: ya iba andando
       if (p.getDistance() > TAP_MAX_MOVE) return;
       this.onTap({ x: p.worldX, y: p.worldY });
     });
@@ -251,7 +277,7 @@ export class WorldScene extends Phaser.Scene {
   private dressActor(actor: Actor, castShadow = true): void {
     const life = LIFE[this.zoneDef.id];
     if (!life) return;
-    actor.setEnvironment({ reflect: life.reflect, fog: life.fog.amount, castShadow });
+    actor.setEnvironment({ reflect: life.reflect, fog: life.fog.amount, castShadow }, this.probe);
   }
 
   private placePaulaAndGafe(data: WorldData): void {
@@ -301,6 +327,7 @@ export class WorldScene extends Phaser.Scene {
         .map((n) => ({ x: n.actor.pos.x, y: (n.actor.headY() + n.actor.pos.y) / 2, ghost: true }));
       this.life.update(dt, actors, this.paula.pos);
     }
+    this.paula.attentive = this.registry.get("modal") === true;
     this.paula.update(dt);
     this.footsteps();
     this.updateLightning(dt);
@@ -315,7 +342,36 @@ export class WorldScene extends Phaser.Scene {
     }
     if (this.chat && !this.chat.started) this.maybeBeginChatLines();
     this.flushBarks();
+    this.steerByHold();
     this.resolvePending();
+  }
+
+  /**
+   * Dedo apretado en el suelo: Paula va hacia donde esté el dedo y lo sigue si
+   * se mueve (lejos, corriendo). Al levantarlo, termina el paso y se para.
+   */
+  private steerByHold(): void {
+    const h = this.hold;
+    const p = this.input.activePointer;
+    if (!h || !p.isDown || this.registry.get("modal") || this.transitioning) return;
+    const now = this.time.now;
+    if (!h.active) {
+      if (now - h.t < HOLD_MS) return;
+      const pt = { x: p.worldX, y: p.worldY };
+      // Si el dedo está sobre alguien o algo, eso es un toque normal, no un paseo.
+      const onSomething = this.npcs.some((n) => !n.gone && n.actor.hitRect().contains(pt.x, pt.y))
+        || this.gafe.hitRect().contains(pt.x, pt.y)
+        || [...this.zoneDef.props, ...this.zoneDef.exits].some((x) => Phaser.Geom.Polygon.Contains(new Phaser.Geom.Polygon(polyPx(x.hotspot)), pt.x, pt.y));
+      if (onSomething) return;
+      h.active = true;
+      this.pending = undefined;
+    }
+    if (now - h.plannedAt < 120) return;
+    h.plannedAt = now;
+    const target = this.nav.nearestWalkable({ x: p.worldX, y: p.worldY });
+    const far = this.proj.floorDistance(this.paula.pos, target) > 3.2;
+    if (this.proj.floorDistance(this.paula.pos, target) < 0.15) return;
+    this.paula.walker.setPath(this.nav.findPath(this.paula.pos, target), far);
   }
 
   // ---------------------------------------------------------------- toques
@@ -479,7 +535,7 @@ export class WorldScene extends Phaser.Scene {
       lines: [
         "¿Hola? La puerta estaba abierta… y fuera no para de llover.",
         { by: "gafe", text: "Miau. (Gafe se sacude la lluvia encima de la alfombra.)" },
-        "Vale, Gafe. Toco el suelo para ir a los sitios, y dos veces rápido para correr.",
+        "Vale, Gafe. Toco el suelo para ir a los sitios, dos veces rápido para correr… y si dejo el dedo apretado, voy siguiéndolo.",
         "Si toco a alguien, hablo con él. Si toco algo, lo miro de cerca.",
         "En la mochila guardo lo que encuentre, y en el cuaderno apunto lo importante.",
         { by: "gafe", text: "Miau. (Si no sabes qué hacer, tócame a mí.)" },

@@ -63,13 +63,24 @@ describe("Walker", () => {
   });
 
   it("recorrer un camino con varios tramos suma exactamente su longitud", () => {
-    const w = new Walker(proj, { x: 200, y: 1000 }, GAITS.paula);
+    const w = new Walker(proj, { x: 200, y: 1000 }, { ...GAITS.paula, cornerM: 0 });
     const path = [{ x: 700, y: 900 }, { x: 1100, y: 1010 }, { x: 1500, y: 780 }];
     w.setPath(path);
     const expected = w.remainingMeters();
     run(w, 15);
     expect(w.pos).toEqual(path[2]);
     expect(w.distance).toBeCloseTo(expected, 6);
+  });
+
+  it("redondea las esquinas: llega igual al destino por un camino algo más corto", () => {
+    const w = new Walker(proj, { x: 200, y: 1000 }, GAITS.paula);
+    const path = [{ x: 700, y: 900 }, { x: 1100, y: 1010 }, { x: 1500, y: 780 }];
+    w.setPath(path);
+    const polyline = w.remainingMeters();
+    run(w, 15);
+    expect(w.pos).toEqual(path[2]);
+    expect(w.distance).toBeLessThan(polyline);
+    expect(w.distance).toBeGreaterThan(polyline * 0.95);
   });
 
   it("no se gira al andar casi en vertical (histéresis)", () => {

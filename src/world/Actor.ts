@@ -3,6 +3,7 @@ import type { Projection, Pt } from "../core/perspective";
 import { Walker, type Gait } from "../core/walker";
 import { SPRITES, type SpriteKey } from "../content/sprites";
 import { ACTOR_LIGHT, hex3, lighting, type ActorLightParams } from "./lighting";
+import type { LightProbe } from "./probe";
 
 export interface ActorOptions {
   /** Anchura de la sombra de contacto (m). */
@@ -12,7 +13,11 @@ export interface ActorOptions {
   /** Tinte multiplicativo (solo sin WebGL: con WebGL manda la luz de la sala). */
   tint?: number;
   /** Cómo encaja la imagen con el cuadro (ver `ActorLightParams`). */
-  look?: { saturation?: number; contrast?: number; emissive?: number; rim?: number };
+  look?: {
+    saturation?: number; contrast?: number; emissive?: number; rim?: number;
+    /** Contorno de luna mínimo (color hex y fuerza 0..1), aunque no haya luz cerca. */
+    rimMin?: [number, number];
+  };
 }
 
 /** Lo que la sala aporta a cada personaje: reflejo del suelo, niebla y sombras. */
@@ -51,6 +56,9 @@ export abstract class Actor {
   /** Parámetros de luz de este personaje (los lee el shader de iluminación). */
   readonly lightParams: ActorLightParams;
   private env: ActorEnvironment = { reflect: 0, fog: 0, castShadow: false };
+  /** Luz del sitio (la pone la sala). */
+  private probe?: LightProbe;
+  private readonly probeOut: [number, number, number] = [0, 0, 0];
   private castShadow?: Phaser.GameObjects.Sprite;
   private reflection?: Phaser.GameObjects.Sprite;
 
@@ -71,12 +79,20 @@ export abstract class Actor {
       keyDir: [0, -1], keyColor: [0, 0, 0],
       saturation: look.saturation ?? 0.9, contrast: look.contrast ?? 0.95, fog: 0, emissive: look.emissive ?? 0,
       rimTexels: 3, keyPower: 0, warp: [0, 0, 0, 0], ripple: [0, 0],
+      probe: [0, 0, 0, 0], rimMin: [0, 0, 0, 3],
     };
+    if (look.rimMin) {
+      const [r, g, b] = hex3(look.rimMin[0]);
+      this.lightParams.rimMin[0] = r * look.rimMin[1];
+      this.lightParams.rimMin[1] = g * look.rimMin[1];
+      this.lightParams.rimMin[2] = b * look.rimMin[1];
+    }
   }
 
   /** La sala dice si el suelo refleja, cuánta niebla hay y si hay sombras proyectadas. */
-  setEnvironment(env: ActorEnvironment): void {
+  setEnvironment(env: ActorEnvironment, probe?: LightProbe): void {
     this.env = env;
+    this.probe = probe;
     if (env.castShadow && !this.castShadow) {
       this.castShadow = this.scene.add.sprite(0, 0, "__DEFAULT").setTintFill(0x000000).setAlpha(0);
       this.container.addAt(this.castShadow, 1);
@@ -214,8 +230,22 @@ export abstract class Actor {
       lp.keyColor[0] = lp.keyColor[1] = lp.keyColor[2] = 0;
       lp.keyPower = 0;
     }
-    // Contraluz de ~3 px en pantalla, sea cual sea la resolución de la imagen.
-    lp.rimTexels = 3.2 / Math.max(0.05, Math.abs(obj.scaleX));
+    // Contraluz de ~3 px en pantalla (menos en figuras pequeñas: en un gato
+    // lejano 3 px son media pata y lo vuelven gris).
+    const screenH = this.heightM() * ppm;
+    const rimPx = Math.max(1.1, Math.min(3.2, screenH * 0.025));
+    lp.rimTexels = rimPx / Math.max(0.05, Math.abs(obj.scaleX));
+    lp.rimMin[3] = rimPx * 0.6 / Math.max(0.05, Math.abs(obj.scaleX));
+    // Luz del sitio: el color del cuadro alrededor del cuerpo (más ancho que él, para no teñirse de su propia sombra).
+    if (this.probe) {
+      const hPx = this.heightM() * ppm;
+      this.probe.sample({ x: this.pos.x, y: chestY }, Math.max(90, hPx * 0.9), Math.max(80, hPx * 1.1), this.probeOut);
+      const s = 0.12;
+      lp.probe[0] += (this.probeOut[0] - lp.probe[0]) * s;
+      lp.probe[1] += (this.probeOut[1] - lp.probe[1]) * s;
+      lp.probe[2] += (this.probeOut[2] - lp.probe[2]) * s;
+      lp.probe[3] = 0.6;
+    }
     const Z = this.proj.toFloor(this.pos).Z;
     lp.fog = this.env.fog * Math.min(1, Math.max(0, (Z - 3) / 9));
 

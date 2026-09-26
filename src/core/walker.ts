@@ -21,6 +21,11 @@ export interface Gait {
   strideCycleM: number;
   /** Desplazamiento horizontal mínimo (px) para darse la vuelta. */
   turnThresholdPx: number;
+  /**
+   * Metros antes de cada esquina en los que ya se empieza a girar (0 = giro
+   * en seco). Una persona no llega al vértice y gira: redondea la curva.
+   */
+  cornerM?: number;
 }
 
 export type Facing = 1 | -1;
@@ -34,6 +39,8 @@ export class Walker {
   /** Aceleración real del último fotograma (m/s²), para la inclinación. */
   lastAccel = 0;
   private runMultiplier = 1;
+  /** Punto de la curva que ya sustituye a una esquina. */
+  private cornerCut?: Pt;
 
   /** `proj` es pública: al cambiar de zona se sustituye por la de la zona nueva. */
   constructor(public proj: Projection, public pos: Pt, public gait: Gait) {}
@@ -100,9 +107,24 @@ export class Walker {
 
     // Nunca quedarse clavado a milímetros del destino.
     let move = Math.max(this.speed * dt, Math.min(remaining, 0.004));
+    const corner = this.gait.cornerM ?? 0;
     while (move > 1e-9 && this.path.length) {
       const next = this.path[0];
       const d = this.proj.floorDistance(this.pos, next);
+      if (corner > 0 && this.path.length > 1 && next !== this.cornerCut && d < corner && d > move) {
+        // Cerca de una esquina: apunta ya a un punto del tramo siguiente (la curva
+        // se redondea) en vez de clavar el pie en el vértice y girar en seco.
+        // Ese punto no se vuelve a redondear (si no, se perseguiría a sí mismo).
+        const after = this.path[1];
+        const target = this.proj.advance(next, after, corner - d);
+        if (target.x === after.x && target.y === after.y) this.path.shift();
+        else {
+          this.path[0] = target;
+          this.cornerCut = target;
+        }
+        this.updateFacing();
+        continue;
+      }
       if (d <= move) {
         this.pos = { x: next.x, y: next.y };
         this.distance += d;
@@ -137,11 +159,11 @@ export class Walker {
 /** Marchas de referencia (m/s, m/s², m). */
 export const GAITS = {
   /** Niña de 9 años, paso vivo. Zancada ≈ 0,53 m → ciclo de 2 pasos ≈ 1,05 m. */
-  paula: { maxSpeed: 1.35, accel: 3.2, decel: 3.6, strideCycleM: 1.05, turnThresholdPx: 14 },
+  paula: { maxSpeed: 1.35, accel: 3.2, decel: 3.6, strideCycleM: 1.05, turnThresholdPx: 14, cornerM: 0.35 },
   /** Gato: pasos cortos y rápidos; trota para alcanzar a Paula. */
-  gafe: { maxSpeed: 1.45, accel: 4.5, decel: 5, strideCycleM: 0.44, turnThresholdPx: 10 },
+  gafe: { maxSpeed: 1.45, accel: 4.5, decel: 5, strideCycleM: 0.44, turnThresholdPx: 10, cornerM: 0.25 },
   /** Adulto tranquilo. */
   adult: { maxSpeed: 1.0, accel: 1.6, decel: 2.0, strideCycleM: 1.4, turnThresholdPx: 18 },
   /** Fantasma: se desliza despacio y con inercia. */
-  ghost: { maxSpeed: 0.55, accel: 0.5, decel: 0.6, strideCycleM: 1, turnThresholdPx: 24 },
+  ghost: { maxSpeed: 0.55, accel: 0.5, decel: 0.6, strideCycleM: 1, turnThresholdPx: 24, cornerM: 0.5 },
 } satisfies Record<string, Gait>;

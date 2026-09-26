@@ -22,10 +22,16 @@ export class Paula extends Actor {
   private walkMix = 0;
   private startleMix = 0;
   private startleFor = 0;
+  /** Quieta un rato, mira a su alrededor (una niña no se queda como una estatua). */
+  private stillFor = 0;
+  private glanceAt = 4 + Math.random() * 3;
+  private glanceBack = 0;
+  /** Atenta a una conversación o un puzzle: no se distrae mirando a otro lado. */
+  attentive = false;
 
   constructor(scene: Phaser.Scene, proj: Projection, pos: Pt, tint?: number) {
     // Es una foto: algo menos de saturación y contraste la acercan al cuadro.
-    super(scene, proj, pos, GAITS.paula, { shadowWidthM: 0.5, tint, look: { saturation: 0.78, contrast: 0.9, rim: 0.75 } });
+    super(scene, proj, pos, GAITS.paula, { shadowWidthM: 0.5, tint, look: { saturation: 0.82, contrast: 0.92, rim: 0.8, rimMin: [0x8fa4d8, 0.12] } });
     this.walk = this.addPose("walk", "paula-walk");
     this.idle = this.addPose("idle", "paula-idle");
     this.startled = this.addPose("startled", "paula-startled");
@@ -44,6 +50,20 @@ export class Paula extends Actor {
 
   protected animate(dt: number): void {
     const moving = this.walker.moving;
+    this.stillFor = moving || this.talkFor > 0 || this.attentive ? 0 : this.stillFor + dt;
+    if (this.stillFor > this.glanceAt && this.glanceBack === 0) {
+      // Echa un vistazo al otro lado… y al rato vuelve a mirar al frente.
+      this.walker.facing = this.walker.facing === 1 ? -1 : 1;
+      this.glanceBack = this.stillFor + 1.4 + Math.random() * 1.6;
+    } else if (this.glanceBack > 0 && this.stillFor > this.glanceBack) {
+      this.walker.facing = this.walker.facing === 1 ? -1 : 1;
+      this.glanceBack = 0;
+      this.glanceAt = this.stillFor + 5 + Math.random() * 6;
+    }
+    if (this.stillFor === 0) {
+      this.glanceBack = 0;
+      this.glanceAt = 4 + Math.random() * 3;
+    }
     // Arrancar es rápido (0,1 s); pararse se funde algo más lento (0,18 s).
     this.walkMix = approach(this.walkMix, moving ? 1 : 0, dt / (moving ? 0.1 : 0.18));
     const phase = this.walker.gaitPhase();
@@ -91,7 +111,11 @@ export class Gafe extends Actor {
   private paulaWasMoving = false;
 
   constructor(scene: Phaser.Scene, proj: Projection, pos: Pt, tint?: number) {
-    super(scene, proj, pos, GAITS.gafe, { shadowWidthM: 0.42, tint, look: { saturation: 0.9, contrast: 1, rim: 0.9 } });
+    // Un gato negro en una casa oscura se pierde: brillo propio, contraluz fuerte y contorno de luna.
+    super(scene, proj, pos, GAITS.gafe, {
+      shadowWidthM: 0.46, shadowAlpha: 0.7, tint,
+      look: { saturation: 1, contrast: 1.12, rim: 0.85, emissive: 0.08, rimMin: [0x9fb8ff, 0.3] },
+    });
     this.walk = this.addPose("walk", "gafe-walk");
     this.sit = this.addPose("sit", "gafe-sit");
     this.walk.obj.setAlpha(0);

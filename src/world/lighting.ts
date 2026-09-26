@@ -38,6 +38,10 @@ uniform float uScale;
 uniform vec4 uWarp;
 /** Ondas de la sábana o del humo de los fantasmas: x = fuerza, y = tiempo. */
 uniform vec2 uRipple;
+/** Luz del sitio (color medio del cuadro alrededor del personaje) y cuánto manda (0..1). */
+uniform vec4 uProbe;
+/** Contorno mínimo aunque no haya luz cerca (para que un gato negro no se pierda en la oscuridad). */
+uniform vec4 uRimMin;
 varying vec2 outTexCoord;
 varying float outTintEffect;
 varying vec4 outTint;
@@ -72,7 +76,7 @@ void main() {
   c = (c - 0.5 * tex.a) * uGrade.y + 0.5 * tex.a;
   c = max(c, vec3(0.0));
 
-  vec3 light = uAmbient;
+  vec3 light = mix(uAmbient, uProbe.rgb, uProbe.a);
   vec2 frag = gl_FragCoord.xy / uScale;
   for (int i = 0; i < ${MAX_LIGHTS}; i++) {
     if (float(i) >= uLightCount) break;
@@ -97,6 +101,20 @@ void main() {
   vec2 o2 = clamp(wuv + uKeyDir * uTexel * uRimTexels * 0.5, uFrame.xy, uFrame.zw);
   float rim = tex.a * (1.0 - 0.5 * (texture2D(uMainSampler, o).a + texture2D(uMainSampler, o2).a));
   c += uKeyColor * rim;
+
+  // Borde fundido: donde la silueta se acaba, el color del sitio se cuela un poco
+  // (como en una pintura, donde el borde de la figura se mezcla con el aire).
+  float nb = 0.25 * (
+    texture2D(uMainSampler, clamp(wuv + vec2(uTexel.x, 0.0) * 2.5, uFrame.xy, uFrame.zw)).a +
+    texture2D(uMainSampler, clamp(wuv - vec2(uTexel.x, 0.0) * 2.5, uFrame.xy, uFrame.zw)).a +
+    texture2D(uMainSampler, clamp(wuv + vec2(0.0, uTexel.y) * 2.5, uFrame.xy, uFrame.zw)).a +
+    texture2D(uMainSampler, clamp(wuv - vec2(0.0, uTexel.y) * 2.5, uFrame.xy, uFrame.zw)).a);
+  float edge = clamp(tex.a - nb, 0.0, 1.0) * 1.8;
+  c = mix(c, uProbe.rgb * 0.55 * tex.a, clamp(edge * 0.45, 0.0, 0.5));
+  // Contorno mínimo (Gafe): luz de luna por detrás y arriba aunque no haya velas.
+  vec2 up = clamp(wuv + vec2(-0.35, -1.0) * uTexel * uRimMin.w, uFrame.xy, uFrame.zw);
+  float rimUp = tex.a * (1.0 - texture2D(uMainSampler, up).a);
+  c += uRimMin.rgb * rimUp;
 
   c = mix(c, uFogColor * tex.a, uGrade.z);
   vec3 tint = outTint.bgr;
@@ -123,6 +141,10 @@ export interface ActorLightParams {
   warp: [number, number, number, number];
   /** Ondas de la parte de abajo (fantasmas): fuerza y tiempo. */
   ripple: [number, number];
+  /** Luz del sitio (sonda del cuadro) y cuánto manda. */
+  probe: [number, number, number, number];
+  /** Contorno mínimo: color y grosor (texels). */
+  rimMin: [number, number, number, number];
 }
 
 export interface SceneLight {
@@ -213,6 +235,10 @@ export class ActorLightPipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePi
     const w = p?.warp;
     this.set4f("uWarp", w?.[0] ?? 0, w?.[1] ?? 0, w?.[2] ?? 0, w?.[3] ?? 0);
     this.set2f("uRipple", p?.ripple[0] ?? 0, p?.ripple[1] ?? 0);
+    const pr = p?.probe;
+    this.set4f("uProbe", pr?.[0] ?? 0, pr?.[1] ?? 0, pr?.[2] ?? 0, pr?.[3] ?? 0);
+    const rm = p?.rimMin;
+    this.set4f("uRimMin", rm?.[0] ?? 0, rm?.[1] ?? 0, rm?.[2] ?? 0, rm?.[3] ?? 3);
     super.batchSprite(go, camera, parent);
     this.flush();
   }
