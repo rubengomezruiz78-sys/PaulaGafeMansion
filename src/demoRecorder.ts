@@ -625,5 +625,126 @@ export function makeDemoRecorder(game: Phaser.Game, api: DemoApi) {
     return { frames: n, seconds, log };
   }
 
-  return { run, tour, fiesta, progress: () => n };
+  /** Reloj de agujas: mueve las agujas con las flechas hasta la hora pedida. */
+  async function playClock(): Promise<void> {
+    await wait(1.2);
+    const b = board()!;
+    const goalH = b.step.hour as number;
+    const goalM = b.step.minute as number;
+    while (b.hour !== goalH) {
+      b.turn(1, 0);
+      await wait(0.25);
+    }
+    while (b.minute !== goalM) {
+      b.turn(0, 5);
+      await wait(0.16);
+    }
+    await wait(0.6);
+    b.answer();
+    await wait(2);
+  }
+
+  /**
+   * Vídeo de la segunda planta: se sube por la escalera de la galería, el reloj
+   * del rellano, el aula, la costura, la alcoba de Aurelia y la pajarera, con
+   * Paula andando a su aire, Gafe curioseando y la casa viva.
+   */
+  async function segunda(): Promise<{ frames: number; seconds: number; log: string[] }> {
+    n = 0;
+    game.loop.sleep();
+    sound.startTimeline(() => n / FPS);
+    const w = () => api.world();
+    const st = () => session.state;
+
+    await wait(3);
+    await touch(410, 579, () => (game.scene.getScene("title") as unknown as { start(f: boolean): void }).start(true));
+    await until(() => game.scene.isActive("world") && w().ready, 20);
+    if (ui().panel) ui().close(true);
+    st().flags["intro-visto"] = true;
+
+    await cut("galeria", "Al fondo de la galería, una escalera sube a la segunda planta…");
+    await wait(1.5);
+    await walkTo(0.6, 0.75);
+    await exit("escalera-desvan");
+    await wait(2);
+    await prop("papel-alfombra");
+    await wait(0.5);
+    await walkTo(0.62, 0.8);
+    await wait(1.5);
+    if (await prop("reloj-pie")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playClock();
+      await playClock();
+      await answer(5, "number");
+      await playClock();
+      await wait(1.5);
+    }
+
+    await exit("puerta-aula");
+    place("rosalia", "aula");
+    await wait(2.5);
+    if (await talk("rosalia")) {
+      await choose("leccion");
+      await choose("adios");
+    }
+    if (await prop("pizarra")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await answer(632, "number");
+      await playOrder();
+      await answer(1, "choice");
+      await answer(125, "number");
+      await wait(1.5);
+    }
+
+    await cut("costura", "El cuarto de costura…");
+    place("florentina", "costura");
+    await wait(2);
+    if (await prop("maniqui")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playPairs();
+      await answer(42, "number");
+      await answer(0, "choice");
+      await wait(1.5);
+    }
+
+    await cut("pajarera", "Y arriba del todo, la pajarera de cristal.");
+    await wait(2);
+    w().strikeLightning(1);
+    await wait(2.5);
+    if (await prop("jaula-grande")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playMaze();
+      await answer(13, "number");
+      await answer(0, "choice");
+      await wait(1.5);
+    }
+    await exit("puerta-alcoba");
+    place("aurelia", "alcoba");
+    await wait(2);
+    if (await talk("aurelia")) {
+      await choose("quien");
+      await choose("adios");
+    }
+    if (await prop("tocador")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playMelody();
+      await playMelody();
+      await wait(1.5);
+    }
+    await walkTo(0.62, 0.9);
+    await wait(4);
+    w().cameras.main.fadeOut(1500, 0, 0, 0);
+    await wait(2);
+
+    send();
+    await Promise.all(inflight);
+    const seconds = n / FPS;
+    const audio = await renderTimeline(sound.stopTimeline(), seconds);
+    await fetch(`${url}/audio`, { method: "POST", body: audioBufferToWav(audio) });
+    await fetch(`${url}/log`, { method: "POST", body: log.join(" | ") || "sin incidencias" });
+    game.loop.wake();
+    return { frames: n, seconds, log };
+  }
+
+  return { run, tour, fiesta, segunda, progress: () => n };
 }

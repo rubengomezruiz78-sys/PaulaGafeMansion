@@ -170,3 +170,35 @@ pruebas para una niña de 9 años.
   vals en perspectiva real, luces/cortinas/agua/engranajes anotados en las 6.
 - Pruebas: 230 tests, `__test.autoplay()` completa en 154 pasos, vídeo con
   `__test.recordFiesta()`.
+
+## Ampliación 2.2.0 — «La segunda planta» (2026-09-26)
+Petición: niveles en la segunda planta para que la escalera tenga sentido, más
+integración de los personajes, sensación de vida, mejor movilidad de Paula,
+Gafe más definido y proporciones reales.
+- **Casa de abajo arriba**: planta baja → 1.ª planta (galería) → 2.ª planta
+  (rellano del reloj) → desván → observatorio y torre. La escalera del fondo de
+  la galería ya no va al desván: sube al rellano.
+- **Cinco salas** (`content/zones/segundaPlanta.ts`): rellano del reloj, aula
+  de la institutriz, cuarto de costura, alcoba de Aurelia y pajarera de
+  cristal del tejado (por la escalerilla del rellano o la cristalera de la
+  alcoba). 23 salas; mapa de 5 plantas (`content/mapLayout.ts`).
+- **Historia**: el diario de Inés (4 páginas: alfombra del rellano, reloj de
+  pie, pizarra, vestido) que devuelve la memoria a la bisabuela Aurelia; los
+  pájaros de papel, la nana del joyero y el medallón. El final lo recuerda.
+- **Personajes**: Doña Aurelia (la bisabuela) y la señorita Rosalía
+  (institutriz); Florentina se muda al cuarto de costura. 3 charlas nuevas.
+- **Prueba nueva**: reloj de agujas (`kind: "clock"`), también por voz («las
+  cuatro y media», «las tres menos cuarto»). Más: sumas con llevadas, ordenar
+  números, hexágono, mitades, parejas de botones, series, laberinto.
+- **Integración**: sonda de luz (`world/probe.ts`): el color del cuadro
+  alrededor de cada personaje le tiñe (fuego naranja, luna azul, rincón
+  oscuro); bordes fundidos con el aire; contraluz proporcional al tamaño.
+- **Gafe**: brillo propio, contraste y filo de luna mínimo (`rimMin`): se ve
+  en cualquier sala sin dejar de ser negro. Curiosea objetos cuando Paula se
+  queda quieta y vuelve en cuanto ella anda.
+- **Movilidad**: curvas redondeadas en las esquinas (`Gait.cornerM`), andar
+  siguiendo el dedo apretado (y correr si está lejos), Paula mira alrededor
+  cuando está quieta; huellas en suelo mojado y polvo al pisar; las llamas y
+  el polvo reaccionan al paso.
+- Pruebas: 323 tests, `__test.autoplay()` completa (192 pasos), vídeo con
+  `__test.recordSegunda()`.

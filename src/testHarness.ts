@@ -216,6 +216,11 @@ export function installTestHarness(game: Phaser.Game): void {
       const rec = makeDemoRecorder(game, api);
       return rec.fiesta();
     },
+    /** Graba el vídeo de la segunda planta (demoRecorder.segunda). */
+    recordSegunda() {
+      const rec = makeDemoRecorder(game, api);
+      return rec.segunda();
+    },
     /** Graba el recorrido por la casa viva (demoRecorder.tour). */
     recordTour() {
       const rec = makeDemoRecorder(game, api);
