@@ -180,8 +180,13 @@ export class ZoneLifeFx {
       if (l.halo) l.halo.setAlpha(0.42 * l.factor).setScale((l.def.glow! * 2) / 256 * (0.97 + 0.03 * n));
       l.flames.forEach((f, i) => {
         const m = wobble(t * 1.3 + i, l.phase[1] + i, l.phase[2], l.phase[0] + i * 2);
-        f.setScale(0.36 * (1 + 0.06 * m), 0.38 * (1 + 0.16 * m)).setAlpha(0.75 + 0.2 * m);
-        f.x = (f.getData("x") as number) + m * 0.8;
+        // Si Paula pasa cerca, el aire que mueve hace bailar la llama.
+        const fx = f.getData("x") as number;
+        const near = Math.max(0, 1 - Math.hypot(paula.x - fx, (paula.y - f.y) * 0.5) / 260);
+        const gust = near * (1.5 + Math.sin(t * 9 + i));
+        f.setScale(0.36 * (1 + 0.06 * m), 0.38 * (1 + 0.16 * m + 0.1 * gust)).setAlpha(0.75 + 0.2 * m);
+        f.x = fx + m * 0.8 + gust * 2.2 * Math.sin(t * 7 + i);
+        f.setRotation(gust * 0.12 * Math.sin(t * 6.3 + i));
       });
       const p = px(l.def.x, l.def.y);
       lighting.add(p.x, p.y, l.def.radius, l.def.intensity * l.factor, l.def.color);
@@ -204,6 +209,15 @@ export class ZoneLifeFx {
     for (const d of [...this.dust, ...this.flies]) {
       d.img.x += d.vx * dt + Math.sin(t * 0.7 + d.seed) * 4 * dt;
       d.img.y += d.vy * dt + Math.cos(t * 0.5 + d.seed) * 3 * dt;
+      // Al pasar Paula, el polvo y las luciérnagas se apartan en un remolino.
+      const dx = d.img.x - paula.x;
+      const dy = d.img.y - (paula.y - 90);
+      const dd = Math.hypot(dx, dy);
+      if (dd < 170 && dd > 1) {
+        const push = (1 - dd / 170) * 90 * dt;
+        d.img.x += (dx / dd) * push - (dy / dd) * push * 0.6;
+        d.img.y += (dy / dd) * push + (dx / dd) * push * 0.6;
+      }
       const b = d.box;
       if (d.img.x < b.x0) d.img.x = b.x1;
       if (d.img.x > b.x1) d.img.x = b.x0;

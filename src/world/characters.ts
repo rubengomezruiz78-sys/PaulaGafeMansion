@@ -109,6 +109,11 @@ export class Gafe extends Actor {
   private stillFor = 10;
   private thinkIn = 0;
   private paulaWasMoving = false;
+  /** Paula lleva un rato quieta: Gafe se va a curiosear cerca (y vuelve en cuanto ella se mueve). */
+  private paulaStill = 0;
+  private roaming?: { until: number };
+  /** Sitios interesantes de la sala para curiosear (los pone la escena). */
+  sniffSpots: Pt[] = [];
 
   constructor(scene: Phaser.Scene, proj: Projection, pos: Pt, tint?: number) {
     // Un gato negro en una casa oscura se pierde: brillo propio, contraluz fuerte y contorno de luna.
@@ -131,9 +136,27 @@ export class Gafe extends Actor {
     const paulaMovingNow = paula.walker.moving;
     if (paulaMovingNow && !this.paulaWasMoving) this.thinkIn = Math.min(this.thinkIn, 0.08 + Math.random() * 0.14);
     this.paulaWasMoving = paulaMovingNow;
+    this.paulaStill = paulaMovingNow ? 0 : this.paulaStill + dt;
+    if (paulaMovingNow) this.roaming = undefined;
     this.thinkIn -= dt;
     if (this.thinkIn > 0) return;
     this.thinkIn = 0.2;
+    // Curiosear: con Paula quieta un rato, se va a olfatear algo cercano y se sienta allí.
+    if (this.roaming) {
+      if (this.time < this.roaming.until) return;
+      this.roaming = undefined;
+    } else if (this.paulaStill > 7 && !this.walker.moving && Math.random() < 0.08) {
+      const near = this.sniffSpots.filter((p) => {
+        const d = this.proj.floorDistance(p, paula.pos);
+        return d > 0.8 && d < 3;
+      });
+      if (near.length) {
+        const spot = nav.nearestWalkable(near[Math.floor(Math.random() * near.length)]);
+        this.walker.setPath(nav.findPath(this.pos, spot));
+        this.roaming = { until: this.time + 6 + Math.random() * 6 };
+        return;
+      }
+    }
     const pf = this.proj.toFloor(paula.pos);
     const side = -paula.walker.facing; // detrás de ella según hacia dónde mira
     const spot = nav.nearestWalkable(this.proj.fromFloor({ X: pf.X + side * 0.75, Z: Math.max(0.6, pf.Z - 0.35) }));
@@ -211,6 +234,9 @@ export class Ghost extends Actor {
 
   private readonly halo?: Phaser.GameObjects.Image;
   private flickerFor = 0;
+  /** Mirar a un lado y a otro de vez en cuando (sin moverse). */
+  private stillFor = 0;
+  private glanceAt = 5 + Math.random() * 6;
 
   /** Con el relámpago, el fantasma titila (como una bombilla). */
   flicker(): void {
@@ -225,6 +251,11 @@ export class Ghost extends Actor {
     const t = this.time + this.seed;
     const ppm = this.proj.ppm(this.pos.y);
     const sr = Math.min(1, this.walker.speedRatio());
+    this.stillFor = this.walker.moving || this.talkFor > 0 ? 0 : this.stillFor + dt;
+    if (this.stillFor > this.glanceAt) {
+      this.walker.facing = this.walker.facing === 1 ? -1 : 1;
+      this.glanceAt = this.stillFor + 4 + Math.random() * 7;
+    }
     if (this.style.floatM <= 0) {
       // Persona viva (no flota): pisa el suelo, con un leve balanceo al andar.
       this.liftM = 0;

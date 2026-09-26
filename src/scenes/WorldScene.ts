@@ -209,6 +209,7 @@ export class WorldScene extends Phaser.Scene {
     this.placePaulaAndGafe(data);
     this.dressActor(this.paula);
     this.dressActor(this.gafe);
+    this.gafe.sniffSpots = this.zoneDef.props.map((pr) => this.nav.nearestWalkable(toPx(pr.approach)));
 
     // Quien esté en esta zona según la simulación aparece ya dentro (o en su puerta).
     worldSim.visibleZoneChanged(this.now, this.zoneDef.id);
@@ -1051,7 +1052,37 @@ export class WorldScene extends Phaser.Scene {
     const n = Math.floor(w.distance / (w.gait.strideCycleM / 2));
     if (n !== this.stepCount) {
       this.stepCount = n;
-      if (w.moving) sound.step(0.6 + 0.4 * Math.min(1, w.speedRatio()), this.amb.floor);
+      if (w.moving) {
+        sound.step(0.6 + 0.4 * Math.min(1, w.speedRatio()), this.amb.floor);
+        this.footprint(n % 2 === 0 ? -1 : 1);
+      }
+    }
+  }
+
+  /**
+   * Cada pisada deja rastro: en el suelo mojado, un charquito que brilla y se
+   * borra; en el polvoriento (madera, alfombra), una nubecilla de polvo.
+   * El pie es el de su lado (izquierdo o derecho, según la pisada).
+   */
+  private footprint(side: number): void {
+    if (lowFx) return;
+    const life = LIFE[this.zoneDef.id];
+    if (!life) return;
+    const p = this.paula.pos;
+    const ppm = this.proj.ppm(p.y);
+    const f = this.proj.toFloor(p);
+    const at = this.proj.fromFloor({ X: f.X + side * 0.06, Z: f.Z });
+    const flatten = Math.min(0.5, Math.max(0.12, this.proj.cameraHeight / f.Z));
+    if (life.reflect >= 0.2) {
+      const ring = this.add.ellipse(at.x, at.y, 0.1 * ppm, 0.1 * ppm * flatten).setStrokeStyle(Math.max(1, ppm * 0.006), 0xcfdcff, 0.45)
+        .setDepth(p.y - 2).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: ring, scaleX: 3, scaleY: 3, alpha: 0, duration: 650, ease: "Cubic.easeOut", onComplete: () => ring.destroy() });
+    } else if (this.amb.floor < 1.05) {
+      const dust = this.add.image(at.x, at.y - 0.02 * ppm, "puff").setScale((0.14 * ppm) / 128).setAlpha(0.16).setTint(0xb8aa94).setDepth(p.y - 2);
+      this.tweens.add({
+        targets: dust, y: at.y - 0.12 * ppm, x: at.x - this.paula.walker.facing * 0.08 * ppm, scale: (0.3 * ppm) / 128, alpha: 0,
+        duration: 900, ease: "Sine.easeOut", onComplete: () => dust.destroy(),
+      });
     }
   }
 
