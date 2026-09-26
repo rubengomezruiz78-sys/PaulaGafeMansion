@@ -16,7 +16,11 @@ W, H = 1920, 1080
 
 
 def render(zone, horizon, k, placements):
-    bg = Image.open(os.path.join(ROOT, "public", "world", f"{zone}.webp")).convert("RGBA").resize((W, H), Image.LANCZOS)
+    bg = Image.open(os.path.join(ROOT, "public", "world", f"{zone}.webp")).convert("RGBA")
+    if bg.height * W != bg.width * H:  # cuadro con franja de 16:10: se quita (lo calibrado es el centro 16:9)
+        extra = (bg.height - round(bg.width * H / W)) // 2
+        bg = bg.crop((0, extra, bg.width, bg.height - extra))
+    bg = bg.resize((W, H), Image.LANCZOS)
     meta = json.load(open(os.path.join(ROOT, "public", "world", "sprites", "sprites.json"), encoding="utf-8"))
     draw = ImageDraw.Draw(bg)
     hpx = horizon * H

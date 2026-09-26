@@ -16,8 +16,8 @@ export const SEGUNDA_PLANTA: Partial<Record<ZoneId, ZoneDef>> = {
     id: "rellano",
     name: "Rellano del reloj",
     image: "world/rellano.webp",
-    // Cámara a 1,31 m. Verificado: pomos de las dos puertas a 0,92–1 m, puerta del aula 2,2 m.
-    perspective: { horizon: 0.5, k: 0.764, focal: 1.0 },
+    // Cámara a 1,05 m. Verificado: puerta del fondo 2,15 m, reloj de pie 2,8 m (con el copete), adulto junto al reloj.
+    perspective: { horizon: 0.5, k: 0.95, focal: 1.0 },
     walk: {
       outer: [
         [0.0, 1.0], [0.0, 0.9], [0.12, 0.855], [0.26, 0.815], [0.31, 0.79], [0.33, 0.72], [0.36, 0.675], [0.47, 0.665],
