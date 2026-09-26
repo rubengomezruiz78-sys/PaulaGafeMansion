@@ -20,7 +20,7 @@ describe("números dichos en voz alta", () => {
     const words: Record<number, string> = {
       63: "sesenta y tres", 12: "doce", 84: "ochenta y cuatro", 60: "sesenta", 15: "quince", 144: "ciento cuarenta y cuatro",
       18: "dieciocho", 30: "treinta", 48: "cuarenta y ocho", 24: "veinticuatro", 72: "setenta y dos", 8: "ocho",
-      21: "veintiuno", 45: "cuarenta y cinco", 7: "siete", 65: "sesenta y cinco", 42: "cuarenta y dos",
+      21: "veintiuno", 45: "cuarenta y cinco", 7: "siete", 65: "sesenta y cinco", 42: "cuarenta y dos", 2: "dos",
     };
     for (const p of Object.values(PUZZLES)) {
       for (const s of p.steps) {

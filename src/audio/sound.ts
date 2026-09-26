@@ -36,10 +36,13 @@ export type TimelineEvent =
   | { t: number; kind: "play"; sfx: Sfx }
   | { t: number; kind: "thunder"; power: number }
   | { t: number; kind: "step"; volume: number; tone: number }
-  | { t: number; kind: "music" };
+  | { t: number; kind: "music" }
+  | { t: number; kind: "piano"; note: number };
 
 const SETTINGS_KEY = "paula-gafe-ajustes";
 const PENTA = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25];
+/** Do, re, mi, fa, sol, la, si del piano de la casa (octava central). */
+const PIANO = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88];
 
 class SoundEngine {
   private ctx?: BaseAudioContext;
@@ -393,6 +396,17 @@ class SoundEngine {
     }
   }
 
+  /** Una tecla del piano (0 = do … 6 = si): golpe de macillo y cola larga. */
+  piano(note: number, at?: number): void {
+    this.mark({ t: 0, kind: "piano", note });
+    if (!this.live || !this.sfxBus) return;
+    const t = at ?? this.ctx!.currentTime;
+    const f = PIANO[Math.max(0, Math.min(PIANO.length - 1, Math.round(note)))];
+    this.bell(f, t, 2.4, 0.2, this.sfxBus);
+    this.bell(f * 2, t, 1.1, 0.06, this.sfxBus);
+    this.bell(f / 2, t, 1.6, 0.05, this.sfxBus);
+  }
+
   play(sfx: Sfx, at?: number): void {
     this.mark({ t: 0, kind: "play", sfx });
     if (!this.live || !this.sfxBus) return;
@@ -515,6 +529,9 @@ class SoundEngine {
           break;
         case "music":
           if (musicFrom < 0) musicFrom = t;
+          break;
+        case "piano":
+          eng.piano(e.note, t);
           break;
       }
     }

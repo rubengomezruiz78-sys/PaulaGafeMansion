@@ -33,3 +33,6 @@ android/.gradle/
 *.apk
 _assets_backup_original/
 __pycache__/
+
+# Variantes generadas (se elige una y se guarda en art/salas-nuevas)
+art/nuevas/

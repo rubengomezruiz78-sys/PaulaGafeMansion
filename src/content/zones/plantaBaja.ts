@@ -105,6 +105,10 @@ export const PLANTA_BAJA: Partial<Record<ZoneId, ZoneDef>> = {
         id: "puerta-jardin", to: "invernadero", toExit: "puerta-cristal", label: "Invernadero",
         hotspot: [[0.0, 0.88], [0.14, 0.88], [0.14, 1.0], [0.0, 1.0]], approach: [0.24, 0.96],
       },
+      {
+        id: "puerta-baile", to: "baile", toExit: "puerta-musica", label: "Salón de baile",
+        hotspot: [[0.86, 0.8], [1.0, 0.8], [1.0, 1.0], [0.86, 1.0]], approach: [0.8, 0.96],
+      },
     ],
     props: [
       { id: "piano", label: "Piano de cola", hotspot: [[0.33, 0.3], [0.66, 0.3], [0.66, 0.66], [0.33, 0.66]], approach: [0.45, 0.86] },
@@ -136,7 +140,11 @@ export const PLANTA_BAJA: Partial<Record<ZoneId, ZoneDef>> = {
     exits: [
       {
         id: "puerta-cristal", to: "musica", toExit: "puerta-jardin", label: "Salón de música",
-        hotspot: [[0.51, 0.47], [0.62, 0.47], [0.62, 0.72], [0.51, 0.72]], approach: [0.56, 0.74],
+        hotspot: [[0.3, 0.95], [0.7, 0.95], [0.7, 1.0], [0.3, 1.0]], approach: [0.5, 0.965],
+      },
+      {
+        id: "cristalera-jardin", to: "jardin", toExit: "puerta-invernadero", label: "Jardín del laberinto",
+        hotspot: [[0.51, 0.36], [0.62, 0.36], [0.62, 0.72], [0.51, 0.72]], approach: [0.56, 0.74],
       },
     ],
     props: [
@@ -172,6 +180,10 @@ export const PLANTA_BAJA: Partial<Record<ZoneId, ZoneDef>> = {
         hotspot: [[0.19, 0.6], [0.33, 0.6], [0.33, 0.86], [0.19, 0.86]], approach: [0.3, 0.955],
         requires: { flag: "porton-abierto" },
         lockedText: "El portón bajo la caldera está atrancado. Tomás sabrá cómo se abre.",
+      },
+      {
+        id: "puerta-comedor", to: "comedor", toExit: "puerta-servicio", label: "Comedor de gala",
+        hotspot: [[0.9, 0.72], [1.0, 0.72], [1.0, 1.0], [0.9, 1.0]], approach: [0.77, 0.975],
       },
     ],
     props: [

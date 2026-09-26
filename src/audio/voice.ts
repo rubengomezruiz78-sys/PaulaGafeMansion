@@ -39,6 +39,12 @@ const PROFILES: Record<string, Profile> = {
   tadeo: { pitch: 0.82, rate: 0.95 },
   engracia: { pitch: 1.08, rate: 0.85 },
   gumersindo: { pitch: 0.95, rate: 1.12 },
+  anacleto: { pitch: 0.75, rate: 0.92 },
+  clemencia: { pitch: 1.15, rate: 1.04 },
+  casimiro: { pitch: 0.9, rate: 0.96 },
+  fermin: { pitch: 0.88, rate: 0.9 },
+  bartolo: { pitch: 1.05, rate: 1.14 },
+  ramona: { pitch: 1.3, rate: 0.84 },
 };
 
 const PREFS_KEY = "paula-gafe-voz";

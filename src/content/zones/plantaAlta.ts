@@ -27,6 +27,10 @@ export const PLANTA_ALTA: Partial<Record<ZoneId, ZoneDef>> = {
         id: "escalera-desvan", to: "desvan", toExit: "hueco-escalera", label: "Escalera del desván",
         hotspot: [[0.68, 0.5], [0.77, 0.5], [0.77, 0.62], [0.68, 0.62]], approach: [0.72, 0.64],
       },
+      {
+        id: "puerta-taller", to: "taller", toExit: "puerta-galeria", label: "Taller del juguetero",
+        hotspot: [[0.55, 0.33], [0.6, 0.33], [0.6, 0.6], [0.55, 0.6]], approach: [0.6, 0.68],
+      },
     ],
     props: [
       { id: "armadura", label: "Armadura", hotspot: [[0.04, 0.35], [0.16, 0.35], [0.16, 0.92], [0.04, 0.92]], approach: [0.19, 0.93] },
@@ -59,6 +63,10 @@ export const PLANTA_ALTA: Partial<Record<ZoneId, ZoneDef>> = {
       {
         id: "puerta-galeria", to: "galeria", toExit: "puerta-dormitorio", label: "Galería",
         hotspot: [[0.35, 0.95], [0.7, 0.95], [0.7, 1.0], [0.35, 1.0]], approach: [0.5, 0.97],
+      },
+      {
+        id: "puertecita-teatro", to: "teatro", toExit: "puerta-dormitorio", label: "Puertecita tras la cortina",
+        hotspot: [[0.4, 0.05], [0.455, 0.05], [0.455, 0.55], [0.4, 0.55]], approach: [0.43, 0.64],
       },
     ],
     props: [

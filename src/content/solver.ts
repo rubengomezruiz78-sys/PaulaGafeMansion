@@ -12,7 +12,7 @@
 import { heardFlag } from "../core/chat";
 import { DialogueRunner } from "../core/dialogue";
 import { resolveProp } from "../core/interact";
-import { PuzzleRun } from "../core/puzzle";
+import { expectedAnswer, PuzzleRun } from "../core/puzzle";
 import { apply, check } from "../core/rules";
 import { newGame, type GameState } from "../core/state";
 import { CHATS } from "./chats";
@@ -133,7 +133,7 @@ function solvePuzzle(id: string, s: GameState): void {
   if (!def) throw new Error(`Puzzle inexistente: ${id}`);
   const run = new PuzzleRun(def, s);
   for (let i = 0; i < def.steps.length + 1 && !run.solved; i += 1) {
-    const r = run.answer(run.step.answer);
+    const r = run.answer(expectedAnswer(run.step));
     if (!r.correct) throw new Error(`La respuesta guardada del puzzle ${id} no es correcta`);
   }
 }

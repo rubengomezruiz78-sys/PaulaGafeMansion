@@ -6,7 +6,7 @@
  */
 import { heardFlag } from "../core/chat";
 import type { DialogueTree } from "../core/dialogue";
-import { MAX_DIGITS, solvedFlag } from "../core/puzzle";
+import { MAX_DIGITS, mazePath, NOTES, solvedFlag } from "../core/puzzle";
 import { condRefs, emptyRefs, type Cond, type Effect, type Refs } from "../core/rules";
 import { CHATS } from "./chats";
 import { DIALOGUES } from "./dialogues";
@@ -127,7 +127,25 @@ export function validateContent(): string[] {
         errors.push(`puzzle ${p.id} paso ${i + 1}: la respuesta no es una de las opciones`);
       if (s.kind === "number" && (!Number.isInteger(s.answer) || s.answer < 0 || String(s.answer).length > MAX_DIGITS))
         errors.push(`puzzle ${p.id} paso ${i + 1}: respuesta que no cabe en el teclado (${s.answer})`);
-      if (!s.hint.trim()) errors.push(`puzzle ${p.id} paso ${i + 1}: sin pista`);
+      const at = `puzzle ${p.id} paso ${i + 1}`;
+      if (s.kind === "melody" && (s.notes.length < 2 || s.notes.length > 9 || s.notes.some((n) => !Number.isInteger(n) || n < 0 || n >= NOTES.length)))
+        errors.push(`${at}: melodía con notas que no están en el piano`);
+      if (s.kind === "order" && (s.items.length < 3 || s.items.length > 6 || new Set(s.items).size !== s.items.length))
+        errors.push(`${at}: hay que ordenar de 3 a 6 tarjetas distintas`);
+      if (s.kind === "pairs" && (s.icons.length < 3 || s.icons.length > 8 || new Set(s.icons).size !== s.icons.length))
+        errors.push(`${at}: las parejas deben ser de 3 a 8 dibujos distintos`);
+      if (s.kind === "maze") {
+        const w = s.grid[0]?.length ?? 0;
+        if (s.grid.some((row) => row.length !== w) || !/^[#.SE]+$/.test(s.grid.join("")))
+          errors.push(`${at}: el laberinto tiene filas desiguales o símbolos raros`);
+        if (!mazePath(s.grid)) errors.push(`${at}: el laberinto no tiene salida`);
+      }
+      if (s.kind === "mix") {
+        const [a, b] = s.answer;
+        if (a === b || [a, b].some((x) => !Number.isInteger(x) || x < 0 || x >= s.paints.length))
+          errors.push(`${at}: la mezcla correcta no son dos pinturas distintas`);
+      }
+      if (!s.hint.trim()) errors.push(`${at}: sin pista`);
     });
   }
 

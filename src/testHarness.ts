@@ -106,7 +106,8 @@ export function installTestHarness(game: Phaser.Game): void {
         if (step.kind === "number") {
           for (const ch of String(step.answer)) p.press(ch);
           p.press("OK");
-        } else p.choose(step.answer);
+        } else if (step.kind === "choice") p.choose(step.answer);
+        else p.solveBoard();
         api.step(1.6);
       }
       return !game.scene.isActive("puzzle");

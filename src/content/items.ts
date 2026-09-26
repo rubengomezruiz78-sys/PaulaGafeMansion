@@ -6,6 +6,8 @@ export interface ItemDef {
   icon: string;
   /** Uno de los cinco recuerdos de Inés. */
   memory?: boolean;
+  /** Una de las seis cosas de la fiesta de Inés. */
+  party?: boolean;
 }
 
 export const ITEMS: Record<string, ItemDef> = {
@@ -21,7 +23,18 @@ export const ITEMS: Record<string, ItemDef> = {
   "cilindro-cera": { icon: "🎼", name: "Cilindro de cera", memory: true, description: "Guarda la voz de Inés cantando do, mi, sol." },
   "flor-luna": { icon: "🌼", name: "Flor de luna", memory: true, description: "La flor que Inés dibujaba. Brilla un poquito en la oscuridad." },
   "cinta-roja": { icon: "🎀", name: "Cinta roja", memory: true, description: "La cinta del pelo de Inés. Estaba atada lejos de la campana." },
+
+  // Ala de la fiesta.
+  batuta: { icon: "🪄", name: "Batuta del maestro", description: "La batuta del maestro Anacleto. Estaba en la fuente del jardín, dirigiendo a las ranas." },
+  "llave-cuerda": { icon: "🗝️", name: "Llave de cuerda", description: "Una llave pequeñita de latón, de las que dan cuerda a los juguetes. Tiene grabada una I." },
+  "partitura-vals": { icon: "🎻", name: "Partitura del vals", party: true, description: "«Vals para Inés, en su décimo cumpleaños». La orquesta ya se lo sabe de memoria." },
+  "tarta-ines": { icon: "🎂", name: "Tarta de cumpleaños", party: true, description: "Tres pisos, diez velas y una fresa en lo alto. Tía Clemencia dice que no se toca hasta la fiesta." },
+  farolillos: { icon: "🏮", name: "Farolillos de luciérnagas", party: true, description: "Farolillos de papel con luciérnagas dentro. Dan una luz calentita y no queman." },
+  "bailarina-cuerda": { icon: "🩰", name: "Bailarina de cuerda", party: true, description: "El regalo de Casimiro para Inés. Con una vuelta de llave, baila cuatro vueltas." },
+  invitaciones: { icon: "💌", name: "Invitaciones pintadas", party: true, description: "Trece invitaciones pintadas por Don Fermín, cada una de un color." },
+  "marioneta-ines": { icon: "🎭", name: "Marioneta de Inés", party: true, description: "Una marioneta con la cara de Inés y una cinta roja. Bartolo la guardaba para la función." },
 };
 
 export const itemName = (id: string): string => ITEMS[id]?.name ?? id;
 export const MEMORIES = Object.keys(ITEMS).filter((id) => ITEMS[id].memory);
+export const PARTY_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].party);

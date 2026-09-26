@@ -44,7 +44,167 @@ function tree(npc: string, intro: Line[], again: Line[], menuLine: string, topic
 
 const paula = (text: string): Line => ({ by: "paula", text });
 
+const gafeSays = (text: string): Line => ({ by: "gafe", text });
+const empieza = { stage: ["fiesta", 1] as [string, number] };
+
 export const DIALOGUES: Record<string, DialogueTree> = {
+  // ======================================================== ala de la fiesta
+  anacleto: tree(
+    "anacleto",
+    [
+      "¡Por fin alguien con oído! Soy el maestro Anacleto, director de la orquesta de esta casa.",
+      "Estábamos ensayando el vals del cumpleaños de Inés cuando… bueno, cuando todo se paró.",
+    ],
+    ["¡Mi oyente favorita! Bueno, mi única oyente."],
+    "¿Qué quieres saber, pequeña?",
+    [
+      {
+        id: "fiesta", text: "¿Qué fiesta?", once: true, effects: [empieza, { affinity: ["anacleto", 3] }],
+        lines: [
+          "Inés iba a cumplir diez años aquella noche. Todo estaba casi listo: la música, la tarta, los farolillos, la función…",
+          "Pero la casa se puso a contar hasta trece y la fiesta se quedó a medio preparar. Si la terminamos, quizá la casa se acuerde de ser feliz.",
+        ],
+      },
+      {
+        id: "vals", text: "¿Cómo es el vals?", if: { quest: ["fiesta", ">=", 1] },
+        lines: [
+          "Empieza como la caja de música de Inés. Luego baja… y luego se me olvida.",
+          "Con mi batuta lo recordaría. Pero la he perdido. Creo que me la llevé al jardín a dirigir a las ranas.",
+        ],
+      },
+      {
+        id: "batuta", text: "¡He encontrado su batuta!", if: { has: "batuta" }, once: true, effects: [{ affinity: ["anacleto", 4] }],
+        lines: ["¡Mi batuta! Está empapada… ¡pero entera! Déjala en el atril de la tarima: yo tarareo y tú tocas."],
+      },
+      {
+        id: "despues", text: "¿Qué más hace falta para la fiesta?", if: { quest: ["fiesta", ">=", 1] },
+        lines: [
+          "La tarta, pregúntale a Tía Clemencia en el comedor. El regalo, a Casimiro. Las invitaciones, a Fermín. La función, a Bartolo.",
+          "Y los farolillos… eso es cosa de las luciérnagas del jardín. Llevas {fiesta} de 6.",
+        ],
+      },
+    ],
+  ),
+  clemencia: tree(
+    "clemencia",
+    ["¡Una invitada! Soy Tía Clemencia, la repostera. La tarta de Inés es cosa mía, que no te engañe Remedios."],
+    ["¡Paula, cariño! ¿Vienes a probar el merengue? Todavía no se puede."],
+    "¿En qué te ayudo, bonita?",
+    [
+      {
+        id: "tarta", text: "¿Para quién es la tarta?", effects: [empieza],
+        lines: [
+          "Para Inés, que cumplía diez años. Tres pisos, ocho trozos por piso. Y que nadie se quede sin tarta.",
+          "Pero la mesa está hecha un desastre: los platos revueltos y la tarta sin partir. ¿Me ayudas? Mira la mesa del banquete.",
+        ],
+      },
+      {
+        id: "remedios", text: "¿Usted conoce a Remedios?",
+        lines: ["¡Desde niñas! Ella hace el pan y yo los dulces. Ella dice que su bizcocho es mejor. Ella exagera, cariño."],
+      },
+      {
+        id: "lista", text: "¿Ya está lista la mesa?", if: { flag: "resuelto:banquete" },
+        lines: ["¡Preciosa! Ahora solo falta encender las velas… y eso será cuando suene la campana."],
+      },
+    ],
+  ),
+  casimiro: tree(
+    "casimiro",
+    ["Casimiro, juguetero, para servirte. Todo lo que ves lo hice con estas manos… cuando eran manos de verdad."],
+    ["¡Hola, Paula! No toques el soldado de plomo, que tiene cosquillas."],
+    "¿Quieres saber algo de mis juguetes?",
+    [
+      {
+        id: "bailarina", text: "¿Qué es esa bailarina?", effects: [empieza],
+        lines: [
+          "El regalo de cumpleaños de Inés: una bailarina de cuerda sobre una cajita de música.",
+          "Se me mezclaron todas las piezas en el cajón y, encima, he perdido la llavecita de cuerda. Creo que se la presté a Bartolo.",
+        ],
+      },
+      {
+        id: "ruedas", text: "¿Cómo funcionan los engranajes?", if: { chose: ["casimiro", "bailarina"] },
+        lines: ["Muy fácil: las ruedas que se besan giran al revés. Si una va hacia la derecha, su vecina va hacia la izquierda."],
+      },
+      {
+        id: "llave", text: "Tengo una llave de cuerda.", if: { has: "llave-cuerda" }, once: true, effects: [{ affinity: ["casimiro", 4] }],
+        lines: ["¡Mi llavecita! Con esto ya puedo despertar a la bailarina. Ven al banco de trabajo y la montamos juntos."],
+      },
+    ],
+  ),
+  fermin: tree(
+    "fermin",
+    ["Fermín, pintor de la familia Valcárcel. Pinté todos los retratos de la galería… menos el que se borró."],
+    ["¡Mi modelo favorita! Quieta un momento… ya. Hola."],
+    "¿Qué te trae por mi estudio?",
+    [
+      {
+        id: "invitaciones", text: "¿Qué está pintando?", effects: [empieza],
+        lines: [
+          "Las invitaciones de la fiesta de Inés: trece, una para cada uno de la casa.",
+          "Pero solo me quedan rojo, amarillo, azul y blanco. Los demás colores hay que mezclarlos, y a mí me tiemblan las manos desde 1913.",
+        ],
+      },
+      {
+        id: "colores", text: "¿Cómo se hacen los colores?",
+        lines: ["Con rojo, amarillo, azul y blanco se pinta el mundo entero. Rojo y amarillo, naranja. Amarillo y azul, verde… ¿y los demás? ¡Pruébalo en el caballete!"],
+      },
+      {
+        id: "retrato", text: "¿Qué retrato se borró?", if: { visited: "galeria" },
+        lines: ["El de Inés. La casa lo borró cuando se olvidó de ella. Lo estoy pintando otra vez, de memoria: mira el caballete grande."],
+      },
+    ],
+  ),
+  bartolo: tree(
+    "bartolo",
+    ["¡Bartolo, titiritero, a su servicio! Bueno, al tuyo. Este es el teatrito de Inés, lo más bonito de la casa."],
+    ["¡Vuelve el público! ¡Aplausos, aplausos! (Se aplaude a sí mismo.)"],
+    "¿Qué quiere saber la señorita espectadora?",
+    [
+      {
+        id: "funcion", text: "¿Qué función es?", effects: [empieza],
+        lines: [
+          "«La niña que contó hasta trece». La escribí para el cumpleaños de Inés.",
+          "Con la tormenta se me desordenaron las escenas y las marionetas. ¿Me ayudas a ordenarlas en el escenario?",
+        ],
+      },
+      {
+        id: "llave", text: "¿Tienes la llave de cuerda de Casimiro?", if: { chose: ["casimiro", "bailarina"] }, once: true,
+        effects: [{ set: "pista-llave" }],
+        lines: [
+          "¿La llavecita? Ay… la usé para que el dragón moviera las alas. Se quedó en el baúl de los disfraces, dentro del sombrero de copa.",
+          "Búscala tú, que yo me pierdo entre tanta capa.",
+        ],
+      },
+      {
+        id: "dragon", text: "¿Muerde el dragón?",
+        lines: ["Solo a los que no aplauden. Tú aplaudes, ¿verdad?", gafeSays("Miau. (Gafe mira al dragón de trapo muy fijamente.)")],
+      },
+    ],
+  ),
+  ramona: tree(
+    "ramona",
+    ["Uuh-uuh. Soy Ramona. Vigilo el jardín desde que el jardinero se quedó dormido. Hace mucho.", "Tú eres la niña de la brújula. El viento lo cuenta todo."],
+    ["Uuh-uuh. Otra vez tú. Y el gato. Que no se acerque a mis plumas."],
+    "¿Qué quieres, niña?",
+    [
+      {
+        id: "laberinto", text: "¿Qué hay en el laberinto?", effects: [empieza],
+        lines: [
+          "Luciérnagas perdidas. Eran los farolillos de la fiesta de Inés: se metieron entre los setos y no saben salir.",
+          "Desde arriba se ve: la luz siempre quiere ir hacia la derecha. Tú guíalas desde la entrada.",
+        ],
+      },
+      {
+        id: "batuta", text: "¿Ha visto una batuta?",
+        lines: ["Uuh. Las ranas de la fuente la usan para dirigir el coro. Mete la mano en el agua, sin miedo: no muerden."],
+      },
+      {
+        id: "gafe", text: "¿Le dan miedo los gatos?",
+        lines: ["¿Miedo? Soy una lechuza. Los gatos me dan… respeto. Mucho respeto.", gafeSays("Miau. (Gafe se relame. Ramona se esponja.)")],
+      },
+    ],
+  ),
+
   basilio: {
     npc: "basilio",
     entries: [

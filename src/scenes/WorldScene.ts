@@ -595,7 +595,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private spawnActor(def: NpcDef, pos: Pt, fadeIn: boolean): NpcRuntime {
-    const emissive = def.art ? 0.7 : def.kind === "ghost" ? 0.3 : 0;
+    const emissive = def.glow ?? (def.art ? 0.7 : def.kind === "ghost" ? 0.3 : 0);
     const actor = new Ghost(this, this.proj, pos, def.sprite, { floatM: def.floatM, alpha: def.alpha, tint: def.tint ?? this.tint, emissive });
     this.dressActor(actor, def.floatM <= 0);
     actor.walker.face(this.nav.nearestWalkable(toPx(this.zoneDef.spawn)));

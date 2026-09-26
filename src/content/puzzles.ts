@@ -3,7 +3,15 @@
  * dobles y mitades) y alguna pregunta de la historia. Cada paso trae su pista
  * y las «clues» aparecen si Paula oyó o leyó algo que ayuda.
  */
-import type { PuzzleDef } from "../core/puzzle";
+import type { Paint, PuzzleDef } from "../core/puzzle";
+
+/** Los botes del estudio del pintor: rojo, amarillo, azul y blanco. */
+const PAINTS: Paint[] = [
+  { name: "rojo", color: 0xd8423a },
+  { name: "amarillo", color: 0xf2c230 },
+  { name: "azul", color: 0x2f63c8 },
+  { name: "blanco", color: 0xf4efe6 },
+];
 
 const list: PuzzleDef[] = [
   {
@@ -174,7 +182,121 @@ const list: PuzzleDef[] = [
       { if: { flag: "pista-campana" }, text: "Pepito te lo susurró: «la campana no se golpea; se le cuenta la verdad»." },
       { if: { chose: ["florentina", "cinta"] }, text: "Florentina: «la respuesta no necesita golpes»." },
     ],
-    reward: [{ set: "final" }, { complete: "trece" }, { complete: "recuerdos" }],
+    reward: [{ set: "final" }, { complete: "trece" }, { complete: "recuerdos" }, { complete: "fiesta" }],
+  },
+
+  // ======================================================== ala de la fiesta
+  {
+    id: "vals",
+    title: "El vals que nadie bailó",
+    story: "La orquesta fantasma olvidó el vals de la fiesta de Inés. El maestro Anacleto lo tararea a trozos: escúchalo y tócalo igual en el piano de la tarima.",
+    steps: [
+      { kind: "melody", prompt: "Escucha el principio del vals y tócalo igual.", notes: [0, 2, 4],
+        hint: "Son tres notas que suben: do, mi, sol. ¡Las mismas de la caja de música!" },
+      { kind: "melody", prompt: "Ahora la segunda parte: escucha bien y repítela.", notes: [4, 2, 0, 2],
+        hint: "Baja y vuelve a subir: sol, mi, do… y otra vez mi." },
+      { kind: "melody", prompt: "¡El final! Es un poco más largo.", notes: [0, 2, 4, 5, 4],
+        hint: "Sube como al principio (do, mi, sol), da un saltito a la y vuelve a sol." },
+    ],
+    clues: [
+      { if: { flag: "sabe-melodia" }, text: "Baltasar: «Do, mi, sol… y otra vez do»." },
+      { if: { chose: ["anacleto", "vals"] }, text: "Anacleto: «Empieza como la caja de música de Inés»." },
+      { if: { flag: "pista-vals" }, text: "Anacleto y Críspulo: «do, mi, sol… y luego baja como la lluvia: sol, mi, do»." },
+    ],
+    reward: [{ give: "partitura-vals" }, { count: "fiesta" }, { affinity: ["anacleto", 6] }],
+  },
+  {
+    id: "banquete",
+    title: "La mesa de los invitados",
+    story: "Tía Clemencia quiere la mesa perfecta para la fiesta: la tarta partida en trozos iguales y cada plato en su sitio.",
+    steps: [
+      { kind: "number", prompt: "La tarta tiene 3 pisos y cada piso se corta en 8 trozos. ¿Cuántos trozos hay?", answer: 24,
+        hint: "3 pisos de 8 trozos: 3 × 8. O suma 8 + 8 + 8." },
+      { kind: "number", prompt: "Esos 24 trozos se reparten entre los 12 criados de la casa. ¿Cuántos trozos le tocan a cada uno?", answer: 2,
+        hint: "24 ÷ 12. ¿Qué número por 12 da 24?" },
+      { kind: "order", prompt: "Coloca la vajilla de la más grande a la más pequeña.",
+        items: ["🍲 Sopera", "🍽️ Plato llano", "🥣 Plato hondo", "🍰 Plato de postre", "☕ Platito del té"],
+        hint: "Empieza por la sopera, que es enorme, y acaba por el platito del té, que es el más pequeño." },
+    ],
+    clues: [
+      { if: { chose: ["clemencia", "tarta"] }, text: "Tía Clemencia: «Tres pisos, ocho trozos por piso. Y que nadie se quede sin tarta»." },
+      { if: { flag: "pista-tarta" }, text: "Remedios: «Salen a dos trozos por cabeza»." },
+    ],
+    reward: [{ give: "tarta-ines" }, { count: "fiesta" }, { affinity: ["clemencia", 6] }],
+  },
+  {
+    id: "laberinto",
+    title: "El laberinto de las luciérnagas",
+    story: "Las luciérnagas de la fiesta se han perdido entre los setos. Lleva la lucecita hasta el farolillo: donde llega una, la siguen las demás.",
+    steps: [
+      { kind: "maze", prompt: "Lleva la luciérnaga hasta el farolillo 🏮 con las flechas (o tocando la casilla de al lado).",
+        grid: ["S..#...", "##.#.#.", "...#.#.", ".###.#.", ".....#E"],
+        hint: "Baja por la izquierda del todo, cruza por abajo y sube por la columna del medio hasta arriba." },
+      { kind: "maze", prompt: "¡Muy bien! Este laberinto es más grande. Sin prisa.",
+        grid: ["S.....#....", "#####.#.##.", "....#...#..", ".##.####.#.", ".#......#..", ".#.####.##.", "...#......E"],
+        hint: "Sigue la fila de arriba hacia la derecha y baja por el primer hueco entre los setos." },
+    ],
+    clues: [{ if: { chose: ["ramona", "laberinto"] }, text: "Ramona la lechuza: «Desde arriba se ve: la luz siempre quiere ir hacia la derecha»." }],
+    reward: [{ give: "farolillos" }, { count: "fiesta" }, { affinity: ["ramona", 5] }],
+  },
+  {
+    id: "automata",
+    title: "La bailarina dormida",
+    story: "Casimiro terminó la bailarina de cuerda para el cumpleaños de Inés, pero las piezas se le mezclaron en el cajón.",
+    steps: [
+      { kind: "pairs", prompt: "Encuentra las parejas de piezas iguales. Da la vuelta a dos cartas cada vez.",
+        icons: ["⚙️", "🔩", "🎀", "🥁", "🐴", "🎩"],
+        hint: "Fíjate bien en cada carta que levantes: si luego sale su pareja, ya sabrás dónde estaba." },
+      { kind: "choice", prompt: "La rueda grande gira hacia la derecha. La rueda pequeña está enganchada a ella. ¿Hacia dónde gira la pequeña?",
+        options: ["Hacia la derecha", "Hacia la izquierda", "No se mueve"], answer: 1,
+        hint: "Dos ruedas dentadas que se tocan giran al revés una de otra. Pruébalo con los dos dedos índices." },
+      { kind: "number", prompt: "Con cada vuelta de llave, la bailarina da 4 vueltas. Si le das 6 vueltas a la llave, ¿cuántas vueltas baila?", answer: 24,
+        hint: "6 vueltas de llave y 4 vueltas de baile por cada una: 6 × 4." },
+    ],
+    clues: [{ if: { chose: ["casimiro", "ruedas"] }, text: "Casimiro: «Las ruedas que se besan giran al revés»." }],
+    reward: [{ give: "bailarina-cuerda" }, { count: "fiesta" }, { affinity: ["casimiro", 6] }],
+  },
+  {
+    id: "colores",
+    title: "Los colores de la fiesta",
+    story: "Don Fermín pinta las invitaciones de la fiesta, pero solo le quedan tres botes de colores y uno de blanco. Los demás colores hay que mezclarlos.",
+    steps: [
+      { kind: "mix", prompt: "Haz el naranja para las invitaciones de las calabazas.",
+        target: { name: "naranja", color: 0xef8a2e }, paints: PAINTS, answer: [0, 1],
+        hint: "El naranja sale de mezclar el rojo con el amarillo." },
+      { kind: "mix", prompt: "Ahora el verde de los setos del jardín.",
+        target: { name: "verde", color: 0x4f9e4a }, paints: PAINTS, answer: [1, 2],
+        hint: "Amarillo y azul juntos hacen verde." },
+      { kind: "mix", prompt: "El morado de las ciruelas de la tarta.",
+        target: { name: "morado", color: 0x7c4aa6 }, paints: PAINTS, answer: [0, 2],
+        hint: "Rojo y azul: ¡morado!" },
+      { kind: "mix", prompt: "Y el rosa del lazo de Inés.",
+        target: { name: "rosa", color: 0xf09ab0 }, paints: PAINTS, answer: [0, 3],
+        hint: "El rosa es rojo con mucho blanco." },
+    ],
+    clues: [
+      { if: { chose: ["fermin", "colores"] }, text: "Don Fermín: «Con rojo, amarillo, azul y blanco se pinta el mundo entero»." },
+      { if: { flag: "pista-colores" }, text: "Clotilde: «Rojo y blanco dan el rosa del lazo de Inés»." },
+    ],
+    reward: [{ give: "invitaciones" }, { count: "fiesta" }, { affinity: ["fermin", 6] }],
+  },
+  {
+    id: "funcion",
+    title: "La función de marionetas",
+    story: "Bartolo preparó para Inés la función «La niña que contó hasta trece», pero las escenas y las marionetas se han desordenado.",
+    steps: [
+      { kind: "order", prompt: "Ordena las escenas de la función, de la primera a la última.",
+        items: ["🌧️ Una noche de tormenta, una niña llega a la casa", "🔔 La casa cuenta hasta trece y todos se olvidan", "🐈‍⬛ Un gato negro encuentra los recuerdos", "🎉 La casa celebra la fiesta y amanece"],
+        hint: "Toda historia empieza con alguien que llega y acaba con una fiesta. En medio, primero el problema y luego quien lo arregla." },
+      { kind: "order", prompt: "Cuelga las marionetas de la más bajita a la más alta.",
+        items: ["🐭 Ratón (10 cm)", "🐈‍⬛ Gato (25 cm)", "👸 Princesa (40 cm)", "🐉 Dragón (60 cm)"],
+        hint: "Mira los centímetros: primero el número más pequeño." },
+      { kind: "choice", prompt: "La adivinanza del final: «Tiene dientes y no muerde, abre puertas y no es persona». ¿Qué es?",
+        options: ["Un peine", "Una llave", "Un gato"], answer: 1,
+        hint: "Leocadia lleva un manojo colgado del cinturón y hace clin, clin." },
+    ],
+    clues: [{ if: { chose: ["bartolo", "funcion"] }, text: "Bartolo: «Primero llega la niña, luego la casa se olvida, luego el gato… y al final, ¡fiesta!»." }],
+    reward: [{ give: "marioneta-ines" }, { count: "fiesta" }, { affinity: ["bartolo", 6] }],
   },
 ];
 

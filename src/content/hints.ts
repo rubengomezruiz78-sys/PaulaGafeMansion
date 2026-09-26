@@ -22,6 +22,18 @@ export const GAFE_HINTS: { if: Cond; text: string }[] = [
   { if: no({ has: "cilindro-cera" }), text: "Miau. (Gafe mueve la cola al ritmo del gramófono del salón de música.)" },
   { if: no({ quest: ["antidoto", ">=", 1] }), text: "Miau. (Gafe estornuda: huele a flores de luna. La señora Bruma, en el invernadero, necesita ayuda. Pregúntale por las flores.)" },
   { if: no({ has: "flor-luna" }), text: "Miau. (Gafe se sienta junto a las flores de luna del invernadero.)" },
+  { if: no({ quest: ["fiesta", ">=", 1] }), text: "Miau. (Gafe tira hacia el salón de música. Detrás, por la puerta grande de la derecha, suena un vals a medias.)" },
+  { if: { all: [no(solved("vals")), no({ has: "batuta" }), no({ flag: "batuta-entregada" })] }, text: "Miau. (Gafe olfatea el aire húmedo: huele a fuente. En el jardín, las ranas cantan demasiado bien.)" },
+  { if: no(solved("vals")), text: "Miau. (Gafe se sienta junto al atril del salón de baile y mueve la cola al compás.)" },
+  { if: no(solved("banquete")), text: "Miau. (Gafe salta hacia el comedor. La mesa del banquete está hecha un lío.)" },
+  { if: no(solved("laberinto")), text: "Miau. (Gafe mira la entrada del laberinto del jardín. Dentro parpadean lucecitas.)" },
+  {
+    if: { all: [no(solved("automata")), no({ has: "llave-cuerda" }), no({ flag: "llave-entregada" })] },
+    text: "Miau. (Gafe tira hacia el teatrito de Inés, detrás de la cortina de su dormitorio. En el baúl de los disfraces algo tintinea.)",
+  },
+  { if: no(solved("automata")), text: "Miau. (Gafe sube a la galería y araña la puerta del taller del juguetero.)" },
+  { if: no(solved("colores")), text: "Miau. (Gafe tiene una mancha de pintura en la nariz. Viene del estudio del pintor, pasado el taller.)" },
+  { if: no(solved("funcion")), text: "Miau. (Gafe se sienta en la primera fila del teatrito y espera a que empiece la función.)" },
   {
     if: { all: [no({ visited: "torre" }), no({ flag: "compuertas-abiertas" }), no({ flag: "pasarela-abierta" })] },
     text: "Miau. (Gafe duda entre el agua de los túneles y las estrellas del observatorio: a la torre se llega por los dos sitios.)",

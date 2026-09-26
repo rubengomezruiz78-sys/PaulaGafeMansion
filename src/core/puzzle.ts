@@ -7,9 +7,99 @@
 import { apply, check, type Cond, type Effect, type Notice } from "./rules";
 import type { GameState } from "./state";
 
+/** Las siete notas del piano de la casa (índice 0 = do). */
+export const NOTES = ["do", "re", "mi", "fa", "sol", "la", "si"] as const;
+
+export interface Paint {
+  name: string;
+  color: number;
+}
+
 export type PuzzleStep =
   | { kind: "number"; prompt: string; answer: number; hint: string }
-  | { kind: "choice"; prompt: string; options: string[]; answer: number; hint: string };
+  | { kind: "choice"; prompt: string; options: string[]; answer: number; hint: string }
+  /** Escuchar una melodía y repetirla en el teclado del piano (0 = do … 6 = si). */
+  | { kind: "melody"; prompt: string; notes: number[]; hint: string }
+  /** Tocar las tarjetas en su orden. `items` ya viene ordenado; se enseñan barajadas. */
+  | { kind: "order"; prompt: string; items: string[]; hint: string }
+  /** Levantar cartas de dos en dos hasta encontrar todas las parejas. */
+  | { kind: "pairs"; prompt: string; icons: string[]; hint: string }
+  /** Llevar la luz por el laberinto: «#» seto, «S» salida, «E» meta, «.» camino. */
+  | { kind: "maze"; prompt: string; grid: string[]; hint: string }
+  /** Mezclar dos pinturas para conseguir el color pedido (`answer`: las dos). */
+  | { kind: "mix"; prompt: string; target: Paint; paints: Paint[]; answer: [number, number]; hint: string };
+
+export type PuzzleKind = PuzzleStep["kind"];
+
+/** Los pasos que son un juego (tablero grande) en vez de una cuenta. */
+export const isGameStep = (s: PuzzleStep): boolean => !(s.kind === "number" || s.kind === "choice");
+
+/** Una secuencia de índices (0..8) como número: [0, 2, 4] → 135. */
+export const encodeSeq = (seq: readonly number[]): number => Number(seq.map((n) => n + 1).join("") || "0");
+/** Dos pinturas, sin importar el orden: (2, 0) → 13. */
+export const encodeMix = (a: number, b: number): number => encodeSeq([Math.min(a, b), Math.max(a, b)]);
+
+/** Lo que hay que responder en un paso, sea del tipo que sea (un número). */
+export function expectedAnswer(step: PuzzleStep): number {
+  switch (step.kind) {
+    case "number":
+    case "choice":
+      return step.answer;
+    case "melody":
+      return encodeSeq(step.notes);
+    case "order":
+      return encodeSeq(step.items.map((_, i) => i));
+    case "pairs":
+      return step.icons.length;
+    case "maze":
+      return 1;
+    case "mix":
+      return encodeMix(step.answer[0], step.answer[1]);
+  }
+}
+
+export interface MazeCell {
+  r: number;
+  c: number;
+}
+
+/** Casilla de un símbolo del laberinto. */
+export function mazeFind(grid: readonly string[], ch: string): MazeCell | null {
+  for (let r = 0; r < grid.length; r += 1) {
+    const c = grid[r].indexOf(ch);
+    if (c >= 0) return { r, c };
+  }
+  return null;
+}
+
+export const mazeOpen = (grid: readonly string[], r: number, c: number): boolean =>
+  r >= 0 && r < grid.length && c >= 0 && c < grid[r].length && grid[r][c] !== "#";
+
+/** Camino más corto de la salida a la meta (o null si no hay). */
+export function mazePath(grid: readonly string[]): MazeCell[] | null {
+  const start = mazeFind(grid, "S");
+  const end = mazeFind(grid, "E");
+  if (!start || !end) return null;
+  const key = (p: MazeCell) => `${p.r},${p.c}`;
+  const prev = new Map<string, MazeCell | null>([[key(start), null]]);
+  const queue = [start];
+  while (queue.length) {
+    const p = queue.shift()!;
+    if (p.r === end.r && p.c === end.c) {
+      const path: MazeCell[] = [];
+      for (let q: MazeCell | null = p; q; q = prev.get(key(q)) ?? null) path.unshift(q);
+      return path;
+    }
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const n = { r: p.r + dr, c: p.c + dc };
+      if (mazeOpen(grid, n.r, n.c) && !prev.has(key(n))) {
+        prev.set(key(n), p);
+        queue.push(n);
+      }
+    }
+  }
+  return null;
+}
 
 export interface PuzzleDef {
   id: string;
@@ -65,7 +155,7 @@ export class PuzzleRun {
   /** Respuesta: número (teclado) o índice de la opción elegida. */
   answer(value: number): AnswerResult {
     if (this.solved) return { correct: true, solved: true, notices: [] };
-    if (value !== this.step.answer) {
+    if (value !== expectedAnswer(this.step)) {
       this.mistakes += 1;
       return { correct: false, solved: false, notices: [] };
     }

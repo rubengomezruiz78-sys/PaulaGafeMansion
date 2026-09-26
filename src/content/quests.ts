@@ -27,6 +27,10 @@ export const QUESTS: Record<string, QuestDef> = {
     title: "El antídoto de luna",
     stages: { 1: "Ayudar a la señora Bruma con las proporciones del antídoto." },
   },
+  fiesta: {
+    title: "La fiesta de Inés",
+    stages: { 1: "Preparar la fiesta de cumpleaños que Inés nunca tuvo ({fiesta}/6)." },
+  },
   escondite: {
     title: "El escondite de Pepito",
     stages: { 1: "Encontrar a Pepito en tres salas distintas ({pepito-pillado}/3) y contárselo." },
@@ -41,6 +45,7 @@ export const MAIN_GOALS: { text: string; done: Cond; show?: Cond }[] = [
   { text: "Descubrir quién es la niña de la que todos hablan", done: { met: "ines" } },
   { text: "Romper el pacto de la capilla del archivo", done: { flag: "pacto-roto" }, show: { any: [{ met: "ines" }, { visited: "archivo" }] } },
   { text: "Reunir los cinco recuerdos de Inés ({recuerdos}/5)", done: { counter: ["recuerdos", ">=", 5] }, show: { quest: ["recuerdos", ">=", 1] } },
+  { text: "Preparar la fiesta de Inés ({fiesta}/6)", done: { counter: ["fiesta", ">=", 6] }, show: { quest: ["fiesta", ">=", 1] } },
   { text: "Llegar a la torre del reloj", done: { visited: "torre" }, show: { met: "ines" } },
   { text: "Hacer sonar la decimotercera campanada", done: { flag: "final" }, show: { visited: "torre" } },
 ];

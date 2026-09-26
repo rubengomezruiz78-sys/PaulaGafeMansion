@@ -99,6 +99,81 @@ export const CHATS: ChatDef[] = [
     note: "Pepito: el baúl bueno del desván tiene un siete pintado y huele a tinta.",
   },
 
+  // ------------------------------------------------------ ala de la fiesta
+  {
+    id: "vals",
+    between: ["anacleto", "crispulo"],
+    lines: [
+      ["anacleto", "Críspulo, ¿te acuerdas del vals de Inés?"],
+      ["crispulo", "Empezaba como su caja de música: do, mi, sol."],
+      ["anacleto", "¡Eso! Y luego bajaba como la lluvia: sol, mi, do…"],
+    ],
+    effects: [{ set: "pista-vals" }],
+    note: "Anacleto y Críspulo: el vals de Inés empieza como su caja de música (do, mi, sol) y luego baja: sol, mi, do.",
+  },
+  {
+    id: "tarta",
+    between: ["clemencia", "remedios"],
+    lines: [
+      ["remedios", "Clemencia, ¿otra vez con esa tarta de tres pisos?"],
+      ["clemencia", "Tres pisos de ocho trozos, Remedios. Para que ninguno de los doce se quede sin su parte."],
+      ["remedios", "Pues salen a dos trozos por cabeza. Yo quiero el de la fresa."],
+    ],
+    effects: [{ set: "pista-tarta" }],
+    note: "Clemencia y Remedios: la tarta tiene tres pisos de ocho trozos, y salen dos trozos para cada uno de los doce.",
+  },
+  {
+    id: "llave",
+    between: ["casimiro", "bartolo"],
+    lines: [
+      ["casimiro", "Bartolo, ¿me devolviste la llavecita de cuerda?"],
+      ["bartolo", "¡Claro! Bueno… se me quedó en el baúl de los disfraces. Dentro del sombrero de copa."],
+      ["casimiro", "¡En el sombrero! Con razón no la encontraba."],
+    ],
+    effects: [{ set: "pista-llave" }],
+    note: "Casimiro y Bartolo: la llave de cuerda está en el baúl de los disfraces del teatrito, dentro del sombrero de copa.",
+  },
+  {
+    id: "retrato",
+    between: ["fermin", "clotilde"],
+    lines: [
+      ["clotilde", "Don Fermín, ¿por qué hay un marco vacío en la galería?"],
+      ["fermin", "Era el retrato de Inés. Lo estoy pintando otra vez, pero me faltan colores."],
+      ["clotilde", "Rojo y blanco dan el rosa de su lazo. Lo sé porque yo se lo planchaba."],
+    ],
+    effects: [{ set: "pista-colores" }],
+    note: "Fermín y Clotilde: el rosa del lazo de Inés sale de mezclar rojo y blanco.",
+  },
+  {
+    id: "batuta",
+    between: ["ramona", "serafin"],
+    lines: [
+      ["ramona", "Serafín, despierta. Las ranas de la fuente tienen una batuta."],
+      ["serafin", "Mmm… ¿una qué? Ah, sí… la del maestro. La perdió dirigiendo a los grillos."],
+      ["ramona", "Pues ahora dirige a las ranas. Está en el fondo del agua."],
+    ],
+    effects: [{ set: "pista-batuta" }],
+    note: "Ramona y Serafín: la batuta del maestro Anacleto está en el fondo de la fuente del jardín.",
+  },
+  {
+    id: "compas-baile", between: ["anacleto", "baltasar"], repeatable: true,
+    lines: [
+      ["baltasar", "¡Maestro! ¿Me deja cantar en la fiesta?"],
+      ["anacleto", "Si no desafinas, Baltasar."],
+      ["baltasar", "Entonces me deja."],
+      ["anacleto", "Eso lo veremos."],
+    ],
+  },
+  {
+    id: "dragon", between: ["bartolo", "pepito"], repeatable: true,
+    lines: [
+      ["pepito", "¿Me dejas esconderme detrás del telón?"],
+      ["bartolo", "Solo si no asustas al dragón."],
+      ["pepito", "¡Si el dragón es de trapo!"],
+      ["bartolo", "Por eso se asusta tanto."],
+    ],
+  },
+
   // ------------------------------------------------------------ ambiente
   {
     id: "bandeja", between: ["basilio", "gumersindo"], repeatable: true,

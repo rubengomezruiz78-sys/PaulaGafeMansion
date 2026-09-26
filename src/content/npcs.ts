@@ -25,6 +25,8 @@ export interface NpcDef {
   floatM: number;
   alpha: number;
   tint?: number;
+  /** Brillo propio (si no, lo decide el tipo: los fantasmas brillan un poco). */
+  glow?: number;
   personality: Personality;
   routine: Routine;
   /** Saludo la primera vez que ve a Paula. */
@@ -177,5 +179,81 @@ export const NPCS: NpcDef[] = [
     ambient: ["Se me cayó una bandeja en 1913. Todavía la estoy recogiendo.", "¿Alguien ha visto mi otro guante?", "Don Basilio dice que soy torpe. Es verdad."],
   },
 ];
+
+/** El ala de la fiesta: los que preparaban el cumpleaños de Inés en 1913. */
+NPCS.push(
+  {
+    id: "anacleto", name: "Maestro Anacleto", role: "Director de orquesta", sprite: "anacleto", kind: "ghost",
+    floatM: 0.08, alpha: 0.9,
+    personality: { restlessness: 0.35, chattiness: 0.75, noticeRadiusM: 2.8, attendRadiusM: 3.4 },
+    routine: { home: "baile", stations: [st("baile", 6, [150, 320]), st("musica", 2, [60, 120]), st("comedor", 1, [50, 90])] },
+    greet: ["¡Silencio en la sala! Ah… es una niña. Perdón: llevo trece años mandando callar a nadie."],
+    ambient: [
+      "Un, dos, tres… un, dos, tres… el vals se me escapa.",
+      "¿Alguien ha visto mi batuta? Sin ella, los violines hacen lo que quieren.",
+      "Esta orquesta tocará en el cumpleaños de Inés. Aunque sea lo último que toque.",
+    ],
+  },
+  {
+    id: "clemencia", name: "Tía Clemencia", role: "Repostera", sprite: "clemencia", kind: "ghost",
+    floatM: 0.06, alpha: 0.9,
+    personality: { restlessness: 0.45, chattiness: 0.95, noticeRadiusM: 2.6, attendRadiusM: 3.2 },
+    routine: { home: "comedor", stations: [st("comedor", 5, [150, 300]), st("cocina", 2, [80, 150]), st("baile", 1, [50, 100])] },
+    greet: ["¡Tú debes de ser Paula! Qué alegría, una invitada de verdad. ¿Te gusta el bizcocho de fresa?"],
+    ambient: [
+      "Tres pisos, diez velas y ni una miga en el suelo.",
+      "Remedios dice que su bizcocho es mejor. Remedios exagera.",
+      "Una fiesta sin tarta es solo una reunión.",
+    ],
+  },
+  {
+    id: "casimiro", name: "Casimiro", role: "Juguetero", sprite: "casimiro", kind: "ghost",
+    floatM: 0.07, alpha: 0.9,
+    personality: { restlessness: 0.3, chattiness: 0.6, noticeRadiusM: 2.4, attendRadiusM: 3 },
+    routine: { home: "taller", stations: [st("taller", 6, [180, 360]), st("galeria", 1, [60, 120]), st("estudio", 1, [60, 100])] },
+    greet: ["¡Una niña! Hacía trece años que nadie venía a ver mis juguetes. Mira, pero con los ojos."],
+    ambient: [
+      "Tic, tac, cuerda y engranaje: así laten los juguetes.",
+      "La bailarina era para Inés. Se me durmió antes de la fiesta.",
+      "¿Dónde habré dejado la llavecita de cuerda? La tenía Bartolo… o yo… o Bartolo.",
+    ],
+  },
+  {
+    id: "fermin", name: "Don Fermín", role: "Pintor de la familia", sprite: "fermin", kind: "ghost",
+    floatM: 0.07, alpha: 0.9,
+    personality: { restlessness: 0.4, chattiness: 0.55, noticeRadiusM: 2.4, attendRadiusM: 3 },
+    routine: { home: "estudio", stations: [st("estudio", 5, [150, 320]), st("taller", 1, [60, 120]), st("galeria", 2, [60, 120])] },
+    greet: ["¡No te muevas! Así, con esa luz… Ay, perdona, manías de pintor. Soy Fermín."],
+    ambient: [
+      "Todos los retratos de la galería los pinté yo. Menos el que se borró.",
+      "Con rojo, amarillo, azul y blanco se pinta el mundo entero.",
+      "Me faltan colores para las invitaciones. Me sobran ganas.",
+    ],
+  },
+  {
+    id: "bartolo", name: "Bartolo", role: "Titiritero", sprite: "bartolo", kind: "ghost",
+    floatM: 0.07, alpha: 0.9,
+    personality: { restlessness: 0.6, chattiness: 0.9, noticeRadiusM: 2.8, attendRadiusM: 3.2 },
+    routine: { home: "teatro", stations: [st("teatro", 5, [150, 300]), st("dormitorio", 1, [60, 120]), st("galeria", 1, [60, 100])] },
+    greet: ["¡Pasen y vean! Bueno, pasa y mira, que solo eres una. ¡Bienvenida al teatrito de Inés!"],
+    ambient: [
+      "El dragón de trapo me muerde si no le hago caso.",
+      "Érase una vez… no, así no empezaba.",
+      "La función de Inés tiene cuatro escenas y un gato.",
+    ],
+  },
+  {
+    id: "ramona", name: "Ramona", role: "Lechuza del jardín", sprite: "ramona", kind: "ghost",
+    floatM: 1.25, alpha: 1, glow: 0,
+    personality: { restlessness: 0.5, chattiness: 0.5, noticeRadiusM: 3.5, attendRadiusM: 3 },
+    routine: { home: "jardin", stations: [st("jardin", 8, [200, 500]), st("invernadero", 1, [60, 120])] },
+    greet: ["Uuh-uuh. Una niña y un gato, de noche, en mi jardín. Qué raro. Qué interesante."],
+    ambient: [
+      "Uuh-uuh. Desde arriba, el laberinto parece una oreja.",
+      "Las luciérnagas se pierden siempre en el mismo rincón.",
+      "Anoche vi una batuta en la fuente. Las ranas la usan para dirigir el coro.",
+    ],
+  },
+);
 
 export const npcById = (id: string): NpcDef | undefined => NPCS.find((n) => n.id === id);

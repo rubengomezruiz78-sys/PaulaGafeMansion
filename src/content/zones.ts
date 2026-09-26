@@ -16,13 +16,15 @@ import { GAME_H, GAME_W } from "../config";
 import type { PerspectiveCalib, Pt } from "../core/perspective";
 import type { WalkArea } from "../core/navmesh";
 import type { Cond, Effect } from "../core/rules";
+import { ALA_FIESTA } from "./zones/alaFiesta";
 import { PLANTA_ALTA } from "./zones/plantaAlta";
 import { PLANTA_BAJA } from "./zones/plantaBaja";
 import { SOTANO } from "./zones/sotano";
 
 export type ZoneId =
   | "vestibulo" | "biblioteca" | "cocina" | "archivo" | "invernadero" | "galeria"
-  | "dormitorio" | "observatorio" | "musica" | "desvan" | "tuneles" | "torre";
+  | "dormitorio" | "observatorio" | "musica" | "desvan" | "tuneles" | "torre"
+  | "baile" | "comedor" | "jardin" | "taller" | "estudio" | "teatro";
 
 export type NPt = readonly [number, number];
 
@@ -74,7 +76,7 @@ export const walkAreaPx = (zone: ZoneDef): WalkArea => ({
   holes: (zone.walk.holes ?? []).map(polyPx),
 });
 
-export const ZONES: Partial<Record<ZoneId, ZoneDef>> = { ...PLANTA_BAJA, ...SOTANO, ...PLANTA_ALTA };
+export const ZONES: Partial<Record<ZoneId, ZoneDef>> = { ...PLANTA_BAJA, ...SOTANO, ...PLANTA_ALTA, ...ALA_FIESTA };
 
 export const zone = (id: ZoneId): ZoneDef => {
   const z = ZONES[id];

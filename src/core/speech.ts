@@ -100,3 +100,52 @@ export function matchChoice(heard: readonly string[], options: readonly string[]
   }
   return bestScore >= 0.34 ? best : null;
 }
+
+const NOTE_WORDS: Record<string, number> = { do: 0, re: 1, mi: 2, fa: 3, sol: 4, la: 5, si: 6 };
+
+/**
+ * Notas dichas en orden («do, mi, sol»). Devuelve las primeras `count` que
+ * se oyen, o null si no hay suficientes en ninguna alternativa.
+ */
+export function parseNotes(heard: readonly string[], count: number): number[] | null {
+  for (const h of heard) {
+    const notes = normalize(h).split(" ").filter((w) => w in NOTE_WORDS).map((w) => NOTE_WORDS[w]);
+    if (notes.length >= count) return notes.slice(0, count);
+  }
+  return null;
+}
+
+export type Dir = "up" | "down" | "left" | "right";
+
+const DIR_WORDS: [RegExp, Dir][] = [
+  [/^(arriba|sube|subir|norte)$/, "up"],
+  [/^(abajo|baja|bajar|sur)$/, "down"],
+  [/^(izquierda|izquierdo|oeste)$/, "left"],
+  [/^(derecha|derecho|este)$/, "right"],
+];
+
+/** Direcciones dichas en orden («arriba, arriba, derecha»). */
+export function parseDirections(heard: readonly string[]): Dir[] {
+  for (const h of heard) {
+    const dirs: Dir[] = [];
+    for (const w of normalize(h).split(" ")) {
+      const hit = DIR_WORDS.find(([re]) => re.test(w));
+      if (hit) dirs.push(hit[1]);
+    }
+    if (dirs.length) return dirs;
+  }
+  return [];
+}
+
+/** Dos opciones nombradas en la misma frase («rojo y amarillo»), sin repetir. */
+export function matchTwo(heard: readonly string[], options: readonly string[]): [number, number] | null {
+  const opts = options.map(normalize);
+  for (const h of heard.map(normalize)) {
+    const found = opts
+      .map((o, i) => ({ i, at: o ? ` ${h} `.indexOf(` ${o} `) : -1 }))
+      .filter((f) => f.at >= 0)
+      .sort((a, b) => a.at - b.at);
+    if (found.length >= 2) return [found[0].i, found[1].i];
+  }
+  return null;
+}

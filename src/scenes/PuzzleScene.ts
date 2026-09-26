@@ -3,12 +3,13 @@ import { sound } from "../audio/sound";
 import { listenErrorText, voice } from "../audio/voice";
 import { matchChoice, parseSpanishNumber } from "../core/speech";
 import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera, fs } from "../config";
-import { MAX_DIGITS, PuzzleRun } from "../core/puzzle";
+import { isGameStep, MAX_DIGITS, PuzzleRun } from "../core/puzzle";
 import { PUZZLES } from "../content/puzzles";
 import { describeNotice } from "../content/speakers";
 import { session } from "../game/session";
 import { pushBackHandler } from "../platform";
 import { setModal } from "../ui/modal";
+import { makeBoard, type Board } from "../ui/puzzleBoards";
 import { addScrim, drawPanel, makeButton, type Button } from "../ui/widgets";
 import { UI_EVENTS } from "./UIScene";
 
@@ -22,6 +23,9 @@ const LEFT = { x: CARD.x + 70, w: 930 };
 const RIGHT = { x: CARD.x + CARD.w - 70 - 500, w: 500, y: 250 };
 const KEY = { w: 152, h: 120, gap: 22 };
 const FIELD = { x: RIGHT.x, y: CARD.y + 60, w: RIGHT.w, h: 124 };
+/** Pasos que son un juego: enunciado a lo ancho y el tablero debajo. */
+const WIDE = { x: LEFT.x, w: CARD.w - 140 };
+const BOTTOM = CARD.y + CARD.h - 120;
 
 /**
  * Pantalla de puzzle, encima de todo. Teclado numérico propio (sin teclado
@@ -40,6 +44,7 @@ export class PuzzleScene extends Phaser.Scene {
   private releaseBack?: () => void;
   private hintButton?: Button;
   private micButton?: Button;
+  private board?: Board;
 
   constructor() {
     super("puzzle");
@@ -86,6 +91,8 @@ export class PuzzleScene extends Phaser.Scene {
   // ------------------------------------------------------------- un paso
 
   private showStep(): void {
+    this.board?.destroy();
+    this.board = undefined;
     for (const o of this.stepObjs) o.destroy();
     this.stepObjs = [];
     this.typed = "";
@@ -94,6 +101,10 @@ export class PuzzleScene extends Phaser.Scene {
       this.stepObjs.push(o);
       return o;
     };
+    if (isGameStep(step)) {
+      this.showGameStep(keep);
+      return;
+    }
 
     keep(this.add.text(LEFT.x, CARD.y + 118, `PASO ${this.run.index + 1} DE ${this.run.total}`, {
       fontFamily: FONT_UI, fontSize: "26px", color: CSS.muted, letterSpacing: 3,
@@ -131,13 +142,13 @@ export class PuzzleScene extends Phaser.Scene {
         fontFamily: FONT_UI, fontSize: "80px", color: CSS.ivory, fontStyle: "bold",
       }).setOrigin(0.5));
       this.buildKeypad(keep);
-    } else {
+    } else if (step.kind === "choice") {
       this.field = undefined;
       this.fieldBg = undefined;
       this.buildChoices(step.options, keep);
     }
     // Avisos («¡Correcto!», la pista de Gafe) debajo del teclado.
-    const rows = step.kind === "number" ? 4 : Math.ceil(step.options.length / (step.options.length > 3 ? 2 : 1));
+    const rows = step.kind === "choice" ? Math.ceil(step.options.length / (step.options.length > 3 ? 2 : 1)) : 4;
     if (voice.mode !== "texto") {
       const opts = step.kind === "choice" ? ` Opciones: ${step.options.join(", ")}.` : "";
       void voice.speak(step.prompt + opts, "narrador");
@@ -145,6 +156,56 @@ export class PuzzleScene extends Phaser.Scene {
     this.feedback = keep(this.add.text(RIGHT.x, RIGHT.y + rows * (KEY.h + KEY.gap) + 4, "", {
       fontFamily: FONT_UI, fontSize: fs(30), color: CSS.ivory, lineSpacing: 6, wordWrap: { width: RIGHT.w, useAdvancedWrap: true },
     }));
+  }
+
+  /** Un paso de juego: historia y enunciado a lo ancho, tablero debajo, avisos abajo a la derecha. */
+  private showGameStep(keep: <T extends Phaser.GameObjects.GameObject>(o: T) => T): void {
+    const step = this.run.step;
+    keep(this.add.text(LEFT.x, CARD.y + 118, `PASO ${this.run.index + 1} DE ${this.run.total}`, {
+      fontFamily: FONT_UI, fontSize: "26px", color: CSS.muted, letterSpacing: 3,
+    }));
+    let y = CARD.y + 160;
+    const story = keep(this.add.text(WIDE.x, y, this.run.def.story, {
+      fontFamily: FONT_UI, fontSize: fs(27), color: CSS.muted, lineSpacing: 4, wordWrap: { width: WIDE.w, useAdvancedWrap: true },
+    }));
+    y += story.height + 10;
+    for (const clue of this.run.clues()) {
+      const t = keep(this.add.text(WIDE.x, y, `✎ ${clue}`, {
+        fontFamily: FONT_UI, fontSize: fs(26), color: CSS.copper, fontStyle: "italic", wordWrap: { width: WIDE.w, useAdvancedWrap: true },
+      }));
+      y += t.height + 6;
+    }
+    y += 10;
+    const prompt = this.add.text(WIDE.x + 30, y + 22, step.prompt, {
+      fontFamily: FONT_UI, fontSize: fs(36), color: CSS.ivory, lineSpacing: 6, wordWrap: { width: WIDE.w - 60, useAdvancedWrap: true },
+    });
+    const boxH = prompt.height + 44;
+    const box = keep(this.add.graphics());
+    box.fillStyle(0x16242a, 1).fillRoundedRect(WIDE.x, y, WIDE.w, boxH, 22);
+    box.lineStyle(2, COLORS.panelEdge, 0.35).strokeRoundedRect(WIDE.x, y, WIDE.w, boxH, 22);
+    keep(prompt).setDepth(1);
+    const top = y + boxH + 24;
+    this.field = undefined;
+    this.fieldBg = undefined;
+    const feedX = LEFT.x + 1040;
+    this.feedback = keep(this.add.text(feedX, BOTTOM + 45, "", {
+      fontFamily: FONT_UI, fontSize: fs(28), color: CSS.ivory, lineSpacing: 4,
+      wordWrap: { width: CARD.x + CARD.w - 60 - feedX, useAdvancedWrap: true },
+    }).setOrigin(0, 0.5));
+    this.board = makeBoard({
+      scene: this,
+      area: { x: WIDE.x, y: top, w: WIDE.w, h: BOTTOM - 24 - top },
+      keep,
+      submit: (v) => this.submit(v),
+      say: (text, color) => this.feedback?.setColor(color ?? CSS.ivory).setText(text),
+    }, step) ?? undefined;
+    if (voice.mode !== "texto") void voice.speak(step.prompt, "narrador").then(() => this.board?.start());
+    else this.board?.start();
+  }
+
+  /** Partida automática: resuelve el tablero del paso actual. */
+  solveBoard(): void {
+    this.board?.solve();
   }
 
   private drawField(fill: number, edge: number): void {
@@ -205,9 +266,12 @@ export class PuzzleScene extends Phaser.Scene {
       this.drawField(0x2a1212, 0xe07a6a);
       this.cameras.main.shake(160, 0.004);
       const n = this.run.mistakes;
-      const msg = n >= 2 ? `Mmm… no. 🐾 Gafe: ${this.run.step.hint}` : "Mmm… no es eso. Revisa la cuenta con calma.";
+      const game = isGameStep(this.run.step);
+      const again = game ? "¡Casi! Prueba otra vez." : "Mmm… no es eso. Revisa la cuenta con calma.";
+      const msg = n >= 2 ? `Mmm… no. 🐾 Gafe: ${this.run.step.hint}` : again;
       this.feedback?.setColor("#f0b0a0").setText(msg);
-      if (voice.mode !== "texto") void voice.speak(n >= 2 ? `Mmm, no. Gafe dice: ${this.run.step.hint}` : "Mmm, no es eso. Revisa la cuenta con calma.", "narrador");
+      if (voice.mode !== "texto") void voice.speak(n >= 2 ? `Mmm, no. Gafe dice: ${this.run.step.hint}` : again, "narrador");
+      this.board?.wrong?.();
       this.typed = "";
       this.time.delayedCall(700, () => {
         this.drawField(0x0b1013, COLORS.copper);
@@ -247,6 +311,12 @@ export class PuzzleScene extends Phaser.Scene {
     if (!this.scene.isActive()) return;
     btn.label.setText("🎤  Decirlo");
     const step = this.run.step;
+    if (alts && this.board?.hear) {
+      if (this.board.hear(alts)) {
+        this.feedback?.setColor(CSS.copper).setText(`He oído: ${alts[0]}`);
+        return;
+      }
+    }
     if (alts && step.kind === "number") {
       const n = alts.map(parseSpanishNumber).find((x) => x !== null);
       if (n !== undefined && n !== null) {
@@ -272,6 +342,8 @@ export class PuzzleScene extends Phaser.Scene {
 
   private close(solved: boolean): void {
     if (!this.scene.isActive()) return;
+    this.board?.destroy();
+    this.board = undefined;
     voice.stop();
     voice.cancelListening();
     this.releaseBack?.();
