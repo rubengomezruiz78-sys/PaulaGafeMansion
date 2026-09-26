@@ -5,9 +5,10 @@ import { check } from "../core/rules";
 import { fill } from "../core/text";
 import { CHATS } from "../content/chats";
 import { npcById } from "../content/npcs";
+import { MAP_POS } from "../content/mapLayout";
 import { ZONES, zoneLinks } from "../content/zones";
 import { worldSim } from "../game/world";
-import { ITEMS, MEMORIES } from "../content/items";
+import { ITEMS, MEMORIES, PARTY_ITEMS } from "../content/items";
 import { MAIN_GOALS, QUESTS, questStageText } from "../content/quests";
 import { session } from "../game/session";
 import { sound } from "../audio/sound";
@@ -15,7 +16,6 @@ import { voice, type VoiceMode } from "../audio/voice";
 import { pushBackHandler } from "../platform";
 import { setModal } from "../ui/modal";
 import { addScrim, drawPanel, makeButton, type Button } from "../ui/widgets";
-import { UI_EVENTS } from "./UIScene";
 
 export type BagTab = "mochila" | "cuaderno" | "mapa" | "ajustes";
 
@@ -27,7 +27,11 @@ export interface BagRequest {
 
 const CARD = { x: 110, y: 40, w: GAME_W - 220, h: GAME_H - 80 };
 const INNER = { x: CARD.x + 70, y: CARD.y + 150, w: CARD.w - 140 };
-const CELL = { w: 236, h: 200, gap: 22, cols: 6 };
+/** Casillas de la mochila: grandes con pocos objetos; más pequeñas si hay muchos (hasta 24). */
+const CELL_BIG = { w: 236, h: 200, gap: 22, cols: 6, icon: 84, name: 24 };
+const CELL_SMALL = { w: 180, h: 166, gap: 17, cols: 8, icon: 64, name: 20 };
+/** Alto de la ficha del objeto elegido (debajo de las casillas). */
+const DETAIL_H = 250;
 
 /**
  * Mochila y cuaderno. La mochila muestra los objetos (tocar uno lo describe y
@@ -108,6 +112,8 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     if (!this.selected || !items.includes(this.selected)) this.selected = items[0];
+    const CELL = items.length > 12 ? CELL_SMALL : CELL_BIG;
+    const rows = Math.ceil(items.length / CELL.cols);
     items.forEach((id, i) => {
       const x = INNER.x + (i % CELL.cols) * (CELL.w + CELL.gap);
       const y = INNER.y + Math.floor(i / CELL.cols) * (CELL.h + CELL.gap);
@@ -115,21 +121,22 @@ export class BagScene extends Phaser.Scene {
       const b = makeButton(this, x, y, CELL.w, CELL.h, "", () => {
         this.selected = id;
         this.show("mochila");
-      }, { fill: id === this.selected ? 0x3a2716 : 0x121a1e, edge: item.memory ? 0xf0c860 : COLORS.copper });
+      }, { fill: id === this.selected ? 0x3a2716 : 0x121a1e, edge: item.memory ? 0xf0c860 : item.party ? 0xf09ab0 : COLORS.copper });
       this.keep(b.container);
-      this.keep(this.add.text(x + CELL.w / 2, y + 78, item.icon, { fontSize: "84px", padding: { top: 10, bottom: 6 } }).setOrigin(0.5));
-      this.keep(this.add.text(x + CELL.w / 2, y + 162, item.name, {
-        fontFamily: FONT_UI, fontSize: "24px", color: CSS.ivory, align: "center", wordWrap: { width: CELL.w - 24, useAdvancedWrap: true },
+      this.keep(this.add.text(x + CELL.w / 2, y + CELL.h * 0.39, item.icon, { fontSize: `${CELL.icon}px`, padding: { top: 10, bottom: 6 } }).setOrigin(0.5));
+      this.keep(this.add.text(x + CELL.w / 2, y + CELL.h * 0.81, item.name, {
+        fontFamily: FONT_UI, fontSize: `${CELL.name}px`, color: CSS.ivory, align: "center", wordWrap: { width: CELL.w - 20, useAdvancedWrap: true },
       }).setOrigin(0.5));
     });
     const sel = this.selected ? ITEMS[this.selected] : undefined;
     if (!sel || !this.selected) return;
-    const y = INNER.y + 2 * (CELL.h + CELL.gap) + 18;
+    // La ficha va debajo de la última fila (nunca encima de las casillas).
+    const y = Math.min(INNER.y + Math.max(2, rows) * (CELL.h + CELL.gap) + 18, CARD.y + CARD.h - DETAIL_H - 24);
     const g = this.keep(this.add.graphics());
-    g.fillStyle(0x16242a, 1).fillRoundedRect(INNER.x, y, INNER.w, 250, 24);
+    g.fillStyle(0x16242a, 1).fillRoundedRect(INNER.x, y, INNER.w, DETAIL_H, 24);
     this.keep(this.add.text(INNER.x + 110, y + 125, sel.icon, { fontSize: "120px", padding: { top: 14, bottom: 8 } }).setOrigin(0.5));
     this.keep(this.add.text(INNER.x + 220, y + 30, sel.name, { fontFamily: FONT_TITLE, fontSize: "44px", color: CSS.copper }));
-    this.keep(this.add.text(INNER.x + 220, y + 92, (sel.memory ? "★ Recuerdo de Inés. " : "") + sel.description, {
+    this.keep(this.add.text(INNER.x + 220, y + 92, (sel.memory ? "★ Recuerdo de Inés. " : sel.party ? "🎉 Para la fiesta de Inés. " : "") + sel.description, {
       fontFamily: FONT_UI, fontSize: fs(32), color: CSS.ivory, lineSpacing: 6, wordWrap: { width: INNER.w - 220 - 380, useAdvancedWrap: true },
     }));
     const id = this.selected;
@@ -196,6 +203,22 @@ export class BagScene extends Phaser.Scene {
       }).setOrigin(0.5));
     });
     y += 150;
+    // Lo preparado para la fiesta (en cuanto alguien le habla de ella).
+    if ((s.quests.fiesta?.stage ?? 0) > 0) {
+      title(rx, y, "La fiesta de Inés");
+      y += 60;
+      PARTY_ITEMS.forEach((id, i) => {
+        const has = s.inventory.includes(id) || s.flags.final === true;
+        const cx = rx + 50 + i * 112;
+        const g = put(this.add.graphics());
+        g.fillStyle(has ? 0x3a1f2a : 0x121a1e, 1).fillCircle(cx, y + 48, 48);
+        g.lineStyle(3, has ? 0xf09ab0 : 0x3a4448, 1).strokeCircle(cx, y + 48, 48);
+        put(this.add.text(cx, y + 48, has ? ITEMS[id].icon : "?", {
+          fontFamily: FONT_UI, fontSize: has ? "50px" : "40px", color: CSS.muted, padding: { top: 8, bottom: 6 },
+        }).setOrigin(0.5));
+      });
+      y += 130;
+    }
     title(rx, y, "Lo que has oído");
     y += 58;
     const notes = CHATS.filter((c) => c.note && s.flags[heardFlag(c.id)]).map((c) => c.note!);
@@ -341,27 +364,6 @@ export class BagScene extends Phaser.Scene {
   }
 }
 
-/** Centro de cada sala en el esquema del mapa (por plantas). */
-const MAP_POS: Record<string, { x: number; y: number }> = {
-  estudio: { x: 330, y: 275 },
-  desvan: { x: 720, y: 275 },
-  observatorio: { x: 1080, y: 275 },
-  torre: { x: 1480, y: 275 },
-  taller: { x: 330, y: 400 },
-  galeria: { x: 720, y: 400 },
-  dormitorio: { x: 1080, y: 400 },
-  teatro: { x: 1440, y: 400 },
-  cocina: { x: 330, y: 565 },
-  vestibulo: { x: 720, y: 565 },
-  biblioteca: { x: 1080, y: 565 },
-  musica: { x: 1440, y: 565 },
-  comedor: { x: 330, y: 690 },
-  baile: { x: 1080, y: 690 },
-  invernadero: { x: 1640, y: 690 },
-  jardin: { x: 1360, y: 800 },
-  archivo: { x: 720, y: 915 },
-  tuneles: { x: 1080, y: 915 },
-};
 
 /** Nombre corto para el mapa: sin tratamiento («Don», «Doña»…) y sin apellido. */
 const shortName = (name: string): string => name.replace(/^(Don|Doña|Señora|Señor|La señora|El señor)\s+/i, "").split(" ")[0];

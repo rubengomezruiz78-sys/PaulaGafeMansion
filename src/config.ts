@@ -9,21 +9,48 @@ export const GAME_H = 1080;
  * cámara de cada escena amplía/reduce para que todo siga en 1920×1080.
  * `?escala=1` fuerza el tamaño completo (para grabar vídeos).
  */
+/**
+ * Los cuadros llevan una franja pintada de más arriba y abajo (BLEED px). En
+ * pantallas más altas que 16:9 (la tablet es 16:10) se ve y llena la pantalla
+ * sin franjas negras; en 16:9 o en el móvil queda fuera. Todo lo anotado sigue
+ * en 0..1080: la franja es solo decorado.
+ */
+export const BLEED = 60;
+export const VIEW_H = viewHeight();
+/** Primera fila visible (negativa si se ve la franja de arriba). */
+export const VIEW_TOP = (GAME_H - VIEW_H) / 2;
 export const RENDER_W = renderWidth();
-export const RENDER_H = Math.round((RENDER_W * GAME_H) / GAME_W);
+export const RENDER_H = Math.round((RENDER_W * VIEW_H) / GAME_W);
 export const RENDER_SCALE = RENDER_W / GAME_W;
+
+function viewHeight(): number {
+  if (typeof window === "undefined") return GAME_H;
+  // Las grabaciones de vídeo (?escala=) son siempre 16:9.
+  if (new URLSearchParams(location.search).get("escala")) return GAME_H;
+  const tall = (GAME_W * window.innerHeight) / Math.max(1, window.innerWidth);
+  return Math.round(Math.min(GAME_H + 2 * BLEED, Math.max(GAME_H, tall)));
+}
 
 function renderWidth(): number {
   if (typeof window === "undefined") return GAME_W;
   const forced = Number(new URLSearchParams(location.search).get("escala"));
   if (forced > 0) return Math.round(GAME_W * Math.min(1, forced));
-  const shown = Math.min(window.innerWidth, (window.innerHeight * GAME_W) / GAME_H) * (window.devicePixelRatio || 1);
+  const shown = Math.min(window.innerWidth, (window.innerHeight * GAME_W) / VIEW_H) * (window.devicePixelRatio || 1);
   if (!(shown > 0)) return GAME_W;
   return Math.round(clamp(shown, GAME_W / 2, GAME_W));
 }
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
+}
+
+/** Pone un cuadro (con o sin franja) cubriendo todo lo visible: su parte 16:9 en 0..1080. */
+export function placeBackdrop(img: { width: number; height: number; setOrigin(x: number, y?: number): unknown; setPosition(x: number, y: number): unknown; setDisplaySize(w: number, h: number): unknown }): void {
+  const bleedPx = Math.max(0, (img.height - (img.width * GAME_H) / GAME_W) / 2);
+  const k = GAME_W / img.width;
+  img.setOrigin(0, 0);
+  img.setPosition(0, -bleedPx * k);
+  img.setDisplaySize(GAME_W, img.height * k);
 }
 
 /** Encaja la cámara de una escena en el tamaño lógico (llamar al principio de create). */

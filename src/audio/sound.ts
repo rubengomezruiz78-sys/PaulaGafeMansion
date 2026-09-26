@@ -55,7 +55,6 @@ class SoundEngine {
   private rainGain?: GainNode;
   private windGain?: GainNode;
   private windFilter?: BiquadFilterNode;
-  private dripLevel = 0;
   private levels: Record<ExtraKind, number> = { drip: 0, tick: 0, crickets: 0, hiss: 0 };
   private waterGain?: GainNode;
   private tickCount = 0;
@@ -234,7 +233,6 @@ class SoundEngine {
     this.rainGain?.gain.setTargetAtTime(a.rain * 0.5, t, 1.2);
     this.windGain?.gain.setTargetAtTime(a.wind * 0.35, t, 1.5);
     this.waterGain?.gain.setTargetAtTime((a.water ?? 0) * 0.28, t, 1.2);
-    this.dripLevel = a.drip;
     this.levels = { drip: a.drip, tick: a.tick ?? 0, crickets: a.crickets ?? 0, hiss: a.hiss ?? 0 };
   }
 

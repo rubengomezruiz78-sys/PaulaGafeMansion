@@ -16,9 +16,9 @@ export interface NpcDef {
   role: string;
   /** Sprite de fichero (todo el reparto está pintado: tools/gen_characters.py). */
   sprite: SpriteKey;
-  /** "ghost" flota y se desliza; "person" pisa el suelo. */
+  /** "ghost" es un fantasma (brilla un poco, titila con los relámpagos); "person", un ser vivo. */
   kind: "ghost" | "person";
-  /** Elevación al flotar (m). */
+  /** Elevación sobre el suelo (m): los fantasmas flotan; Ramona vuela. 0 = pisa el suelo. */
   floatM: number;
   alpha: number;
   tint?: number;
@@ -241,7 +241,8 @@ NPCS.push(
     ],
   },
   {
-    id: "ramona", name: "Ramona", role: "Lechuza del jardín", sprite: "ramona", kind: "ghost",
+    // Una lechuza de verdad (no un fantasma): no brilla ni titila; vuela bajito entre los setos.
+    id: "ramona", name: "Ramona", role: "Lechuza del jardín", sprite: "ramona", kind: "person",
     floatM: 1.25, alpha: 1, glow: 0,
     personality: { restlessness: 0.5, chattiness: 0.5, noticeRadiusM: 3.5, attendRadiusM: 3 },
     routine: { home: "jardin", stations: [st("jardin", 8, [200, 500]), st("invernadero", 1, [60, 120])] },

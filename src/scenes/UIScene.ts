@@ -1,5 +1,8 @@
 import Phaser from "phaser";
-import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera, fs } from "../config";
+import { COLORS, CSS, FONT_TITLE, FONT_UI, GAME_W, VIEW_H, VIEW_TOP, fitCamera, fs } from "../config";
+
+/** Borde de abajo de lo que se ve (en la tablet, 16:10, algo más abajo que 1080). */
+const VIEW_BOTTOM = VIEW_TOP + VIEW_H;
 import type { DialogueRunner, Line, Step } from "../core/dialogue";
 import type { Notice } from "../core/rules";
 import { fill } from "../core/text";
@@ -61,7 +64,7 @@ export const UI_EVENTS = {
 const BUBBLE = { maxW: 780, pad: 22, portraitR: 40, gapHead: 22, margin: 18 };
 const CHARS_PER_SECOND = 48;
 /** Opciones: botones compactos y numerados, abajo a la derecha. */
-const CHOICE = { w: 700, h: 62, gap: 10, right: GAME_W - 20, bottom: GAME_H - 16 };
+const CHOICE = { w: 700, h: 62, gap: 10, right: GAME_W - 20, bottom: VIEW_BOTTOM - 16 };
 
 /** Posición de la cabeza de un personaje presente en la sala (la da el mundo). */
 /** Dónde está la cabeza de quien habla (y si está hablando ahora, para que se le note). */
@@ -86,7 +89,7 @@ export class UIScene extends Phaser.Scene {
   private bubbleSize = { w: 0, h: 0 };
   /** El texto de la frase ya partido en líneas (así no saltan palabras al escribirse). */
   private wrapped = "";
-  private choiceTop = GAME_H;
+  private choiceTop = VIEW_BOTTOM;
   /** Cambia con cada frase: así una voz que termina tarde no pasa la frase siguiente. */
   private lineToken = 0;
   private micButton?: Button;
@@ -302,7 +305,7 @@ export class UIScene extends Phaser.Scene {
       y = Math.max(m, tip.y - h - 20);
     } else {
       x = this.choiceBox ? m * 2 : (GAME_W - w) / 2;
-      y = GAME_H - h - 26;
+      y = VIEW_BOTTOM - h - 26;
     }
     if (this.choiceBox && x + w > CHOICE.right - CHOICE.w && y + h > this.choiceTop - 10) y = Math.max(m, this.choiceTop - h - 16);
     this.panel.setPosition(x, y);
@@ -444,6 +447,7 @@ export class UIScene extends Phaser.Scene {
     const { alts, error } = await voice.listen();
     if (!this.choiceBox || this.micButton !== btn) return;
     btn.label.setText("🎤  Dilo");
+    if (error === "cancelado") return;
     const idx = alts ? matchChoice(alts, this.choices.map((c) => c.text)) : null;
     if (idx !== null) {
       this.pick(this.choices[idx].id);
@@ -487,7 +491,7 @@ export class UIScene extends Phaser.Scene {
     this.choiceBox?.destroy();
     this.choiceBox = undefined;
     this.micButton = undefined;
-    this.choiceTop = GAME_H;
+    this.choiceTop = VIEW_BOTTOM;
     this.lineToken += 1;
     voice.stop();
     voice.cancelListening();
@@ -523,8 +527,8 @@ export class UIScene extends Phaser.Scene {
         onUse: (item: string) => this.game.events.emit(UI_EVENTS.use, item),
       });
     };
-    const bag = makeButton(this, GAME_W - 30 - 124, 26, 124, 112, "🎒", () => open("mochila"), { fontSize: 60, radius: 28 });
-    const book = makeButton(this, GAME_W - 30 - 124 - 20 - 124, 26, 124, 112, "📖", () => open("cuaderno"), { fontSize: 60, radius: 28 });
+    const bag = makeButton(this, GAME_W - 30 - 124, VIEW_TOP + 26, 124, 112, "🎒", () => open("mochila"), { fontSize: 60, radius: 28 });
+    const book = makeButton(this, GAME_W - 30 - 124 - 20 - 124, VIEW_TOP + 26, 124, 112, "📖", () => open("cuaderno"), { fontSize: 60, radius: 28 });
     for (const b of [bag, book]) b.label.setPadding(0, 8, 0, 4);
     this.hud = this.add.container(0, 0, [book.container, bag.container]).setDepth(80);
   }
@@ -541,7 +545,7 @@ export class UIScene extends Phaser.Scene {
     const def = item ? ITEMS[item] : undefined;
     if (!def) return;
     // Abajo a la izquierda: arriba están el nombre de la sala y los avisos.
-    const chip = makeButton(this, 30, GAME_H - 30 - 104, 700, 104, `${def.icon}  Usando: ${def.name}   ✕`, () => this.game.events.emit(UI_EVENTS.use, null), {
+    const chip = makeButton(this, 30, VIEW_BOTTOM - 30 - 104, 700, 104, `${def.icon}  Usando: ${def.name}   ✕`, () => this.game.events.emit(UI_EVENTS.use, null), {
       fontSize: 32, fill: 0x1d3a2a, edge: 0x8fd6a0, align: "left", radius: 28,
     });
     chip.container.setDepth(80);
@@ -552,7 +556,7 @@ export class UIScene extends Phaser.Scene {
 
   private showZoneTitle(name: string): void {
     this.zoneTitle?.destroy();
-    const t = this.add.text(GAME_W / 2, 70, name, {
+    const t = this.add.text(GAME_W / 2, VIEW_TOP + 70, name, {
       fontFamily: FONT_TITLE, fontSize: "56px", color: CSS.ivory,
       shadow: { offsetX: 0, offsetY: 4, color: "#000", blur: 18, fill: true },
     }).setOrigin(0.5, 0).setAlpha(0).setDepth(90);
@@ -578,7 +582,7 @@ export class UIScene extends Phaser.Scene {
     const h = label.height + 36;
     bg.fillStyle(COLORS.panel, 0.92).fillRoundedRect(-w / 2, -h / 2, w, h, 18);
     bg.lineStyle(2, COLORS.panelEdge, 0.55).strokeRoundedRect(-w / 2, -h / 2, w, h, 18);
-    const c = this.add.container(GAME_W / 2, 170 + this.toasts.length * 92, [bg, label]).setDepth(95).setAlpha(0);
+    const c = this.add.container(GAME_W / 2, VIEW_TOP + 170 + this.toasts.length * 92, [bg, label]).setDepth(95).setAlpha(0);
     this.toasts.push(c);
     this.tweens.chain({
       targets: c,

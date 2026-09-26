@@ -258,7 +258,7 @@ class OrderBoard extends BaseBoard {
     if (this.done || card.placed) return;
     const next = this.placed.length;
     if (card.item !== next) {
-      sound.play("wrong");
+      // El sonido de fallo lo pone la pantalla del puzzle (aquí sonaría dos veces).
       this.scene.tweens.add({ targets: card.box, x: card.box.x + 14, duration: 50, yoyo: true, repeat: 3 });
       this.host.submit(-1);
       return;

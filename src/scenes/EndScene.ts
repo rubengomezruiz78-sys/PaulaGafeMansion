@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
-import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, fitCamera } from "../config";
+import { CSS, FONT_TITLE, FONT_UI, GAME_H, GAME_W, VIEW_H, VIEW_TOP, fitCamera, placeBackdrop } from "../config";
 import { NPCS } from "../content/npcs";
 import { pushBackHandler } from "../platform";
 import { setModal } from "../ui/modal";
@@ -25,19 +25,21 @@ export class EndScene extends Phaser.Scene {
     fitCamera(this);
     this.closing = false;
     setModal(this, "end", true);
-    const party = this.add.image(GAME_W / 2, GAME_H / 2, this.textures.exists("fiesta") ? "fiesta" : "cover")
-      .setDisplaySize(GAME_W, GAME_H).setAlpha(0);
+    const party = this.add.image(0, 0, this.textures.exists("fiesta") ? "fiesta" : "cover").setAlpha(0);
+    placeBackdrop(party);
+    // Centrado para que el acercamiento lento vaya hacia el centro de la pista.
+    party.setOrigin(0.5).setPosition(GAME_W / 2, GAME_H / 2);
     const base = party.scaleX;
     // La cámara se acerca muy despacio a la pista, como en un cuento.
     this.tweens.add({ targets: party, alpha: 1, duration: 2500 });
     this.tweens.add({ targets: party, scaleX: base * 1.07, scaleY: party.scaleY * 1.07, y: GAME_H / 2 + 20, duration: 24000, ease: "Sine.easeInOut" });
-    const dawn = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xffc98a, 0).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
+    const dawn = this.add.rectangle(0, VIEW_TOP, GAME_W, VIEW_H, 0xffc98a, 0).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({ targets: dawn, alpha: 0.1, duration: 6000, delay: 1500, yoyo: true, hold: 4000 });
     this.addFireflies();
 
     // Franja oscura abajo: los textos no tapan las caras de la fiesta.
     const band = this.add.graphics().setAlpha(0);
-    for (let i = 0; i < 30; i += 1) band.fillStyle(0x020304, 0.05).fillRect(0, GAME_H - 470 + i * 12, GAME_W, 470 - i * 12);
+    for (let i = 0; i < 30; i += 1) band.fillStyle(0x020304, 0.05).fillRect(0, GAME_H - 470 + i * 12, GAME_W, 470 - i * 12 + (VIEW_H - GAME_H) / 2);
     this.tweens.add({ targets: band, alpha: 1, duration: 1800, delay: 1200 });
 
     const fin = this.add.text(GAME_W / 2, GAME_H - 405, "¡Feliz cumpleaños, Inés!", {

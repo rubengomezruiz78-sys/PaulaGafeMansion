@@ -141,3 +141,19 @@ def cutout(image_path: str, out_path: str) -> str:
     rgba.save(out_path)
     os.remove(tmp)
     return out_path
+
+
+def inpaint(prompt: str, image_path: str, mask_path: str, out_path: str, seed: int = 1, steps: int = 4) -> str:
+    """Repinta solo lo blanco de la máscara (el resto queda igual) viendo la imagen entera."""
+    from PIL import Image
+
+    w, h = Image.open(image_path).size
+    img = upload(image_path)
+    msk = upload(mask_path)
+    g = _base(prompt, w, h, seed, steps)
+    del g["latent"]
+    g["load"] = {"class_type": "LoadImage", "inputs": {"image": img}}
+    g["mask"] = {"class_type": "LoadImageMask", "inputs": {"image": msk, "channel": "red"}}
+    g["enc"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["load", 0], "vae": ["vae", 0]}}
+    g["latent"] = {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["enc", 0], "mask": ["mask", 0]}}
+    return run(_finish(g, "pos", "neg"), out_path)

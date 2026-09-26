@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { sound } from "../audio/sound";
-import { DEBUG, GAME_H, GAME_W, fitCamera } from "../config";
+import { DEBUG, GAME_H, GAME_W, VIEW_H, VIEW_TOP, fitCamera, placeBackdrop } from "../config";
 import { heardFlag, type ChatDef } from "../core/chat";
 import { DialogueRunner, type Line } from "../core/dialogue";
 import { resolveProp } from "../core/interact";
@@ -18,6 +18,7 @@ import { ITEMS, itemName } from "../content/items";
 import { npcById, type NpcDef } from "../content/npcs";
 import { PROPS } from "../content/props";
 import { describeNotice, speakerFor } from "../content/speakers";
+import { MILESTONES } from "../content/quests";
 import { polyPx, toPx, walkAreaPx, zone as getZone, ZONES, type ExitDef, type PropDef, type ZoneDef, type ZoneId } from "../content/zones";
 import { session } from "../game/session";
 import { chatDirector, worldSim } from "../game/world";
@@ -76,6 +77,8 @@ type Pending =
   | { kind: "npc"; npc: NpcRuntime };
 
 const TAP_MAX_MOVE = 28;
+/** Marca de «ya saludó a Paula» (se guarda con la partida). */
+const greetedFlag = (npc: string) => `saludo:${npc}`;
 const DOUBLE_TAP_MS = 330;
 const SIM_STEP = 0.25;
 const CHAT_CHECK = 1.5;
@@ -83,7 +86,7 @@ const CHAT_CHECK = 1.5;
 const EARSHOT_M = 7;
 /**
  * Salas cuya imagen se queda en memoria (la actual y las últimas visitadas).
- * La tablet tiene poca RAM: las 12 imágenes a la vez ocuparían ~100 MB.
+ * La tablet tiene poca RAM: las 18 imágenes a la vez ocuparían ~150 MB.
  */
 const KEEP_ZONES = 3;
 const recentZones: string[] = [];
@@ -157,7 +160,8 @@ export class WorldScene extends Phaser.Scene {
     if (i >= 0) recentZones.splice(i, 1);
     recentZones.unshift(current);
     for (const old of recentZones.splice(KEEP_ZONES)) {
-      if (this.textures.exists(`zone-${old}`)) this.textures.remove(`zone-${old}`);
+      // El cuadro y las texturas que se sacan de él (máscara de vida y haces de luz).
+      for (const key of [`zone-${old}`, `lifemask-${old}`, `shafts-${old}`]) if (this.textures.exists(key)) this.textures.remove(key);
     }
   }
 
@@ -179,7 +183,8 @@ export class WorldScene extends Phaser.Scene {
     this.chatIn = 6;
     this.tint = this.zoneDef.actorTint ?? 0xd2cfcc;
 
-    const bg = this.add.image(0, 0, `zone-${this.zoneDef.id}`).setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(-1000);
+    const bg = this.add.image(0, 0, `zone-${this.zoneDef.id}`).setDepth(-1000);
+    placeBackdrop(bg);
     const lifeDef = LIFE[this.zoneDef.id];
     this.life = lifeDef ? new ZoneLifeFx(this, this.zoneDef.id, lifeDef, this.proj, { lowFx, calm: session.state.flags.final === true }) : undefined;
     this.life?.attachBackground(bg);
@@ -409,11 +414,24 @@ export class WorldScene extends Phaser.Scene {
     const notices = apply([...(action.effects ?? []), { examine: prop.id }], session.state);
     session.save();
     this.toastNotices(notices);
+    this.checkMilestones();
     const puzzle = action.puzzle;
     this.say({
       speaker: "Paula", portrait: "paula-idle", lines: action.lines,
       onClose: puzzle ? () => this.openPuzzle(puzzle) : undefined,
     });
+  }
+
+  /** Si se acaba de completar una meta con contador, se tacha y se celebra. */
+  private checkMilestones(): void {
+    for (const m of MILESTONES) {
+      const q = session.state.quests[m.quest];
+      if ((session.state.counters[m.counter] ?? 0) < m.at || q?.done) continue;
+      apply([{ complete: m.quest }], session.state);
+      session.save();
+      sound.play("solved");
+      this.game.events.emit(UI_EVENTS.toast, m.text);
+    }
   }
 
   private toastNotices(notices: Notice[]): void {
@@ -429,6 +447,7 @@ export class WorldScene extends Phaser.Scene {
     this.scene.launch("puzzle", {
       id,
       onClose: (solved) => {
+        if (solved) this.checkMilestones();
         session.save();
         if (solved && session.state.flags.final) this.playEnding();
       },
@@ -471,7 +490,7 @@ export class WorldScene extends Phaser.Scene {
   /** La decimotercera campanada: Inés recuerda y amanece. */
   private playEnding(): void {
     const lines: Line[] = [
-      "Cinco recuerdos… y trece campanadas contadas sin dar un solo golpe.",
+      "Cinco recuerdos, una fiesta preparada… y trece campanadas contadas sin dar un solo golpe.",
       { by: "ines", text: "¡Me acuerdo! Me acuerdo de todo: de mi casa, de mi cinta, de mi canción." },
       { by: "ines", text: "Y de tu voz, Paula. Gracias por no irte." },
       { by: "basilio", text: "Señorita… ha dejado de llover. Por primera vez en cien años, en esta casa amanece." },
@@ -605,6 +624,8 @@ export class WorldScene extends Phaser.Scene {
       this.tweens.add({ targets: actor.container, alpha: 1, duration: 420 });
     }
     const brain = new NpcBrain(new Rng(this.rng.int(1, 1e9)), def.personality, this.zoneDef.poi.map((p) => this.nav.nearestWalkable(toPx(p))));
+    // Se acuerdan de Paula: el saludo de presentación solo se dice una vez en toda la partida.
+    if (session.state.flags[greetedFlag(def.id)] || session.state.npc[def.id]?.met) brain.memory.greeted = true;
     const rt: NpcRuntime = { def, actor, brain, thinkIn: this.rng.range(0, 0.3), barkIndex: 0, mode: "free", gone: false };
     this.npcs.push(rt);
     return rt;
@@ -757,6 +778,7 @@ export class WorldScene extends Phaser.Scene {
         break;
       case "bark": {
         if (this.registry.get("modal") || rt.mode !== "free") break;
+        if (intent.kind === "greet") session.state.flags[greetedFlag(rt.def.id)] = true;
         const lines = intent.kind === "greet" ? rt.def.greet : rt.def.ambient;
         if (!lines.length) break;
         if (this.barks.some((b) => b.rt === rt)) break;
@@ -908,11 +930,11 @@ export class WorldScene extends Phaser.Scene {
     this.perfClock = 0;
     this.fxObjects = [];
     // Con alfa 0 no se dibuja (antes tenía el relleno a 0 y se pintaba siempre sin verse).
-    this.flashRect = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xdde8ff).setOrigin(0).setDepth(4500)
+    this.flashRect = this.add.rectangle(0, VIEW_TOP, GAME_W, VIEW_H, 0xdde8ff).setOrigin(0).setDepth(4500)
       .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
     if (lowFx) return;
     // Viñeta: oscurece los bordes y da profundidad al cuadro.
-    this.fxObjects.push(this.add.image(0, 0, "vignette").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setDepth(4400).setAlpha(0.6));
+    this.fxObjects.push(this.add.image(0, VIEW_TOP, "vignette").setOrigin(0).setDisplaySize(GAME_W, VIEW_H).setDepth(4400).setAlpha(0.6));
   }
 
   /** Si va a tirones, pasa a modo ligero (se mide tras unos segundos en la sala). */
@@ -945,7 +967,7 @@ export class WorldScene extends Phaser.Scene {
     // Todos lo notan: Paula se sobresalta, los fantasmas titilan, Gafe mira.
     this.time.delayedCall(120, () => {
       if (power > 0.72 && !this.registry.get("modal")) this.paula.startle();
-      for (const rt of this.npcs) if (!rt.gone && rt.def.floatM > 0) rt.actor.flicker();
+      for (const rt of this.npcs) if (!rt.gone && rt.def.kind === "ghost") rt.actor.flicker();
       const win = LIFE[this.zoneDef.id]?.windows[0];
       if (win && !this.gafe.walker.moving) this.gafe.walker.face({ x: win[0][0] * GAME_W, y: 0 });
     });

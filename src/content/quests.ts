@@ -50,6 +50,15 @@ export const MAIN_GOALS: { text: string; done: Cond; show?: Cond }[] = [
   { text: "Hacer sonar la decimotercera campanada", done: { flag: "final" }, show: { visited: "torre" } },
 ];
 
+/**
+ * Metas con contador: al llegar, el encargo se tacha y Paula lo oye enseguida
+ * (sin esperar a la campana del final).
+ */
+export const MILESTONES: { counter: string; at: number; quest: string; text: string }[] = [
+  { counter: "recuerdos", at: 5, quest: "recuerdos", text: "★ ¡Ya tienes los cinco recuerdos de Inés!" },
+  { counter: "fiesta", at: 6, quest: "fiesta", text: "🎉 ¡La fiesta de Inés está lista! Ya solo falta que suene la campana." },
+];
+
 export function questStageText(quest: string, stage: number): string | null {
   return QUESTS[quest]?.stages[stage] ?? null;
 }

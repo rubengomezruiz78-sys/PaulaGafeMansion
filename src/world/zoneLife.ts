@@ -8,7 +8,7 @@
  * personajes (`lighting`).
  */
 import Phaser from "phaser";
-import { GAME_H, GAME_W } from "../config";
+import { GAME_H, GAME_W, VIEW_H, VIEW_TOP } from "../config";
 import type { LightDef, NPoly, ZoneLife } from "../content/life";
 import { SPRITES } from "../content/sprites";
 import type { Projection, Pt } from "../core/perspective";
@@ -110,7 +110,7 @@ export class ZoneLifeFx {
     this.setupTwinkles();
     this.setupCritters();
     if (!opts.lowFx) {
-      this.grain = scene.add.tileSprite(0, 0, W, H, "grain").setOrigin(0).setDepth(4450).setAlpha(0.055)
+      this.grain = scene.add.tileSprite(0, VIEW_TOP, W, VIEW_H, "grain").setOrigin(0).setDepth(4450).setAlpha(0.055)
         .setBlendMode(Phaser.BlendModes.SCREEN);
     }
   }
@@ -132,6 +132,9 @@ export class ZoneLifeFx {
     this.pipeline.spins.fill(0);
     this.spinAngles = this.life.spin.map(() => this.rng() * Math.PI * 2);
     this.pipeline.rain = this.opts.calm ? 0 : 0.85;
+    // Parte del cuadro que es franja de más (arriba y abajo), en fracción del alto.
+    const src = bg.texture.getSourceImage() as { width: number; height: number };
+    this.pipeline.bleed = Math.max(0, (src.height - (src.width * H) / W) / 2 / src.height);
     bg.setPipeline(BG_LIFE);
   }
 
@@ -213,8 +216,8 @@ export class ZoneLifeFx {
     for (const r of this.rain) {
       r.img.y += r.vy * dt;
       r.img.x += r.vy * dt * 0.12;
-      if (r.img.y > H + 50) {
-        r.img.y = -50 - this.rng() * 80;
+      if (r.img.y > VIEW_TOP + VIEW_H + 50) {
+        r.img.y = VIEW_TOP - 50 - this.rng() * 80;
         r.img.x = this.rng() * W;
       }
       if (r.img.x > W + 10) r.img.x -= W + 20;
@@ -325,12 +328,12 @@ export class ZoneLifeFx {
   private setupFog(): void {
     const { color, amount } = this.life.fog;
     if (amount <= 0) return;
-    this.fogBack = this.scene.add.tileSprite(0, H * 0.46, W, H * 0.56, "fog").setOrigin(0).setTint(color)
+    this.fogBack = this.scene.add.tileSprite(0, H * 0.46, W, VIEW_TOP + VIEW_H - H * 0.46, "fog").setOrigin(0).setTint(color)
       .setAlpha(Math.min(0.9, amount * 1.6)).setDepth(-850);
     this.fogBack.tileScaleY = (H * 0.56) / 256;
     this.fogBack.tileScaleX = this.fogBack.tileScaleY;
     if (this.opts.lowFx) return;
-    this.fogFront = this.scene.add.tileSprite(0, H * 0.7, W, H * 0.32, "fog").setOrigin(0).setTint(color)
+    this.fogFront = this.scene.add.tileSprite(0, H * 0.7, W, VIEW_TOP + VIEW_H - H * 0.7, "fog").setOrigin(0).setTint(color)
       .setAlpha(amount * 0.6).setDepth(1500);
     this.fogFront.tileScaleY = (H * 0.32) / 256;
     this.fogFront.tileScaleX = this.fogFront.tileScaleY * 1.3;

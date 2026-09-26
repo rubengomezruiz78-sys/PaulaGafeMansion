@@ -42,7 +42,6 @@ export class PuzzleScene extends Phaser.Scene {
   private feedback?: Phaser.GameObjects.Text;
   private busy = false;
   private releaseBack?: () => void;
-  private hintButton?: Button;
   private micButton?: Button;
   private board?: Board;
 
@@ -66,7 +65,7 @@ export class PuzzleScene extends Phaser.Scene {
     drawPanel(g, CARD.x, CARD.y, CARD.w, CARD.h, 34);
     this.add.text(LEFT.x, CARD.y + 44, def.title, { fontFamily: FONT_TITLE, fontSize: "50px", color: CSS.copper });
 
-    this.hintButton = makeButton(this, LEFT.x, CARD.y + CARD.h - 120, 440, 90, "🐾  Pista de Gafe", () => this.showHint(), { fontSize: 34 });
+    makeButton(this, LEFT.x, CARD.y + CARD.h - 120, 440, 90, "🐾  Pista de Gafe", () => this.showHint(), { fontSize: 34 });
     makeButton(this, LEFT.x + 470, CARD.y + CARD.h - 120, 260, 90, "Salir", () => this.close(false), { fontSize: 34 });
     if (voice.mic && voice.canListen) {
       this.micButton = makeButton(this, LEFT.x + 760, CARD.y + CARD.h - 120, 250, 90, "🎤  Decirlo", () => void this.listenAnswer(), {
@@ -310,6 +309,8 @@ export class PuzzleScene extends Phaser.Scene {
     const { alts, error } = await voice.listen();
     if (!this.scene.isActive()) return;
     btn.label.setText("🎤  Decirlo");
+    // Cancelada (se cerró, o se volvió a pulsar el micro): no es un error de Paula.
+    if (error === "cancelado") return;
     const step = this.run.step;
     if (alts && this.board?.hear) {
       if (this.board.hear(alts)) {

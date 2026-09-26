@@ -8,44 +8,9 @@
  * Modos de los diálogos: «texto» (como un libro), «ambos» (texto y voz) o
  * «voz» (solo se oye: para cuando Paula no quiere leer).
  */
+import { PROFILES } from "../content/voices";
 
 export type VoiceMode = "texto" | "ambos" | "voz";
-
-interface Profile {
-  pitch: number;
-  rate: number;
-}
-
-/** Cómo suena cada uno (tono y velocidad sobre la misma voz española). */
-const PROFILES: Record<string, Profile> = {
-  paula: { pitch: 1.35, rate: 1.02 },
-  gafe: { pitch: 1.0, rate: 0.98 },
-  narrador: { pitch: 1.0, rate: 0.95 },
-  basilio: { pitch: 0.7, rate: 0.9 },
-  elvira: { pitch: 1.05, rate: 0.9 },
-  tomas: { pitch: 0.78, rate: 0.88 },
-  ines: { pitch: 1.5, rate: 0.9 },
-  bruma: { pitch: 0.95, rate: 0.88 },
-  baltasar: { pitch: 0.85, rate: 1.08 },
-  remedios: { pitch: 1.12, rate: 1.06 },
-  anselmo: { pitch: 0.8, rate: 0.95 },
-  clotilde: { pitch: 1.2, rate: 1.12 },
-  pepito: { pitch: 1.6, rate: 1.15 },
-  florentina: { pitch: 1.25, rate: 0.92 },
-  nicanor: { pitch: 0.92, rate: 1.1 },
-  leocadia: { pitch: 0.98, rate: 1.0 },
-  serafin: { pitch: 0.85, rate: 0.78 },
-  crispulo: { pitch: 1.02, rate: 1.05 },
-  tadeo: { pitch: 0.82, rate: 0.95 },
-  engracia: { pitch: 1.08, rate: 0.85 },
-  gumersindo: { pitch: 0.95, rate: 1.12 },
-  anacleto: { pitch: 0.75, rate: 0.92 },
-  clemencia: { pitch: 1.15, rate: 1.04 },
-  casimiro: { pitch: 0.9, rate: 0.96 },
-  fermin: { pitch: 0.88, rate: 0.9 },
-  bartolo: { pitch: 1.05, rate: 1.14 },
-  ramona: { pitch: 1.3, rate: 0.84 },
-};
 
 const PREFS_KEY = "paula-gafe-voz";
 
@@ -96,7 +61,9 @@ class VoiceService {
   private readonly w = window as Win;
   private seq = 0;
   private pending = new Map<string, () => void>();
-  private listening?: { resolve: (alts: string[] | null, error?: string) => void };
+  /** Escucha en curso. Cada una lleva su número: lo que llegue tarde de una anterior se ignora. */
+  private listening?: { id: number; resolve: (alts: string[] | null, error?: string) => void };
+  private listenSeq = 0;
   private rec?: BrowserRecognition;
 
   constructor() {
@@ -111,8 +78,8 @@ class VoiceService {
       this.pending.get(id)?.();
       this.pending.delete(id);
     };
-    this.w.__onAndroidVoiceResult = (alts) => this.finishListening(alts);
-    this.w.__onAndroidVoiceError = (code) => this.finishListening(null, code);
+    this.w.__onAndroidVoiceResult = (alts) => this.finishListening(this.listening?.id, alts);
+    this.w.__onAndroidVoiceError = (code) => this.finishListening(this.listening?.id, null, code);
   }
 
   private save(): void {
@@ -223,9 +190,12 @@ class VoiceService {
   listen(): Promise<{ alts: string[] | null; error?: string }> {
     this.stop();
     this.cancelListening();
+    const id = (this.listenSeq += 1);
     return new Promise((resolve) => {
-      const t = window.setTimeout(() => this.finishListening(null, "tiempo"), 12000);
+      // El plazo es de ESTA escucha: si ya terminó y empezó otra, no la corta.
+      const t = window.setTimeout(() => this.finishListening(id, null, "tiempo"), 12000);
       this.listening = {
+        id,
         resolve: (alts, error) => {
           window.clearTimeout(t);
           resolve({ alts, error });
@@ -237,7 +207,7 @@ class VoiceService {
       }
       const Ctor = this.w.SpeechRecognition ?? this.w.webkitSpeechRecognition;
       if (!Ctor) {
-        this.finishListening(null, "no-disponible");
+        this.finishListening(id, null, "no-disponible");
         return;
       }
       const rec = new Ctor();
@@ -249,28 +219,32 @@ class VoiceService {
         const first = e.results[0];
         const alts: string[] = [];
         for (let i = 0; i < first.length; i += 1) alts.push(first[i].transcript);
-        this.finishListening(alts);
+        this.finishListening(id, alts);
       };
-      rec.onerror = (e) => this.finishListening(null, e.error === "not-allowed" ? "sin-permiso" : "no-entendido");
-      rec.onend = () => this.finishListening(null, "no-entendido");
+      rec.onerror = (e) => this.finishListening(id, null, e.error === "not-allowed" ? "sin-permiso" : "no-entendido");
+      rec.onend = () => this.finishListening(id, null, "no-entendido");
       rec.start();
     });
   }
 
+  /** Deja de escuchar; quien esperaba la respuesta recibe «cancelado» (nunca se queda colgado). */
   cancelListening(): void {
+    const rec = this.rec;
+    this.rec = undefined;
+    this.finishListening(this.listening?.id, null, "cancelado");
     try {
       this.w.AndroidVoice?.cancelListening();
-      this.rec?.abort();
+      rec?.abort();
     } catch {
       /* nada que cancelar */
     }
-    this.rec = undefined;
   }
 
-  private finishListening(alts: string[] | null, error?: string): void {
+  private finishListening(id: number | undefined, alts: string[] | null, error?: string): void {
     const l = this.listening;
+    if (!l || l.id !== id) return;
     this.listening = undefined;
-    l?.resolve(alts, error);
+    l.resolve(alts, error);
   }
 }
 

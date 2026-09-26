@@ -23,6 +23,8 @@ uniform float uFlash;
 uniform float uRain;
 uniform float uAspect;
 uniform vec4 uSpin[4];
+/** Fracción del alto del cuadro que es franja de más (arriba y abajo). */
+uniform float uBleed;
 varying vec2 outTexCoord;
 varying float outTintEffect;
 varying vec4 outTint;
@@ -30,8 +32,11 @@ varying vec4 outTint;
 float hash(float n) { return fract(sin(n) * 43758.5453); }
 
 void main() {
-  vec2 uv = outTexCoord;
-  vec4 m = texture2D(uMask, uv);
+  // Todo se calcula en el cuadro 16:9 (donde están las anotaciones) y al final
+  // se vuelve a la imagen con sus franjas.
+  float kb = 1.0 - 2.0 * uBleed;
+  vec2 uv = vec2(outTexCoord.x, (outTexCoord.y - uBleed) / kb);
+  vec4 m = (uv.y < 0.0 || uv.y > 1.0) ? vec4(0.0) : texture2D(uMask, uv);
   float t = uTime;
   vec2 d = vec2(0.0);
   // Telas y plantas: dos ondas lentas cruzadas (nada de vaivén mecánico).
@@ -54,7 +59,7 @@ void main() {
       }
     }
   }
-  vec4 col = texture2D(uMainSampler, suv);
+  vec4 col = texture2D(uMainSampler, vec2(suv.x, suv.y * kb + uBleed));
   float w = m.b;
   if (w > 0.01) {
     // Lluvia: hilos finos que bajan un poco inclinados, a ritmos distintos.
@@ -78,6 +83,7 @@ export class BgLifePipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePipeli
   time = 0;
   flash = 0;
   rain = 0.8;
+  bleed = 0;
   readonly spins = new Float32Array(16);
 
   constructor(game: Phaser.Game) {
@@ -101,6 +107,7 @@ export class BgLifePipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePipeli
     this.set1f("uRain", this.rain);
     this.set1f("uAspect", 1920 / 1080);
     this.set4fv("uSpin", this.spins);
+    this.set1f("uBleed", this.bleed);
   }
 }
 

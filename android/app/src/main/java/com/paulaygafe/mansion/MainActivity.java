@@ -209,6 +209,9 @@ public class MainActivity extends Activity {
                     @Override public void onStart(String id) {}
                     @Override public void onDone(String id) { js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")"); }
                     @Override public void onError(String id) { js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")"); }
+                    // Una frase cortada por la siguiente (QUEUE_FLUSH) no avisa con onDone:
+                    // sin esto, el juego esperaba unos segundos de más a que «terminara».
+                    @Override public void onStop(String id, boolean interrupted) { js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")"); }
                 });
                 ready = true;
             });

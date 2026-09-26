@@ -66,6 +66,10 @@ WALK = {
     "gafe-walk": ("pintados/gafe-walk.png", None, 0.29),
 }
 MAX_STATIC_H = 900  # px; de sobra para 1920x1080 y ahorra memoria/APK
+# Lo más grande que se ve nada en pantalla: ~700 px por metro (dormitorio, en
+# primer plano). Más resolución no se aprecia, gasta memoria de la tablet y
+# además «centellea» al reducirse tanto. Paula (1,30 m) se queda en 900.
+MAX_PX_PER_M = 700
 # Margen transparente (fracción) para que el cuerpo pueda moverse sin salirse del cuadro.
 PAD_X = 0.06
 PAD_TOP = 0.03
@@ -106,7 +110,8 @@ def build_static(key, file, real_h, ref_scale):
     ys, xs = np.where(mask)
     im = im.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
     content_h = im.height
-    scale = min(1.0, MAX_STATIC_H / content_h)
+    limit = MAX_STATIC_H if real_h is None else min(MAX_STATIC_H, round(real_h * MAX_PX_PER_M))
+    scale = min(1.0, limit / content_h)
     if scale < 1.0:
         im = im.resize((round(im.width * scale), round(im.height * scale)), Image.LANCZOS)
     mask = alpha_mask(im)

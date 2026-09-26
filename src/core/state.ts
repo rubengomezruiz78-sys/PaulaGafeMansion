@@ -34,7 +34,7 @@ export interface GameState {
   quests: Record<string, QuestProgress>;
   visited: string[];
   examined: string[];
-  /** Minutos de juego transcurridos (reloj ambiental, nunca es un límite). */
+  /** Segundos de juego transcurridos (reloj ambiental, nunca es un límite). */
   clock: number;
 }
 
