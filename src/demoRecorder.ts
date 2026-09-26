@@ -10,7 +10,8 @@ import Phaser from "phaser";
 import { audioBufferToWav, renderTimeline, sound } from "./audio/sound";
 import { worldSim } from "./game/world";
 import { session } from "./game/session";
-import { ZONES, polyPx, type PropDef } from "./content/zones";
+import { ZONES, type PropDef } from "./content/zones";
+import { mazePath } from "./core/puzzle";
 
 type Any = Record<string, any>;
 
@@ -144,8 +145,8 @@ export function makeDemoRecorder(game: Phaser.Game, api: DemoApi) {
   async function exit(id: string): Promise<boolean> {
     const w = api.world();
     const e = w.zoneDef.exits.find((x: Any) => x.id === id);
-    const pts = polyPx(e.hotspot);
-    const pt = { x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length };
+    // Un punto de la puerta que no tape nadie (si hay alguien delante, el toque sería para él).
+    const pt = api.tapPointFor(e as PropDef);
     w.ready = false;
     await touch(pt.x, pt.y, () => w.onTap(pt));
     const ok = await until(() => api.world().ready && api.world().zoneDef.id === e.to, 25);
@@ -410,5 +411,219 @@ export function makeDemoRecorder(game: Phaser.Game, api: DemoApi) {
     return { frames: n, seconds, log };
   }
 
-  return { run, tour, progress: () => n };
+  // ------------------------------------------------------ ala de la fiesta
+
+  /** El tablero del puzzle abierto (para jugarlo con toques de verdad). */
+  const board = () => (api.puzzle().board ?? null) as Any | null;
+
+  /** Toca una zona del tablero (el círculo del dedo se ve donde toca). */
+  async function tapAt(x: number, y: number, then: () => void, gap = 0.45): Promise<void> {
+    await touch(x, y, then);
+    await wait(gap);
+  }
+
+  /** Piano: espera a que suene la melodía y la repite tecla a tecla. */
+  async function playMelody(): Promise<void> {
+    await until(() => !!board() && !board()!.playing, 4);
+    await until(() => !!board() && board()!.playing, 3);
+    await until(() => !!board() && !board()!.playing, 8);
+    const b = board()!;
+    for (const note of b.step.notes as number[]) {
+      const k = b.keys[note];
+      await tapAt(k.x + k.w / 2, k.y + k.h / 2, () => b.tap(note), 0.55);
+    }
+    await wait(1.8);
+  }
+
+  /** Laberinto: lleva la luz por el camino bueno, casilla a casilla. */
+  async function playMaze(): Promise<void> {
+    await wait(1);
+    const b = board()!;
+    const path = mazePath(b.step.grid)!;
+    for (let i = 1; i < path.length; i += 1) {
+      const dr = path[i].r - path[i - 1].r;
+      const dc = path[i].c - path[i - 1].c;
+      const dir = dr < 0 ? "up" : dr > 0 ? "down" : dc < 0 ? "left" : "right";
+      b.move(dir);
+      await wait(0.24);
+    }
+    await wait(2);
+  }
+
+  /** Tarjetas: las toca en su orden. */
+  async function playOrder(): Promise<void> {
+    await wait(1.2);
+    const b = board()!;
+    for (let i = 0; i < b.step.items.length; i += 1) {
+      const card = (b.cards as Any[]).find((c) => c.item === i)!;
+      const bounds = card.box.getBounds();
+      await tapAt(bounds.centerX, bounds.centerY, () => b.pick(card), 0.6);
+    }
+    await wait(1.8);
+  }
+
+  /** Parejas: primero se equivoca una vez (como una niña de verdad) y luego acierta. */
+  async function playPairs(): Promise<void> {
+    await wait(1);
+    const b = board()!;
+    const cards = b.cards as Any[];
+    const tapCard = async (i: number) => tapAt(cards[i].box.x, cards[i].box.y, () => b.flip(i), 0.5);
+    const firstOther = cards.findIndex((c, i) => i > 0 && c.icon !== cards[0].icon);
+    await tapCard(0);
+    await tapCard(firstOther);
+    await wait(1);
+    const done = new Set<number>();
+    for (let i = 0; i < cards.length; i += 1) {
+      if (done.has(i)) continue;
+      const j = cards.findIndex((c, k) => k !== i && !done.has(k) && c.icon === cards[i].icon);
+      done.add(i);
+      done.add(j);
+      await tapCard(i);
+      await tapCard(j);
+      await wait(0.4);
+    }
+    await wait(1.8);
+  }
+
+  /** Pinturas: toca los dos botes buenos. */
+  async function playMix(): Promise<void> {
+    await wait(1.2);
+    const b = board()!;
+    for (const i of b.step.answer as number[]) {
+      const pot = b.pots[i];
+      await tapAt(pot.x, pot.y, () => b.pick(i), 0.6);
+    }
+    await wait(1.8);
+  }
+
+  /**
+   * Vídeo del ala de la fiesta: las seis salas nuevas, sus personajes, las
+   * pruebas nuevas jugadas con toques y el final con la fiesta de Inés.
+   */
+  async function fiesta(): Promise<{ frames: number; seconds: number; log: string[] }> {
+    n = 0;
+    game.loop.sleep();
+    sound.startTimeline(() => n / FPS);
+    const w = () => api.world();
+    // Ojo: «Empezar» crea una partida nueva, así que siempre se lee la actual.
+    const st = () => session.state;
+
+    await wait(3.5);
+    await touch(410, 579, () => (game.scene.getScene("title") as unknown as { start(f: boolean): void }).start(true));
+    await until(() => game.scene.isActive("world") && w().ready, 20);
+    if (ui().panel) ui().close(true);
+    st().flags["intro-visto"] = true;
+    for (const z of ["musica", "baile", "comedor", "jardin", "taller", "estudio", "teatro", "galeria", "dormitorio"]) if (!st().visited.includes(z)) st().visited.push(z);
+
+    // Salón de música → salón de baile.
+    await cut("musica", "El salón de música… y detrás, una puerta nueva.");
+    await wait(1.5);
+    await exit("puerta-baile");
+    place("anacleto", "baile");
+    await wait(2.5);
+    await walkTo(0.4, 0.8);
+    await wait(2);
+    if (await talk("anacleto")) {
+      await choose("fiesta");
+      await choose("vals");
+      await choose("adios");
+    }
+    await wait(2);
+
+    // Jardín: lluvia, luciérnagas, la lechuza y la batuta en la fuente.
+    await exit("cristalera-jardin");
+    place("ramona", "jardin");
+    await wait(3);
+    await prop("fuente-angel");
+    await prop("fuente-angel");
+    await wait(1);
+    if (await prop("entrada-laberinto")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playMaze();
+      await playMaze();
+      await wait(1.5);
+    }
+
+    // De vuelta al baile: el vals en el piano de la tarima.
+    await exit("terraza-baile");
+    await wait(1.5);
+    if (await prop("atril")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playMelody();
+      await playMelody();
+      await wait(1);
+      api.puzzle().solveBoard();
+      await wait(2.5);
+    }
+
+    // Comedor de gala: la tarta y la vajilla.
+    await exit("puerta-comedor");
+    place("clemencia", "comedor");
+    await wait(2);
+    if (await prop("mesa-banquete")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await answer(24, "number");
+      await answer(2, "number");
+      await playOrder();
+      await wait(1.5);
+    }
+
+    // Taller del juguetero: las parejas de piezas.
+    if (!st().inventory.includes("llave-cuerda")) st().inventory.push("llave-cuerda");
+    await cut("taller", "Arriba, el taller del juguetero…");
+    place("casimiro", "taller");
+    await wait(2);
+    if (await prop("banco-trabajo")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playPairs();
+      await answer(1, "choice");
+      await answer(24, "number");
+      await wait(1.5);
+    }
+
+    // Estudio del pintor: mezclar colores.
+    await exit("arco-estudio");
+    place("fermin", "estudio");
+    await wait(2);
+    if (await prop("caballete")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playMix();
+      await playMix();
+      await wait(1);
+      api.puzzle().solveBoard();
+      await wait(1.2);
+      api.puzzle().solveBoard();
+      await wait(2.5);
+    }
+
+    // Teatrito de Inés: la función.
+    await cut("teatro", "Y detrás de la cortina de Inés, su teatrito.");
+    place("bartolo", "teatro");
+    await wait(2);
+    if (await prop("escenario")) {
+      await until(() => game.scene.isActive("puzzle"), 6);
+      await playOrder();
+      await playOrder();
+      await answer(1, "choice");
+      await wait(1.5);
+    }
+
+    // Final: la fiesta.
+    await wait(1);
+    w().scene.launch("end");
+    await wait(20);
+    game.scene.getScene("end")?.cameras.main.fadeOut(1500, 0, 0, 0);
+    await wait(2);
+
+    send();
+    await Promise.all(inflight);
+    const seconds = n / FPS;
+    const audio = await renderTimeline(sound.stopTimeline(), seconds);
+    await fetch(`${url}/audio`, { method: "POST", body: audioBufferToWav(audio) });
+    await fetch(`${url}/log`, { method: "POST", body: log.join(" | ") || "sin incidencias" });
+    game.loop.wake();
+    return { frames: n, seconds, log };
+  }
+
+  return { run, tour, fiesta, progress: () => n };
 }

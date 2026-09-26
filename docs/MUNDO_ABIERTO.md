@@ -136,3 +136,37 @@ Inés recupere la memoria. Hace falta: romper el pacto y reunir 5 recuerdos.
 - Opcionales: baúles (plano), escondite de Pepito (encontrarlo en 3 salas; su
   secreto ayuda en la campana), guante de Gumersindo, galleta para Pepito.
 
+
+## Ampliación 2.1.0 — «La fiesta de Inés» (2026-09-26)
+Petición: seis niveles nuevos con el mismo estilo, personajes que no parezcan
+fotos pegadas (integración y proporciones), mundo abierto lleno de vida y
+pruebas para una niña de 9 años.
+- **Arte local** con ComfyUI + FLUX.2 klein 4B (`C:\Users\ruben\ComfyUI`,
+  8 GB de VRAM, ~15 s por imagen). Herramientas: `tools/comfy_gen.py` (API),
+  `tools/gen_rooms.py` (salas: dos salas viejas como referencia de estilo),
+  `tools/finish_rooms.py` (recorte y **misma luz**: histograma de luminancia de
+  las 12 originales), `tools/gen_characters.py` + `tools/cut_characters.py`
+  (reparto pintado sobre gris, recortado con BiRefNet), `tools/build_sprites.py`
+  (margen transparente para el «cuerpo vivo», pasos a la misma altura).
+- **Seis salas** (`content/zones/alaFiesta.ts`): salón de baile (desde la
+  música), comedor de gala (baile ↔ cocina), jardín del laberinto (baile ↔
+  invernadero), taller del juguetero (desde la galería), estudio del pintor
+  (desde el taller) y teatrito de Inés (puertecita tras la cortina del
+  dormitorio). Calibradas con dos referencias cada una; 18 salas en el mapa.
+- **Historia**: misión `fiesta` (6 cosas: vals, tarta, farolillos, bailarina,
+  invitaciones, marioneta). La campana ya pide pacto roto + 5 recuerdos + la
+  fiesta. Final nuevo: la fiesta en el salón de baile (`world/fiesta.webp`).
+- **Personajes nuevos**: Maestro Anacleto, Tía Clemencia, Casimiro, Don Fermín,
+  Bartolo y Ramona la lechuza, con rutinas, diálogos, 7 charlas y pistas.
+- **Pruebas nuevas** (`core/puzzle.ts` + `ui/puzzleBoards.ts`): piano
+  (melodía), ordenar tarjetas, parejas, laberinto y mezclar colores; cada una
+  entrega una respuesta codificada (`expectedAnswer`) para tests y autoplay;
+  se pueden responder con la voz (notas, direcciones, dos colores).
+- **Integración**: todo el reparto repintado con el estilo de las salas (antes
+  fotos y fantasmas dibujados por código); Paula anda con 7 pasos pintados;
+  shader con «cuerpo vivo» (respiración, balanceo con los pies quietos, vuelo
+  de la falda, sábanas que ondean, cabeceo al hablar).
+- **Vida**: lluvia de verdad en el jardín, parejas de fantasmas bailando el
+  vals en perspectiva real, luces/cortinas/agua/engranajes anotados en las 6.
+- Pruebas: 230 tests, `__test.autoplay()` completa en 154 pasos, vídeo con
+  `__test.recordFiesta()`.
