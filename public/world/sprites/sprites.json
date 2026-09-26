@@ -2,9 +2,9 @@
   "paula-idle": {
     "file": "paula-idle.webp",
     "frames": 1,
-    "frameWidth": 343,
-    "frameHeight": 900,
-    "originX": 0.5284,
+    "frameWidth": 380,
+    "frameHeight": 927,
+    "originX": 0.5391,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 1.3
@@ -12,19 +12,19 @@
   "paula-startled": {
     "file": "paula-startled.webp",
     "frames": 1,
-    "frameWidth": 445,
-    "frameHeight": 900,
-    "originX": 0.465,
+    "frameWidth": 481,
+    "frameHeight": 927,
+    "originX": 0.4772,
     "originY": 1.0,
     "refHeightPx": 900,
-    "realHeightM": 1.233
+    "realHeightM": 1.27
   },
   "gafe-sit": {
     "file": "gafe-sit.webp",
     "frames": 1,
-    "frameWidth": 472,
-    "frameHeight": 900,
-    "originX": 0.6093,
+    "frameWidth": 557,
+    "frameHeight": 927,
+    "originX": 0.5882,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 0.32
@@ -32,9 +32,9 @@
   "basilio": {
     "file": "basilio.webp",
     "frames": 1,
-    "frameWidth": 441,
-    "frameHeight": 900,
-    "originX": 0.3656,
+    "frameWidth": 467,
+    "frameHeight": 927,
+    "originX": 0.4364,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 1.82
@@ -42,9 +42,9 @@
   "elvira": {
     "file": "elvira.webp",
     "frames": 1,
-    "frameWidth": 298,
-    "frameHeight": 900,
-    "originX": 0.5134,
+    "frameWidth": 344,
+    "frameHeight": 927,
+    "originX": 0.5538,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 1.6
@@ -52,9 +52,9 @@
   "tomas": {
     "file": "tomas.webp",
     "frames": 1,
-    "frameWidth": 322,
-    "frameHeight": 900,
-    "originX": 0.529,
+    "frameWidth": 358,
+    "frameHeight": 927,
+    "originX": 0.535,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 1.7
@@ -62,9 +62,9 @@
   "ines": {
     "file": "ines.webp",
     "frames": 1,
-    "frameWidth": 294,
-    "frameHeight": 900,
-    "originX": 0.4129,
+    "frameWidth": 339,
+    "frameHeight": 927,
+    "originX": 0.4248,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 1.42
@@ -72,9 +72,9 @@
   "bruma": {
     "file": "bruma.webp",
     "frames": 1,
-    "frameWidth": 319,
-    "frameHeight": 900,
-    "originX": 0.5174,
+    "frameWidth": 352,
+    "frameHeight": 927,
+    "originX": 0.5158,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 1.58
@@ -82,31 +82,231 @@
   "baltasar": {
     "file": "baltasar.webp",
     "frames": 1,
-    "frameWidth": 382,
-    "frameHeight": 900,
-    "originX": 0.5374,
+    "frameWidth": 429,
+    "frameHeight": 927,
+    "originX": 0.5318,
     "originY": 1.0,
     "refHeightPx": 900,
     "realHeightM": 1.74
   },
+  "anacleto": {
+    "file": "anacleto.webp",
+    "frames": 1,
+    "frameWidth": 307,
+    "frameHeight": 927,
+    "originX": 0.5206,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.74
+  },
+  "clemencia": {
+    "file": "clemencia.webp",
+    "frames": 1,
+    "frameWidth": 367,
+    "frameHeight": 927,
+    "originX": 0.5476,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.55
+  },
+  "casimiro": {
+    "file": "casimiro.webp",
+    "frames": 1,
+    "frameWidth": 431,
+    "frameHeight": 927,
+    "originX": 0.5402,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.58
+  },
+  "fermin": {
+    "file": "fermin.webp",
+    "frames": 1,
+    "frameWidth": 332,
+    "frameHeight": 927,
+    "originX": 0.5624,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.76
+  },
+  "bartolo": {
+    "file": "bartolo.webp",
+    "frames": 1,
+    "frameWidth": 463,
+    "frameHeight": 927,
+    "originX": 0.5274,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 1.72
+  },
+  "ramona": {
+    "file": "ramona.webp",
+    "frames": 1,
+    "frameWidth": 523,
+    "frameHeight": 927,
+    "originX": 0.5096,
+    "originY": 1.0,
+    "refHeightPx": 900,
+    "realHeightM": 0.38
+  },
+  "ghost-remedios": {
+    "file": "ghost-remedios.webp",
+    "frames": 1,
+    "frameWidth": 648,
+    "frameHeight": 898,
+    "originX": 0.5392,
+    "originY": 1.0,
+    "refHeightPx": 872,
+    "realHeightM": 1.05
+  },
+  "ghost-anselmo": {
+    "file": "ghost-anselmo.webp",
+    "frames": 1,
+    "frameWidth": 642,
+    "frameHeight": 870,
+    "originX": 0.5253,
+    "originY": 1.0,
+    "refHeightPx": 845,
+    "realHeightM": 1.15
+  },
+  "ghost-clotilde": {
+    "file": "ghost-clotilde.webp",
+    "frames": 1,
+    "frameWidth": 739,
+    "frameHeight": 785,
+    "originX": 0.4917,
+    "originY": 1.0,
+    "refHeightPx": 762,
+    "realHeightM": 1.0
+  },
+  "ghost-pepito": {
+    "file": "ghost-pepito.webp",
+    "frames": 1,
+    "frameWidth": 631,
+    "frameHeight": 783,
+    "originX": 0.5672,
+    "originY": 1.0,
+    "refHeightPx": 760,
+    "realHeightM": 0.82
+  },
+  "ghost-florentina": {
+    "file": "ghost-florentina.webp",
+    "frames": 1,
+    "frameWidth": 621,
+    "frameHeight": 798,
+    "originX": 0.5872,
+    "originY": 1.0,
+    "refHeightPx": 775,
+    "realHeightM": 1.0
+  },
+  "ghost-nicanor": {
+    "file": "ghost-nicanor.webp",
+    "frames": 1,
+    "frameWidth": 642,
+    "frameHeight": 830,
+    "originX": 0.5303,
+    "originY": 1.0,
+    "refHeightPx": 806,
+    "realHeightM": 1.08
+  },
+  "ghost-leocadia": {
+    "file": "ghost-leocadia.webp",
+    "frames": 1,
+    "frameWidth": 641,
+    "frameHeight": 824,
+    "originX": 0.5025,
+    "originY": 1.0,
+    "refHeightPx": 800,
+    "realHeightM": 1.12
+  },
+  "ghost-serafin": {
+    "file": "ghost-serafin.webp",
+    "frames": 1,
+    "frameWidth": 643,
+    "frameHeight": 816,
+    "originX": 0.5144,
+    "originY": 1.0,
+    "refHeightPx": 792,
+    "realHeightM": 1.05
+  },
+  "ghost-crispulo": {
+    "file": "ghost-crispulo.webp",
+    "frames": 1,
+    "frameWidth": 666,
+    "frameHeight": 806,
+    "originX": 0.521,
+    "originY": 1.0,
+    "refHeightPx": 783,
+    "realHeightM": 1.02
+  },
+  "ghost-tadeo": {
+    "file": "ghost-tadeo.webp",
+    "frames": 1,
+    "frameWidth": 592,
+    "frameHeight": 761,
+    "originX": 0.5492,
+    "originY": 1.0,
+    "refHeightPx": 739,
+    "realHeightM": 1.05
+  },
+  "ghost-engracia": {
+    "file": "ghost-engracia.webp",
+    "frames": 1,
+    "frameWidth": 668,
+    "frameHeight": 827,
+    "originX": 0.5397,
+    "originY": 1.0,
+    "refHeightPx": 803,
+    "realHeightM": 1.0
+  },
+  "ghost-gumersindo": {
+    "file": "ghost-gumersindo.webp",
+    "frames": 1,
+    "frameWidth": 677,
+    "frameHeight": 774,
+    "originX": 0.469,
+    "originY": 1.0,
+    "refHeightPx": 751,
+    "realHeightM": 1.1
+  },
+  "dancers-1": {
+    "file": "dancers-1.webp",
+    "frames": 1,
+    "frameWidth": 955,
+    "frameHeight": 733,
+    "originX": 0.5259,
+    "originY": 1.0,
+    "refHeightPx": 712,
+    "realHeightM": 1.05
+  },
+  "dancers-2": {
+    "file": "dancers-2.webp",
+    "frames": 1,
+    "frameWidth": 991,
+    "frameHeight": 720,
+    "originX": 0.4999,
+    "originY": 1.0,
+    "refHeightPx": 699,
+    "realHeightM": 1.05
+  },
   "paula-walk": {
     "file": "paula-walk.webp",
-    "frames": 4,
-    "frameWidth": 394,
-    "frameHeight": 715,
-    "originX": 0.4633,
-    "originY": 0.9916,
-    "refHeightPx": 703,
+    "frames": 7,
+    "frameWidth": 388,
+    "frameHeight": 585,
+    "originX": 0.4773,
+    "originY": 0.9556,
+    "refHeightPx": 533,
     "realHeightM": 1.3
   },
   "gafe-walk": {
     "file": "gafe-walk.webp",
     "frames": 4,
-    "frameWidth": 403,
-    "frameHeight": 295,
-    "originX": 0.5737,
-    "originY": 0.9797,
-    "refHeightPx": 283,
+    "frameWidth": 458,
+    "frameHeight": 349,
+    "originX": 0.5715,
+    "originY": 0.957,
+    "refHeightPx": 319,
     "realHeightM": 0.29
   }
 }

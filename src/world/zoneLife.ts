@@ -10,9 +10,10 @@
 import Phaser from "phaser";
 import { GAME_H, GAME_W } from "../config";
 import type { LightDef, NPoly, ZoneLife } from "../content/life";
+import { SPRITES } from "../content/sprites";
 import type { Projection, Pt } from "../core/perspective";
 import { BG_LIFE, type BgLifePipeline, makeLifeMask } from "./bgLife";
-import { hex3, lighting, MAX_LIGHTS } from "./lighting";
+import { ACTOR_LIGHT, hex3, lighting, MAX_LIGHTS, type ActorLightParams } from "./lighting";
 
 const W = GAME_W;
 const H = GAME_H;
@@ -75,6 +76,10 @@ export class ZoneLifeFx {
   private moths: Moth[] = [];
   private dust: Drift[] = [];
   private flies: Drift[] = [];
+  /** Parejas de fantasmitas que bailan el vals por la pista (salón de baile). */
+  private dancers: { img: Phaser.GameObjects.Image; halo: Phaser.GameObjects.Image; key: string; phase: number; speed: number; spin: number }[] = [];
+  /** Lluvia de exterior: trazos delante y detrás de los personajes. */
+  private rain: { img: Phaser.GameObjects.Image; vy: number }[] = [];
   private shaftImgs: Phaser.GameObjects.Image[] = [];
   private fogBack?: Phaser.GameObjects.TileSprite;
   private fogFront?: Phaser.GameObjects.TileSprite;
@@ -204,6 +209,16 @@ export class ZoneLifeFx {
       d.img.setAlpha(d.base * (0.55 + 0.45 * Math.sin(t * (d.vx ? 1.1 : 2.6) + d.seed)));
     }
     for (const s of this.shaftImgs) s.setAlpha((s.getData("a") as number) * (0.85 + 0.15 * Math.sin(t * 0.35 + (s.getData("p") as number))));
+    this.updateDancers(dt);
+    for (const r of this.rain) {
+      r.img.y += r.vy * dt;
+      r.img.x += r.vy * dt * 0.12;
+      if (r.img.y > H + 50) {
+        r.img.y = -50 - this.rng() * 80;
+        r.img.x = this.rng() * W;
+      }
+      if (r.img.x > W + 10) r.img.x -= W + 20;
+    }
     if (this.fogBack) this.fogBack.tilePositionX += 9 * dt;
     if (this.fogFront) this.fogFront.tilePositionX -= 15 * dt;
     if (this.grain) this.grain.setTilePosition(Math.floor(this.rng() * 256), Math.floor(this.rng() * 256));
@@ -212,6 +227,36 @@ export class ZoneLifeFx {
       if (t < tm.at) continue;
       tm.at = t + tm.every[0] + this.rng() * (tm.every[1] - tm.every[0]);
       tm.run();
+    }
+  }
+
+  /**
+   * El vals: cada pareja recorre una elipse sobre el suelo de verdad (en metros,
+   * así la perspectiva y el tamaño salen solos) y gira sobre sí misma.
+   */
+  private updateDancers(dt: number): void {
+    if (!this.dancers.length) return;
+    const center = this.proj.toFloor({ x: 0.5 * W, y: 0.78 * H });
+    for (const d of this.dancers) {
+      d.phase += d.speed * dt;
+      d.spin += dt * 2.4;
+      const floor = { X: center.X + Math.cos(d.phase) * 1.7, Z: Math.max(1, center.Z + Math.sin(d.phase) * 1.0) };
+      const p = this.proj.fromFloor(floor);
+      const meta = SPRITES[d.key];
+      const s = this.proj.spriteScale(p.y, meta.realHeightM, meta.refHeightPx);
+      const lift = this.proj.ppm(p.y) * (0.22 + 0.04 * Math.sin(this.t * 2.2 + d.spin));
+      // Al girar, la pareja se ve de un lado y del otro (como una peonza lenta).
+      const turn = Math.cos(d.spin);
+      d.img.setPosition(p.x, p.y - lift).setScale(s * (Math.abs(turn) * 0.35 + 0.65) * Math.sign(turn || 1), s).setDepth(p.y);
+      const h = meta.realHeightM * this.proj.ppm(p.y);
+      d.halo.setPosition(p.x, p.y - lift - h * 0.5).setScale((h * 1.8) / 256).setDepth(p.y - 1);
+      const lp = (d.img as unknown as { lightParams?: ActorLightParams }).lightParams;
+      if (lp) {
+        lp.ripple[1] = this.t;
+        lp.warp[0] = 0.02 * Math.sin(d.spin * 0.5);
+        lp.warp[1] = 0.01 * Math.sin(this.t * 2);
+        lp.rimTexels = 3.2 / Math.max(0.05, Math.abs(d.img.scaleX));
+      }
     }
   }
 
@@ -329,6 +374,33 @@ export class ZoneLifeFx {
           .setScale(0.035 + this.rng() * 0.02).setTint(0xd8ff8a).setBlendMode(Phaser.BlendModes.ADD)
           .setDepth(this.rng() < 0.3 ? 1400 : -860);
         this.flies.push({ img, vx: (this.rng() - 0.5) * 28, vy: (this.rng() - 0.5) * 18, box, seed: this.rng() * 9, base: 0.9 });
+      }
+    }
+    if (has("dancers")) {
+      for (const [i, key] of ["dancers-1", "dancers-2"].entries()) {
+        if (!this.scene.textures.exists(key) || !SPRITES[key]) continue;
+        const halo = this.scene.add.image(0, 0, "halo").setBlendMode(Phaser.BlendModes.ADD).setTint(0xb8ccff).setAlpha(0.18);
+        const img = this.scene.add.image(0, 0, key).setOrigin(SPRITES[key].originX, SPRITES[key].originY).setAlpha(0.66);
+        // La luz de la sala también les llega (y brillan un poco, como todos los fantasmas).
+        if (lighting.enabled) {
+          const lp: ActorLightParams = {
+            keyDir: [0, -1], keyColor: [0, 0, 0], saturation: 0.9, contrast: 0.95, fog: 0.1, emissive: 0.45,
+            rimTexels: 3, keyPower: 0, warp: [0, 0, 0, 0], ripple: [0.02, 0],
+          };
+          img.setPipeline(ACTOR_LIGHT);
+          (img as unknown as { lightParams: ActorLightParams }).lightParams = lp;
+        }
+        this.dancers.push({ img, halo, key, phase: i * Math.PI + this.rng() * 0.5, speed: 0.32 + this.rng() * 0.06, spin: this.rng() * 6 });
+      }
+    }
+    if (has("rain") && !this.opts.calm) {
+      const n = this.opts.lowFx ? 34 : 90;
+      for (let i = 0; i < n; i += 1) {
+        const front = this.rng() < 0.55;
+        const img = this.scene.add.image(this.rng() * W, this.rng() * H, "streak").setBlendMode(Phaser.BlendModes.ADD)
+          .setDepth(front ? 1450 : -845).setAlpha(front ? 0.14 + this.rng() * 0.12 : 0.1).setRotation(-0.12)
+          .setScale(front ? 1.3 : 0.8, front ? 1.3 + this.rng() * 0.8 : 0.7 + this.rng() * 0.4);
+        this.rain.push({ img, vy: (front ? 1500 : 850) * (0.8 + this.rng() * 0.4) });
       }
     }
     const every = (a: number, b: number, run: () => void, first?: number) =>

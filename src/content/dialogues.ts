@@ -520,12 +520,12 @@ export const DIALOGUES: Record<string, DialogueTree> = {
     ]),
 
   crispulo: tree("crispulo",
-    ["Críspulo, primer violín.", "Sin violín, pero primer."],
+    ["Críspulo, primer violín.", "Bueno: el fantasma de un violín, pero primer violín."],
     ["¡Mi oyente! ¿Una pieza?"],
     "¿Qué quieres oír?",
     [
-      { id: "violin", text: "¿Qué le pasó a su violín?", once: true,
-        lines: ["La casa se lo quedó el día de la capilla.", "A veces lo oigo sonar en el desván."] },
+      { id: "violin", text: "¿Qué le pasó a su violín de verdad?", once: true,
+        lines: ["La casa se lo quedó el día de la capilla. Este que llevo es su fantasma: suena, pero no pesa.", "A veces oigo el de verdad sonar en el desván."] },
       { id: "melodia", text: "¿Cuál es la melodía de la casa?",
         lines: ["Tres notas y vuelta a empezar.", "Pregúntale a Baltasar, que se cree el dueño."] },
     ]),

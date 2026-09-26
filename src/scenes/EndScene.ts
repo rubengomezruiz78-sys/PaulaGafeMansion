@@ -7,54 +7,65 @@ import { setModal } from "../ui/modal";
 import { makeButton } from "../ui/widgets";
 
 /**
- * Final: amanece sobre la portada, suenan las trece campanadas (suaves) y
- * pasan los nombres de todos los de la casa. Luego se puede seguir explorando.
+ * Final: la campana suena trece veces, amanece y por fin se celebra la fiesta
+ * de cumpleaños de Inés en el salón de baile (con todo lo que Paula preparó).
+ * Pasan los nombres de todos los de la casa y luego se puede seguir explorando.
  */
 export class EndScene extends Phaser.Scene {
   constructor() {
     super("end");
   }
 
+  /** La ilustración de la fiesta solo se carga al llegar aquí (no ocupa memoria antes). */
+  preload(): void {
+    if (!this.textures.exists("fiesta")) this.load.image("fiesta", "world/fiesta.webp");
+  }
+
   create(): void {
     fitCamera(this);
     this.closing = false;
     setModal(this, "end", true);
-    const cover = this.add.image(0, 0, "cover").setOrigin(0).setDisplaySize(GAME_W, GAME_H).setAlpha(0);
+    const party = this.add.image(GAME_W / 2, GAME_H / 2, this.textures.exists("fiesta") ? "fiesta" : "cover")
+      .setDisplaySize(GAME_W, GAME_H).setAlpha(0);
+    const base = party.scaleX;
+    // La cámara se acerca muy despacio a la pista, como en un cuento.
+    this.tweens.add({ targets: party, alpha: 1, duration: 2500 });
+    this.tweens.add({ targets: party, scaleX: base * 1.07, scaleY: party.scaleY * 1.07, y: GAME_H / 2 + 20, duration: 24000, ease: "Sine.easeInOut" });
     const dawn = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xffc98a, 0).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
-    const veil = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x05070a, 0.55).setOrigin(0);
-    this.tweens.add({ targets: cover, alpha: 1, duration: 2500 });
-    this.tweens.add({ targets: dawn, alpha: 0.18, duration: 6000, delay: 1500 });
-    this.tweens.add({ targets: veil, alpha: 0.35, duration: 6000, delay: 1500 });
+    this.tweens.add({ targets: dawn, alpha: 0.1, duration: 6000, delay: 1500, yoyo: true, hold: 4000 });
+    this.addFireflies();
 
-    const fin = this.add.text(GAME_W / 2, 250, "Fin", {
-      fontFamily: FONT_TITLE, fontSize: "150px", color: CSS.copper, shadow: { offsetX: 0, offsetY: 6, color: "#000", blur: 26, fill: true },
+    // Franja oscura abajo: los textos no tapan las caras de la fiesta.
+    const band = this.add.graphics().setAlpha(0);
+    for (let i = 0; i < 30; i += 1) band.fillStyle(0x020304, 0.05).fillRect(0, GAME_H - 470 + i * 12, GAME_W, 470 - i * 12);
+    this.tweens.add({ targets: band, alpha: 1, duration: 1800, delay: 1200 });
+
+    const fin = this.add.text(GAME_W / 2, GAME_H - 405, "¡Feliz cumpleaños, Inés!", {
+      fontFamily: FONT_TITLE, fontSize: "76px", color: CSS.copper, shadow: { offsetX: 0, offsetY: 5, color: "#000", blur: 22, fill: true },
     }).setOrigin(0.5).setAlpha(0);
-    const lines = this.add.text(GAME_W / 2, 420, "Inés recordó su nombre, la lluvia paró\ny en la mansión Valcárcel, por fin, amaneció.", {
-      fontFamily: FONT_UI, fontSize: "44px", color: CSS.ivory, align: "center", lineSpacing: 14,
+    const lines = this.add.text(GAME_W / 2, GAME_H - 340, "La campana sonó trece veces, Inés recordó su nombre y, por fin, la casa celebró su fiesta.", {
+      fontFamily: FONT_UI, fontSize: "34px", color: CSS.ivory, align: "center", wordWrap: { width: 1500 },
       shadow: { offsetX: 0, offsetY: 3, color: "#000", blur: 12, fill: true },
     }).setOrigin(0.5, 0).setAlpha(0);
-    this.tweens.add({ targets: fin, alpha: 1, duration: 1800, delay: 1200 });
+    this.tweens.add({ targets: fin, alpha: 1, duration: 1800, delay: 1400 });
     this.tweens.add({ targets: lines, alpha: 1, duration: 1800, delay: 2600 });
 
-    // Trece campanadas suaves.
+    // Trece campanadas suaves… y luego el vals.
     for (let i = 0; i < 13; i += 1) this.time.delayedCall(1500 + i * 700, () => sound.play(i === 12 ? "solved" : "note"));
+    [0, 2, 4, 2, 4, 2, 0, 2, 4, 5, 4].forEach((n, i) => this.time.delayedCall(11200 + i * 520, () => sound.piano(n)));
 
-    // Banda oscura detrás de los nombres para que se lean sobre el cuadro.
-    const band = this.add.graphics().setAlpha(0);
-    band.fillStyle(0x020304, 0.55).fillRoundedRect(180, 675, GAME_W - 360, 250, 30);
-    this.tweens.add({ targets: band, alpha: 1, duration: 1800, delay: 4800 });
     const cast = ["Paula", "Gafe", ...NPCS.map((n) => n.name)].join("  ·  ");
-    const credits = this.add.text(GAME_W / 2, 700, `Con: ${cast}`, {
-      fontFamily: FONT_UI, fontSize: "30px", color: CSS.muted, align: "center", wordWrap: { width: 1500 }, lineSpacing: 8,
+    const credits = this.add.text(GAME_W / 2, GAME_H - 272, `Con: ${cast}`, {
+      fontFamily: FONT_UI, fontSize: "21px", color: CSS.muted, align: "center", wordWrap: { width: 1760 }, lineSpacing: 4,
     }).setOrigin(0.5, 0).setAlpha(0);
-    const dedication = this.add.text(GAME_W / 2, 870, "Una aventura hecha para Paula.", {
-      fontFamily: FONT_TITLE, fontSize: "40px", color: CSS.copper,
+    const dedication = this.add.text(GAME_W / 2 - 180, GAME_H - 140, "Una aventura hecha para Paula.", {
+      fontFamily: FONT_TITLE, fontSize: "34px", color: CSS.copper,
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: credits, alpha: 1, duration: 1800, delay: 5000 });
     this.tweens.add({ targets: dedication, alpha: 1, duration: 1800, delay: 6200 });
 
-    const again = makeButton(this, (GAME_W - 560) / 2, GAME_H - 150, 560, 104, "Seguir explorando la casa", () => this.close(), {
-      fontSize: 36, fill: 0x1d3a2a, edge: 0x8fd6a0, radius: 28,
+    const again = makeButton(this, GAME_W - 560 - 40, GAME_H - 104, 560, 84, "Seguir explorando la casa", () => this.close(), {
+      fontSize: 32, fill: 0x1d3a2a, edge: 0x8fd6a0, radius: 26,
     });
     again.container.setAlpha(0);
     this.tweens.add({ targets: again.container, alpha: 1, duration: 800, delay: 7500 });
@@ -65,6 +76,19 @@ export class EndScene extends Phaser.Scene {
       return true;
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, release);
+  }
+
+  /** Luciérnagas de los farolillos flotando por la fiesta. */
+  private addFireflies(): void {
+    for (let i = 0; i < 22; i += 1) {
+      const x = Phaser.Math.Between(80, GAME_W - 80);
+      const y = Phaser.Math.Between(120, GAME_H - 420);
+      const f = this.add.image(x, y, "halo").setTint(0xe8ff9a).setBlendMode(Phaser.BlendModes.ADD).setScale(Phaser.Math.FloatBetween(0.04, 0.07)).setAlpha(0);
+      this.tweens.add({
+        targets: f, x: x + Phaser.Math.Between(-90, 90), y: y + Phaser.Math.Between(-70, 50), alpha: { from: 0, to: Phaser.Math.FloatBetween(0.5, 0.9) },
+        duration: Phaser.Math.Between(3000, 6000), yoyo: true, repeat: -1, delay: Phaser.Math.Between(1500, 6000), ease: "Sine.easeInOut",
+      });
+    }
   }
 
   private closing = false;

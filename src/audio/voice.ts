@@ -151,8 +151,22 @@ class VoiceService {
     return !!(this.w.SpeechRecognition ?? this.w.webkitSpeechRecognition);
   }
 
+  private active = 0;
+
+  /** ¿Está sonando alguna frase ahora mismo? */
+  get talking(): boolean {
+    return this.active > 0;
+  }
+
   /** Dice una frase con la voz de `who`. Se resuelve al terminar (o si no hay voz). */
   speak(text: string, who = "narrador"): Promise<void> {
+    this.active += 1;
+    return this.say(text, who).finally(() => {
+      this.active = Math.max(0, this.active - 1);
+    });
+  }
+
+  private say(text: string, who: string): Promise<void> {
     const clean = speakable(text);
     if (!clean) return Promise.resolve();
     const p = PROFILES[who] ?? PROFILES.narrador;

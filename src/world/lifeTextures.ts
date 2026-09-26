@@ -14,8 +14,19 @@ function canvas(scene: Phaser.Scene, key: string, w: number, h: number): CanvasR
 const refresh = (scene: Phaser.Scene, key: string) => (scene.textures.get(key) as Phaser.Textures.CanvasTexture).refresh();
 
 export function makeLifeTextures(scene: Phaser.Scene): void {
+  // Gota de lluvia: un trazo fino que se desvanece por arriba.
+  let ctx = canvas(scene, "streak", 4, 48);
+  if (ctx) {
+    const g = ctx.createLinearGradient(0, 0, 0, 48);
+    g.addColorStop(0, "rgba(220,230,255,0)");
+    g.addColorStop(1, "rgba(220,230,255,0.9)");
+    ctx.fillStyle = g;
+    ctx.fillRect(1, 0, 2, 48);
+    refresh(scene, "streak");
+  }
+
   // Halo: degradado radial limpio (sin rayos), para luces y fantasmas.
-  let ctx = canvas(scene, "halo", 256, 256);
+  ctx = canvas(scene, "halo", 256, 256);
   if (ctx) {
     const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
     g.addColorStop(0, "rgba(255,255,255,0.9)");

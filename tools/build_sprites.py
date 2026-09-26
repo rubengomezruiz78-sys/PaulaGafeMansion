@@ -6,6 +6,11 @@
   fotogramas. Aquí cada figura se extrae como mancha conectada, se alinea por
   la línea de pies y el centro del torso (sin temblor lateral) y se reempaqueta.
 
+Desde 2026-09-26 todo el reparto está pintado con el estilo de las salas
+(tools/gen_characters.py + tools/cut_characters.py → art/pintados/). Cada
+imagen lleva un margen transparente para que el shader pueda «respirar» y
+balancear la figura sin cortarla.
+
 Salida: public/world/sprites/*.webp + public/world/sprites/sprites.json
 Uso: python tools/build_sprites.py
 """
@@ -23,21 +28,47 @@ ALPHA_MIN = 40  # ignora el halo casi transparente
 
 # Estatura real (metros) del contenido visible de cada sprite.
 STATIC = {
-    "paula-idle": ("character-paula-v3.png", 1.30),
-    "paula-startled": ("character-paula-startled.png", None),  # misma escala que idle
-    "gafe-sit": ("character-gafe-v2.png", 0.32),
-    "basilio": ("character-basilio-v1.png", 1.82),
-    "elvira": ("character-elvira-v2.png", 1.60),
-    "tomas": ("character-tomas-v2.png", 1.70),
-    "ines": ("character-ines-v2.png", 1.42),
-    "bruma": ("character-bruma-v2.png", 1.58),
-    "baltasar": ("character-baltasar-v2.png", 1.74),
+    "paula-idle": ("pintados/paula-idle.png", 1.30),
+    "paula-startled": ("pintados/paula-startled.png", 1.27),  # algo encogida del susto
+    "gafe-sit": ("pintados/gafe-sit.png", 0.32),
+    "basilio": ("pintados/basilio.png", 1.82),
+    "elvira": ("pintados/elvira.png", 1.60),
+    "tomas": ("pintados/tomas.png", 1.70),
+    "ines": ("pintados/ines.png", 1.42),
+    "bruma": ("pintados/bruma.png", 1.58),
+    "baltasar": ("pintados/baltasar.png", 1.74),
+    # Ala de la fiesta.
+    "anacleto": ("pintados/anacleto.png", 1.74),
+    "clemencia": ("pintados/clemencia.png", 1.55),
+    "casimiro": ("pintados/casimiro.png", 1.58),
+    "fermin": ("pintados/fermin.png", 1.76),
+    "bartolo": ("pintados/bartolo.png", 1.72),
+    "ramona": ("pintados/ramona.png", 0.38),
+    # Los doce criados fantasma (sábanas pintadas).
+    "ghost-remedios": ("pintados/ghost-remedios.png", 1.05),
+    "ghost-anselmo": ("pintados/ghost-anselmo.png", 1.15),
+    "ghost-clotilde": ("pintados/ghost-clotilde.png", 1.0),
+    "ghost-pepito": ("pintados/ghost-pepito.png", 0.82),
+    "ghost-florentina": ("pintados/ghost-florentina.png", 1.0),
+    "ghost-nicanor": ("pintados/ghost-nicanor.png", 1.08),
+    "ghost-leocadia": ("pintados/ghost-leocadia.png", 1.12),
+    "ghost-serafin": ("pintados/ghost-serafin.png", 1.05),
+    "ghost-crispulo": ("pintados/ghost-crispulo.png", 1.02),
+    "ghost-tadeo": ("pintados/ghost-tadeo.png", 1.05),
+    "ghost-engracia": ("pintados/ghost-engracia.png", 1.0),
+    "ghost-gumersindo": ("pintados/ghost-gumersindo.png", 1.1),
+    # Parejas que bailan el vals en el salón de baile.
+    "dancers-1": ("pintados/dancers-1.png", 1.05),
+    "dancers-2": ("pintados/dancers-2.png", 1.05),
 }
 WALK = {
-    "paula-walk": ("character-paula-walk-v2.png", 4, 1.30),
-    "gafe-walk": ("character-gafe-walk.png", 4, 0.29),
+    "paula-walk": ("pintados/paula-walk.png", None, 1.30),
+    "gafe-walk": ("pintados/gafe-walk.png", None, 0.29),
 }
 MAX_STATIC_H = 900  # px; de sobra para 1920x1080 y ahorra memoria/APK
+# Margen transparente (fracción) para que el cuerpo pueda moverse sin salirse del cuadro.
+PAD_X = 0.06
+PAD_TOP = 0.03
 
 
 def alpha_mask(im):
@@ -82,14 +113,18 @@ def build_static(key, file, real_h, ref_scale):
     ax = feet_anchor_x(mask)
     if real_h is None:  # hereda píxeles-por-metro (espacio de origen) del sprite de referencia
         real_h = content_h / ref_scale
+    fig_h = im.height
+    px, pt = round(im.width * PAD_X), round(fig_h * PAD_TOP)
+    padded = Image.new("RGBA", (im.width + 2 * px, fig_h + pt), (0, 0, 0, 0))
+    padded.alpha_composite(im, (px, pt))
     return {
-        "file": save_webp(im, key),
+        "file": save_webp(padded, key),
         "frames": 1,
-        "frameWidth": im.width,
-        "frameHeight": im.height,
-        "originX": round(ax / im.width, 4),
+        "frameWidth": padded.width,
+        "frameHeight": padded.height,
+        "originX": round((ax + px) / padded.width, 4),
         "originY": 1.0,
-        "refHeightPx": im.height,
+        "refHeightPx": fig_h,
         "realHeightM": round(real_h, 3),
     }, content_h / real_h
 
@@ -135,6 +170,8 @@ def build_walk(key, file, frames, real_h):
     sizes = ndimage.sum(mask, labels, range(1, n + 1))
     big = [i + 1 for i in np.argsort(sizes)[::-1] if sizes[i] > 0.05 * sizes.max()]
     comps = [labels == lab for lab in big]
+    if frames is None:
+        frames = len(comps)
     # Mientras falten figuras, parte la mancha más ancha por su costura
     while len(comps) < frames:
         widths = [np.ptp(np.where(c.any(axis=0))[0]) for c in comps]
@@ -156,12 +193,22 @@ def build_walk(key, file, frames, real_h):
         sub[~sub_mask] = 0  # elimina restos de figuras vecinas
         figures.append((x0, Image.fromarray(sub, "RGBA"), sub_mask))
     figures.sort(key=lambda f: f[0])
+    # Todas a la misma altura (el generador a veces pinta una figura algo mayor).
+    target = int(np.median([f[1].height for f in figures]))
+    resized = []
+    for x0, fig, m in figures:
+        if abs(fig.height - target) > 2:
+            k = target / fig.height
+            fig = fig.resize((max(1, round(fig.width * k)), target), Image.LANCZOS)
+            m = np.asarray(fig.getchannel("A")) > ALPHA_MIN
+        resized.append((x0, fig, m))
+    figures = resized
 
     anchors = [torso_anchor_x(f[2]) for f in figures]
     heights = [f[1].height for f in figures]
     left = max(a for a in anchors)
     right = max(f[1].width - a for f, a in zip(figures, anchors))
-    pad = 6
+    pad = max(6, int(0.05 * max(heights)))
     fw = int(np.ceil(left + right)) + pad * 2
     fh = max(heights) + pad * 2
     sheet = Image.new("RGBA", (fw * len(figures), fh), (0, 0, 0, 0))

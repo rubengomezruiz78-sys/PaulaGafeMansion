@@ -8,17 +8,14 @@
  */
 import type { Personality } from "../core/npcBrain";
 import type { Routine } from "../core/worldSim";
-import type { GhostArt } from "../world/ghostArt";
 import type { SpriteKey } from "./sprites";
 
 export interface NpcDef {
   id: string;
   name: string;
   role: string;
-  /** Sprite de fichero, o `ghost-<id>` para los fantasmas dibujados por código. */
+  /** Sprite de fichero (todo el reparto está pintado: tools/gen_characters.py). */
   sprite: SpriteKey;
-  /** Si existe, el sprite se genera por código con este estilo. */
-  art?: GhostArt;
   /** "ghost" flota y se desliza; "person" pisa el suelo. */
   kind: "ghost" | "person";
   /** Elevación al flotar (m). */
@@ -36,7 +33,8 @@ export interface NpcDef {
 }
 
 const st = (zone: string, weight: number, stay: [number, number]) => ({ zone, weight, stay });
-const servant = (id: string, art: GhostArt) => ({ sprite: `ghost-${id}`, art, kind: "ghost" as const, floatM: 0.26, alpha: 0.8 });
+/** Criado fantasma: una sabanita pintada que flota y brilla un poco. */
+const servant = (id: string) => ({ sprite: `ghost-${id}`, kind: "ghost" as const, floatM: 0.26, alpha: 0.86, glow: 0.55 });
 
 export const NPCS: NpcDef[] = [
   // ============================================================ principales
@@ -95,84 +93,84 @@ export const NPCS: NpcDef[] = [
 
   // ============================================================ los doce criados
   {
-    id: "remedios", name: "Remedios", role: "Cocinera", ...servant("remedios", { hue: 28, accessory: "chef", mood: "smile", heightM: 1.05, girth: 0.82 }),
+    id: "remedios", name: "Remedios", role: "Cocinera", ...servant("remedios"),
     personality: { restlessness: 0.35, chattiness: 0.9, noticeRadiusM: 2.5, attendRadiusM: 3.2 },
     routine: { home: "cocina", stations: [st("cocina", 5, [120, 280]), st("invernadero", 1, [60, 100]), st("vestibulo", 1, [50, 90])] },
     greet: ["¡Ay, qué niña tan flaquita! ¿Has cenado?"],
     ambient: ["Una pizca de canela y tres de paciencia.", "Tomás me robaba las galletas. Y lo sigue intentando.", "La caldera se come los nombres si no la vigilas."],
   },
   {
-    id: "anselmo", name: "Anselmo", role: "Cochero", ...servant("anselmo", { hue: 215, accessory: "tophat", mood: "stern", heightM: 1.15, girth: 0.66 }),
+    id: "anselmo", name: "Anselmo", role: "Cochero", ...servant("anselmo"),
     personality: { restlessness: 0.3, chattiness: 0.4, noticeRadiusM: 2.2, attendRadiusM: 3 },
     routine: { home: "vestibulo", stations: [st("vestibulo", 4, [120, 260]), st("galeria", 1, [60, 100]), st("cocina", 1, [60, 100])] },
     greet: ["Buenas noches, señorita. Mal tiempo para viajar."],
     ambient: ["Trece años sin sacar el coche. Los caballos ni me recuerdan.", "La tormenta no amaina cuando la casa no quiere.", "El camino de vuelta se abre al amanecer. O eso dicen."],
   },
   {
-    id: "clotilde", name: "Clotilde", role: "Doncella", ...servant("clotilde", { hue: 285, accessory: "bonnet", mood: "smile", heightM: 1.0 }),
+    id: "clotilde", name: "Clotilde", role: "Doncella", ...servant("clotilde"),
     personality: { restlessness: 0.85, chattiness: 1, noticeRadiusM: 3, attendRadiusM: 3.5 },
     routine: { home: "galeria", stations: [st("galeria", 2, [60, 120]), st("dormitorio", 2, [60, 120]), st("vestibulo", 2, [60, 120]), st("biblioteca", 1, [50, 90]), st("musica", 1, [50, 90])] },
     greet: ["¡Una visita! ¿Sabes lo que dicen de ti por los pasillos?"],
     ambient: ["Yo no cotilleo. Informo.", "Doña Elvira y Don Basilio no se hablan desde 1913.", "Si limpias bien el marco de un retrato, a veces se mueve."],
   },
   {
-    id: "pepito", name: "Pepito", role: "Mozo de cuadra", ...servant("pepito", { hue: 160, accessory: "cap", mood: "surprised", heightM: 0.82, girth: 0.78 }),
+    id: "pepito", name: "Pepito", role: "Mozo de cuadra", ...servant("pepito"),
     personality: { restlessness: 1, chattiness: 0.7, noticeRadiusM: 3.5, attendRadiusM: 2.5 },
     routine: { home: "desvan", stations: [st("desvan", 1, [40, 90]), st("invernadero", 1, [40, 90]), st("archivo", 1, [40, 90]), st("galeria", 1, [40, 90]), st("cocina", 1, [40, 90]), st("musica", 1, [40, 90])] },
     greet: ["¡Te pillé! No, espera… ¡me has pillado tú!"],
     ambient: ["¿Jugamos al escondite? Yo me escondo. Siempre me escondo.", "¡Nadie me encuentra nunca!", "Gafe hace trampas: me huele."],
   },
   {
-    id: "florentina", name: "Florentina", role: "Costurera", ...servant("florentina", { hue: 330, accessory: "glasses", mood: "shy", heightM: 1.0 }),
+    id: "florentina", name: "Florentina", role: "Costurera", ...servant("florentina"),
     personality: { restlessness: 0.3, chattiness: 0.35, noticeRadiusM: 2, attendRadiusM: 2.5 },
     routine: { home: "dormitorio", stations: [st("dormitorio", 5, [150, 300]), st("desvan", 1, [60, 120])] },
     greet: ["Oh… hola. Perdona, estaba cosiendo la muñeca de Inés."],
     ambient: ["Una puntada por cada noche que Inés no está.", "La cinta roja era su favorita.", "No me gusta la torre. Hace demasiado ruido."],
   },
   {
-    id: "nicanor", name: "Nicanor", role: "Relojero", ...servant("nicanor", { hue: 45, accessory: "monocle", mood: "stern", heightM: 1.08, girth: 0.68 }),
+    id: "nicanor", name: "Nicanor", role: "Relojero", ...servant("nicanor"),
     personality: { restlessness: 0.4, chattiness: 0.6, noticeRadiusM: 2.4, attendRadiusM: 3 },
     routine: { home: "biblioteca", stations: [st("biblioteca", 4, [150, 300]), st("observatorio", 1, [60, 120]), st("galeria", 1, [60, 120])] },
     greet: ["Llegas tarde. O temprano. Aquí los relojes discuten."],
     ambient: ["Trece. Todo en esta casa acaba en trece.", "Ese reloj no cuenta horas, cuenta deudas.", "Siete por nueve, sesenta y tres. Nunca falla."],
   },
   {
-    id: "leocadia", name: "Leocadia", role: "Ama de llaves", ...servant("leocadia", { hue: 185, accessory: "keys", mood: "stern", heightM: 1.12 }),
+    id: "leocadia", name: "Leocadia", role: "Ama de llaves", ...servant("leocadia"),
     personality: { restlessness: 0.45, chattiness: 0.5, noticeRadiusM: 2.6, attendRadiusM: 3.2 },
     routine: { home: "galeria", stations: [st("galeria", 4, [150, 300]), st("vestibulo", 1, [60, 120]), st("archivo", 1, [60, 120]), st("desvan", 1, [60, 120])] },
     greet: ["Las visitas, por la puerta principal. Y con las botas limpias."],
     ambient: ["Tengo una llave para cada puerta. Menos para una.", "La pasarela de la torre se cierra desde dentro.", "Nadie entra en el archivo sin permiso. Nadie… menos los fantasmas."],
   },
   {
-    id: "serafin", name: "Serafín", role: "Jardinero", ...servant("serafin", { hue: 100, accessory: "strawhat", mood: "sleepy", heightM: 1.05 }),
+    id: "serafin", name: "Serafín", role: "Jardinero", ...servant("serafin"),
     personality: { restlessness: 0.2, chattiness: 0.3, noticeRadiusM: 2, attendRadiusM: 2.5 },
     routine: { home: "invernadero", stations: [st("invernadero", 6, [200, 400]), st("cocina", 1, [60, 100])] },
     greet: ["Mmm… ¿eh? Ah, hola. Estaba regando… durmiendo… regando."],
     ambient: ["Las semillas de luna solo brotan si les dices la verdad.", "Zzz… la fuente cuenta gotas… zzz.", "La señora Bruma sabe más de lo que dice."],
   },
   {
-    id: "crispulo", name: "Críspulo", role: "Violinista", ...servant("crispulo", { hue: 250, accessory: "bowtie", mood: "smile", heightM: 1.02 }),
+    id: "crispulo", name: "Críspulo", role: "Violinista", ...servant("crispulo"),
     personality: { restlessness: 0.5, chattiness: 0.8, noticeRadiusM: 2.6, attendRadiusM: 3.2 },
     routine: { home: "musica", stations: [st("musica", 5, [150, 300]), st("galeria", 1, [60, 120]), st("biblioteca", 1, [60, 120])] },
-    greet: ["¡Ah, una oyente! ¿Te gustan los violines? ¿Y los violines sin violín?"],
-    ambient: ["Perdí mi violín en 1913. Sigo tocando igual.", "Baltasar desafina, pero no se lo digas.", "La melodía de la casa tiene tres notas y un secreto."],
+    greet: ["¡Ah, una oyente! ¿Te gustan los violines? ¿Y los violines fantasma?"],
+    ambient: ["Mi violín de verdad se lo quedó la casa en 1913. Este es su fantasma.", "Baltasar desafina, pero no se lo digas.", "La melodía de la casa tiene tres notas y un secreto."],
   },
   {
-    id: "tadeo", name: "Tadeo", role: "Farolero", ...servant("tadeo", { hue: 38, accessory: "lantern", mood: "smile", heightM: 1.05 }),
+    id: "tadeo", name: "Tadeo", role: "Farolero", ...servant("tadeo"),
     personality: { restlessness: 0.5, chattiness: 0.7, noticeRadiusM: 2.8, attendRadiusM: 3.2 },
     routine: { home: "archivo", stations: [st("archivo", 4, [120, 260]), st("vestibulo", 1, [60, 100]), st("galeria", 1, [60, 100])] },
     greet: ["¡Luz! Toma un poco de la mía, que aquí abajo hace falta."],
     ambient: ["En los túneles el agua enseña otra casa.", "Enciendo faroles que nadie apaga desde hace trece años.", "Bajo la capilla, las compuertas cuentan I, II y III."],
   },
   {
-    id: "engracia", name: "Engracia", role: "Lavandera", ...servant("engracia", { hue: 205, accessory: "basket", mood: "sleepy", heightM: 1.0, girth: 0.8 }),
+    id: "engracia", name: "Engracia", role: "Lavandera", ...servant("engracia"),
     personality: { restlessness: 0.25, chattiness: 0.4, noticeRadiusM: 2.2, attendRadiusM: 2.8 },
     routine: { home: "desvan", stations: [st("desvan", 5, [150, 300]), st("cocina", 1, [60, 120]), st("dormitorio", 1, [60, 120])] },
     greet: ["¿Traes ropa sucia? No. Mejor. Estoy cansadísima."],
     ambient: ["Tiendo las sábanas y se van solas.", "En el baúl número siete hay algo que no es ropa.", "Arriba, en el desván, todo huele a lavanda y a secretos."],
   },
   {
-    id: "gumersindo", name: "Gumersindo", role: "Lacayo", ...servant("gumersindo", { hue: 12, accessory: "gloves", mood: "surprised", heightM: 1.1 }),
+    id: "gumersindo", name: "Gumersindo", role: "Lacayo", ...servant("gumersindo"),
     personality: { restlessness: 0.6, chattiness: 0.8, noticeRadiusM: 2.8, attendRadiusM: 3.2 },
     routine: { home: "vestibulo", stations: [st("vestibulo", 4, [120, 260]), st("galeria", 1, [60, 100]), st("musica", 1, [60, 100])] },
     greet: ["¡Oh! ¡Perdón! ¿Te he asustado? ¿O me has asustado tú a mí?"],

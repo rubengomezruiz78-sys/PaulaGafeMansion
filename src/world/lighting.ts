@@ -34,12 +34,37 @@ uniform float uRimTexels;
 uniform float uKeyPower;
 /** Píxeles dibujados por píxel lógico (la tablet dibuja a 2/3). */
 uniform float uScale;
+/** Cuerpo vivo: x = balanceo (arriba se mueve, los pies no), y = respiración, z = vuelo de la falda, w = cabeceo. */
+uniform vec4 uWarp;
+/** Ondas de la sábana o del humo de los fantasmas: x = fuerza, y = tiempo. */
+uniform vec2 uRipple;
 varying vec2 outTexCoord;
 varying float outTintEffect;
 varying vec4 outTint;
 
+/** Deforma la figura como un títere de verdad (se lee la textura en el punto "de antes"). */
+vec2 warpUv(vec2 uv) {
+  vec2 size = uFrame.zw - uFrame.xy;
+  vec2 q = (uv - uFrame.xy) / size;          // 0..1 dentro del fotograma (y = 0 cabeza, 1 pies)
+  float up = 1.0 - q.y;
+  float dx = uWarp.x * up * up;               // balanceo: los pies quietos
+  dx += uWarp.z * pow(max(q.y - 0.55, 0.0) / 0.45, 1.5);             // la falda va un poco detrás
+  float chest = exp(-pow((q.y - 0.32) / 0.13, 2.0));
+  float cx = 0.5;
+  float sx = 1.0 + uWarp.y * chest;           // el pecho se ensancha al tomar aire
+  float dy = uWarp.y * 0.45 * smoothstep(0.55, 0.1, q.y);            // y los hombros suben un poco
+  dy += uWarp.w * smoothstep(0.24, 0.0, q.y);                        // cabeceo al hablar
+  float low = max(q.y - 0.55, 0.0) / 0.45;
+  dx += uRipple.x * sin(q.y * 17.0 + uRipple.y * 3.1) * low * low;   // la sábana ondea abajo
+  q.x = cx + (q.x - cx - dx) / sx;
+  q.y = q.y + dy;
+  return uFrame.xy + q * size;
+}
+
 void main() {
-  vec4 tex = texture2D(uMainSampler, outTexCoord);
+  vec2 wuv = warpUv(outTexCoord);
+  bool outside = wuv.x < uFrame.x || wuv.x > uFrame.z || wuv.y < uFrame.y || wuv.y > uFrame.w;
+  vec4 tex = outside ? vec4(0.0) : texture2D(uMainSampler, wuv);
   if (tex.a < 0.003) discard;
   vec3 c = tex.rgb;
   float l = dot(c, vec3(0.299, 0.587, 0.114));
@@ -57,19 +82,19 @@ void main() {
   }
   // Modelado: el lado que mira a la luz principal recibe más, el otro menos.
   vec2 center = (uFrame.xy + uFrame.zw) * 0.5;
-  vec2 rel = (outTexCoord - center) / max(abs(uFrame.zw - uFrame.xy), vec2(0.0001));
+  vec2 rel = (wuv - center) / max(abs(uFrame.zw - uFrame.xy), vec2(0.0001));
   float side = clamp(dot(normalize(vec2(rel.x * 2.2, rel.y * 0.6) + vec2(0.0001)), uKeyDir), -1.0, 1.0);
   light *= 1.0 + uKeyPower * 0.55 * side;
   // Pies algo más oscuros: el suelo les quita luz.
-  float hf = clamp((uFrame.w - outTexCoord.y) / max(uFrame.w - uFrame.y, 0.0001), 0.0, 1.0);
+  float hf = clamp((uFrame.w - wuv.y) / max(uFrame.w - uFrame.y, 0.0001), 0.0, 1.0);
   light *= mix(0.7, 1.0, smoothstep(0.0, 0.25, hf));
   light = max(light, vec3(uEmissive));
   light += vec3(0.75, 0.85, 1.0) * uGrade.w;
   c *= light;
 
   // Contraluz: borde cuyo vecino hacia la luz principal ya es transparente.
-  vec2 o = clamp(outTexCoord + uKeyDir * uTexel * uRimTexels, uFrame.xy, uFrame.zw);
-  vec2 o2 = clamp(outTexCoord + uKeyDir * uTexel * uRimTexels * 0.5, uFrame.xy, uFrame.zw);
+  vec2 o = clamp(wuv + uKeyDir * uTexel * uRimTexels, uFrame.xy, uFrame.zw);
+  vec2 o2 = clamp(wuv + uKeyDir * uTexel * uRimTexels * 0.5, uFrame.xy, uFrame.zw);
   float rim = tex.a * (1.0 - 0.5 * (texture2D(uMainSampler, o).a + texture2D(uMainSampler, o2).a));
   c += uKeyColor * rim;
 
@@ -94,6 +119,10 @@ export interface ActorLightParams {
   rimTexels: number;
   /** 0..1 cuánto domina la luz principal (modelado lateral). */
   keyPower: number;
+  /** Cuerpo vivo (fracciones del fotograma): balanceo, respiración, falda, cabeceo. */
+  warp: [number, number, number, number];
+  /** Ondas de la parte de abajo (fantasmas): fuerza y tiempo. */
+  ripple: [number, number];
 }
 
 export interface SceneLight {
@@ -181,6 +210,9 @@ export class ActorLightPipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePi
     this.set1f("uRimTexels", p?.rimTexels ?? 3);
     this.set1f("uKeyPower", p?.keyPower ?? 0);
     this.set1f("uScale", camera.zoom);
+    const w = p?.warp;
+    this.set4f("uWarp", w?.[0] ?? 0, w?.[1] ?? 0, w?.[2] ?? 0, w?.[3] ?? 0);
+    this.set2f("uRipple", p?.ripple[0] ?? 0, p?.ripple[1] ?? 0);
     super.batchSprite(go, camera, parent);
     this.flush();
   }

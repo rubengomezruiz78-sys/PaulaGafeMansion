@@ -409,9 +409,16 @@ class MazeBoard extends BaseBoard {
         const cx = this.ox + c * this.cell;
         const cy = this.oy + r * this.cell;
         if (grid[r][c] === "#") {
-          g.fillStyle(0x1d3a22, 1).fillRoundedRect(cx + 2, cy + 2, this.cell - 4, this.cell - 4, 12);
-          g.fillStyle(0x2f5d34, 1).fillCircle(cx + this.cell * 0.35, cy + this.cell * 0.38, this.cell * 0.22);
-          g.fillStyle(0x3b7040, 1).fillCircle(cx + this.cell * 0.62, cy + this.cell * 0.55, this.cell * 0.2);
+          // Seto continuo: base oscura sin huecos y hojas encima.
+          const cs = this.cell;
+          g.fillStyle(0x17301c, 1).fillRect(cx, cy, cs, cs);
+          g.fillStyle(0x234a29, 1).fillRect(cx + 2, cy + 2, cs - 4, cs - 6);
+          const leaf = (fx: number, fy: number, fr: number, col: number) => g.fillStyle(col, 1).fillCircle(cx + cs * fx, cy + cs * fy, cs * fr);
+          leaf(0.28, 0.3, 0.16, 0x2f5d34);
+          leaf(0.7, 0.36, 0.15, 0x2f5d34);
+          leaf(0.45, 0.66, 0.17, 0x2a5530);
+          leaf(0.36, 0.26, 0.07, 0x4a8a50);
+          leaf(0.74, 0.3, 0.06, 0x4a8a50);
         } else {
           g.fillStyle(0x4a4032, 1).fillRect(cx, cy, this.cell, this.cell);
           g.fillStyle(0x5a4e3c, 1).fillCircle(cx + this.cell * 0.3, cy + this.cell * 0.7, 3).fillCircle(cx + this.cell * 0.7, cy + this.cell * 0.3, 2);
@@ -511,25 +518,25 @@ class MixBoard extends BaseBoard {
     super(host);
     const { x, y, w, h } = host.area;
     // A la izquierda, el color que hay que conseguir; en el centro, el cuenco.
-    const r = Math.min(90, h * 0.22);
+    const r = Math.min(80, h * 0.18);
     const g = host.keep(this.scene.add.graphics());
     const tx = x + 130;
-    const ty = y + h * 0.3;
+    const ty = y + r + 10;
     g.fillStyle(0x000000, 0.35).fillCircle(tx + 4, ty + 8, r);
     g.fillStyle(step.target.color, 1).fillCircle(tx, ty, r);
     g.lineStyle(5, 0xf1e8d8, 0.8).strokeCircle(tx, ty, r);
     this.text(tx, ty + r + 36, `Hace falta: ${step.target.name}`, 30, CSS.copper);
-    this.bowlAt = { x: x + w * 0.5, y: y + h * 0.3, r: r * 1.1 };
+    this.bowlAt = { x: x + w * 0.5, y: ty, r: r * 1.1 };
     this.text(this.bowlAt.x - this.bowlAt.r - 70, this.bowlAt.y, "=", 70, CSS.muted);
     this.bowl = host.keep(this.scene.add.graphics());
     this.drawBowl(null);
-    this.text(this.bowlAt.x, this.bowlAt.y + this.bowlAt.r + 36, "Toca dos botes para mezclarlos", 28, CSS.muted);
+    this.text(this.bowlAt.x + this.bowlAt.r + 40, this.bowlAt.y, "◀ Toca dos botes para mezclarlos aquí", 28, CSS.muted, 0);
     // Botes de pintura abajo.
     const n = step.paints.length;
     const gap = 26;
     const pw = Math.min(200, (w - gap * (n - 1)) / n);
     const x0 = x + (w - (pw * n + gap * (n - 1))) / 2;
-    const py = y + h - 120;
+    const py = Math.max(ty + r + 110, y + h - 95);
     step.paints.forEach((p, i) => {
       const pg = this.scene.add.graphics();
       pg.fillStyle(0x000000, 0.35).fillRoundedRect(-pw / 2 + 4, -60 + 8, pw, 150, 22);

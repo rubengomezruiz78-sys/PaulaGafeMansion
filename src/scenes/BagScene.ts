@@ -230,10 +230,10 @@ export class BagScene extends Phaser.Scene {
     const s = session.state;
     const plano = s.inventory.includes("plano-ines");
     const known = (z: string) => plano || s.visited.includes(z);
-    const N = { w: 300, h: 120 };
+    const N = { w: 250, h: 96 };
     const g = this.keep(this.add.graphics());
 
-    for (const [label, y] of [["Planta alta", 320], ["Planta baja", 655], ["Sótano", 880]] as const) {
+    for (const [label, y] of [["Planta alta", 205], ["Planta baja", 490], ["Sótano", 850]] as const) {
       this.keep(this.add.text(INNER.x, y, label, { fontFamily: FONT_TITLE, fontSize: "30px", color: CSS.muted }).setOrigin(0, 0.5));
     }
 
@@ -249,7 +249,7 @@ export class BagScene extends Phaser.Scene {
       if (!a || !b) continue;
       const open = zoneLinks().some((x) => [x.from, x.to].sort().join("|") === key
         && check((ZONES as Record<string, { exits: { id: string; requires?: Parameters<typeof check>[0] }[] }>)[x.from]?.exits.find((e) => e.id === x.exitId)?.requires, s));
-      const pts = key === "torre|tuneles" ? [a, { x: 1765, y: a.y }, { x: 1765, y: b.y }, b] : [a, b];
+      const pts = key === "torre|tuneles" ? [a, { x: 1785, y: a.y }, { x: 1785, y: b.y }, b] : [a, b];
       g.lineStyle(open ? 6 : 4, open ? 0x8c7a5c : 0xb0544a, open ? 0.9 : 0.8);
       for (let i = 0; i < pts.length - 1; i += 1) dashedLine(g, pts[i], pts[i + 1], open ? 0 : 16);
     }
@@ -264,16 +264,16 @@ export class BagScene extends Phaser.Scene {
       const y = p.y - N.h / 2;
       g.fillStyle(here ? 0x1d3a2a : seen ? 0x1a2328 : 0x0e1316, 1).fillRoundedRect(x, y, N.w, N.h, 18);
       g.lineStyle(here ? 5 : 3, here ? 0x8fd6a0 : seen ? COLORS.copper : 0x2c3438, 1).strokeRoundedRect(x, y, N.w, N.h, 18);
-      this.keep(this.add.text(p.x, y + (plano ? 30 : N.h / 2), seen ? zone.name : "?", {
-        fontFamily: FONT_UI, fontSize: "25px", color: seen ? CSS.ivory : CSS.muted, align: "center",
+      this.keep(this.add.text(p.x, y + (plano ? 28 : N.h / 2), seen ? zone.name : "?", {
+        fontFamily: FONT_UI, fontSize: "22px", color: seen ? CSS.ivory : CSS.muted, align: "center",
         wordWrap: { width: N.w - 24, useAdvancedWrap: true },
       }).setOrigin(0.5));
       if (here) this.keep(this.add.text(p.x, y - 6, "Estás aquí", { fontFamily: FONT_UI, fontSize: "22px", color: "#a8e6b4" }).setOrigin(0.5, 1));
       if (plano) {
         const names = worldSim.presentIn(id).map((n) => shortName(npcById(n.id)?.name ?? n.id));
         const shown = names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3}` : names.join(", ");
-        this.keep(this.add.text(p.x, y + 84, shown || "(nadie)", {
-          fontFamily: FONT_UI, fontSize: "20px", color: shown ? CSS.copper : CSS.muted, align: "center",
+        this.keep(this.add.text(p.x, y + 70, shown || "(nadie)", {
+          fontFamily: FONT_UI, fontSize: "18px", color: shown ? CSS.copper : CSS.muted, align: "center",
           wordWrap: { width: N.w - 20, useAdvancedWrap: true },
         }).setOrigin(0.5));
       }
@@ -343,18 +343,24 @@ export class BagScene extends Phaser.Scene {
 
 /** Centro de cada sala en el esquema del mapa (por plantas). */
 const MAP_POS: Record<string, { x: number; y: number }> = {
-  desvan: { x: 760, y: 245 },
-  observatorio: { x: 1140, y: 245 },
-  torre: { x: 1520, y: 245 },
-  galeria: { x: 560, y: 405 },
-  dormitorio: { x: 940, y: 405 },
-  cocina: { x: 480, y: 590 },
-  vestibulo: { x: 860, y: 590 },
-  biblioteca: { x: 1240, y: 590 },
-  musica: { x: 1620, y: 590 },
-  invernadero: { x: 1620, y: 740 },
-  archivo: { x: 860, y: 880 },
-  tuneles: { x: 1240, y: 880 },
+  estudio: { x: 330, y: 275 },
+  desvan: { x: 720, y: 275 },
+  observatorio: { x: 1080, y: 275 },
+  torre: { x: 1480, y: 275 },
+  taller: { x: 330, y: 400 },
+  galeria: { x: 720, y: 400 },
+  dormitorio: { x: 1080, y: 400 },
+  teatro: { x: 1440, y: 400 },
+  cocina: { x: 330, y: 565 },
+  vestibulo: { x: 720, y: 565 },
+  biblioteca: { x: 1080, y: 565 },
+  musica: { x: 1440, y: 565 },
+  comedor: { x: 330, y: 690 },
+  baile: { x: 1080, y: 690 },
+  invernadero: { x: 1640, y: 690 },
+  jardin: { x: 1360, y: 800 },
+  archivo: { x: 720, y: 915 },
+  tuneles: { x: 1080, y: 915 },
 };
 
 /** Nombre corto para el mapa: sin tratamiento («Don», «Doña»…) y sin apellido. */

@@ -70,7 +70,7 @@ export abstract class Actor {
     this.lightParams = {
       keyDir: [0, -1], keyColor: [0, 0, 0],
       saturation: look.saturation ?? 0.9, contrast: look.contrast ?? 0.95, fog: 0, emissive: look.emissive ?? 0,
-      rimTexels: 3, keyPower: 0,
+      rimTexels: 3, keyPower: 0, warp: [0, 0, 0, 0], ripple: [0, 0],
     };
   }
 
@@ -125,6 +125,29 @@ export abstract class Actor {
 
   abstract heightM(): number;
 
+  /** Segundos que le quedan hablando (lo marca la escena mientras sale su bocadillo). */
+  protected talkFor = 0;
+
+  /** Está diciendo algo ahora mismo: cabecea un poco al hablar. */
+  speaking(): void {
+    this.talkFor = 0.25;
+  }
+
+  /**
+   * Cuerpo vivo: respiración, balanceo con los pies quietos, falda y cabeceo.
+   * `flip` invierte el balanceo cuando la imagen está volteada.
+   */
+  protected setWarp(bend: number, breath: number, skirt: number, nod: number, ripple = 0): void {
+    const s = Math.sign(this.flip || 1);
+    const w = this.lightParams.warp;
+    w[0] = bend * s;
+    w[1] = breath;
+    w[2] = skirt * s;
+    w[3] = nod;
+    this.lightParams.ripple[0] = ripple;
+    this.lightParams.ripple[1] = this.time;
+  }
+
   private seeThrough = 1;
 
   /** Se vuelve translúcido mientras tapa a Paula, para que siempre se la vea. */
@@ -145,6 +168,7 @@ export abstract class Actor {
 
   update(dt: number): void {
     this.time += dt;
+    this.talkFor = Math.max(0, this.talkFor - dt);
     this.walker.update(dt);
     const target = this.walker.facing;
     const step = (dt / TURN_TIME) * 2;

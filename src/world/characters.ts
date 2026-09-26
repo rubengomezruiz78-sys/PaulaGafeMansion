@@ -64,6 +64,12 @@ export class Paula extends Actor {
     // Balanceo: el cuerpo sube a media pisada y baja al apoyar (2 veces por ciclo).
     const ppm = this.proj.ppm(this.pos.y);
     const sr = Math.min(1, this.walker.speedRatio());
+    // Cuerpo vivo: respira, se balancea sobre los pies quietos y la falda acompaña el paso.
+    const idleSway = 0.006 * Math.sin(this.time * 0.63) + 0.003 * Math.sin(this.time * 1.7 + 1.3);
+    const breath = 0.016 * (0.5 + 0.5 * Math.sin(this.time * Math.PI * 2 * 0.28));
+    const skirt = moving ? 0.022 * sr * Math.sin(phase * Math.PI * 4 + 0.6) : 0.004 * Math.sin(this.time * 1.1);
+    const nod = this.talkFor > 0 ? 0.005 * Math.sin(this.time * 17) : 0;
+    this.setWarp(moving ? 0.012 * sr : idleSway, moving ? breath * 0.4 : breath, skirt, nod);
     this.body.y = -0.009 * ppm * sr * (0.5 - 0.5 * Math.cos(4 * Math.PI * phase));
     // Inclinación: algo hacia delante al andar, más al acelerar, hacia atrás al frenar.
     const lean = this.walker.facing * (0.026 * sr + clamp(this.walker.lastAccel * 0.005, -0.018, 0.018));
@@ -131,6 +137,9 @@ export class Gafe extends Actor {
     const breathe = Math.sin(this.time * Math.PI * 2 * 0.45);
     this.walk.obj.setScale(sw * this.flip, sw).setAlpha(1 - this.sitMix);
     this.sit.obj.setScale(ss * this.flip, ss * (1 + 0.006 * breathe)).setAlpha(this.sitMix);
+    // Respira despacio sentado y mueve un poco la cabeza cuando «habla».
+    this.setWarp(moving ? 0 : 0.004 * Math.sin(this.time * 0.7), moving ? 0 : 0.014 * (0.5 + 0.5 * Math.sin(this.time * Math.PI * 2 * 0.45)), 0,
+      this.talkFor > 0 ? 0.008 * Math.sin(this.time * 14) : 0);
     // Los gatos casi no balancean el cuerpo: solo un leve cabeceo al trotar.
     const ppm = this.proj.ppm(this.pos.y);
     const sr = Math.min(1.6, this.walker.speedRatio());
@@ -199,8 +208,13 @@ export class Ghost extends Actor {
       this.body.y = -0.012 * ppm * sr * Math.abs(Math.sin(phase * Math.PI * 2));
       this.body.rotation = approach(this.body.rotation, 0.025 * sr * Math.sin(phase * Math.PI * 2), dt * 0.8);
       const s = this.poseScale(this.pose);
-      const breathe = Math.sin(t * Math.PI * 2 * 0.25);
-      this.pose.obj.setScale(s * this.flip, s * (1 + 0.006 * breathe)).setAlpha(this.style.alpha);
+      this.pose.obj.setScale(s * this.flip, s).setAlpha(this.style.alpha);
+      this.setWarp(
+        sr > 0.05 ? 0.012 * sr : 0.006 * Math.sin(t * 0.55),
+        0.014 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 * 0.25)),
+        sr > 0.05 ? 0.02 * sr * Math.sin(phase * Math.PI * 4) : 0,
+        this.talkFor > 0 ? 0.005 * Math.sin(t * 16) : 0,
+      );
       return;
     }
     this.liftM = this.style.floatM + 0.03 * Math.sin(t * 1.35);
@@ -213,6 +227,15 @@ export class Ghost extends Actor {
     const target = 0.02 * Math.sin(t * 0.9) + this.walker.facing * 0.035 * sr;
     this.body.rotation = approach(this.body.rotation, target, dt * 0.6);
     const s = this.poseScale(this.pose);
+    // Flota como tela o humo: se mece, respira y la parte de abajo ondea; al deslizarse, se queda atrás.
+    const sheet = this.key.startsWith("ghost-");
+    this.setWarp(
+      (sheet ? 0.018 : 0.01) * Math.sin(t * 0.9) - this.walker.facing * 0.012 * sr,
+      0.012 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 * 0.22)),
+      -0.03 * sr,
+      this.talkFor > 0 ? 0.006 * Math.sin(t * 15) : 0,
+      sheet ? 0.022 : 0.009,
+    );
     this.flickerFor = Math.max(0, this.flickerFor - dt);
     const flick = this.flickerFor > 0 ? 0.35 + 0.65 * Math.abs(Math.sin(this.flickerFor * 40)) : 1;
     this.pose.obj.setScale(s * this.flip, s).setAlpha((this.style.alpha + 0.05 * Math.sin(t * 0.6)) * flick);

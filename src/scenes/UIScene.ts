@@ -64,7 +64,8 @@ const CHARS_PER_SECOND = 48;
 const CHOICE = { w: 700, h: 62, gap: 10, right: GAME_W - 20, bottom: GAME_H - 16 };
 
 /** Posición de la cabeza de un personaje presente en la sala (la da el mundo). */
-export type SpeakerAnchor = (id: string) => { x: number; y: number } | null;
+/** Dónde está la cabeza de quien habla (y si está hablando ahora, para que se le note). */
+export type SpeakerAnchor = (id: string, talking?: boolean) => { x: number; y: number } | null;
 
 interface QueuedLine {
   speaker: Speaker;
@@ -289,7 +290,8 @@ export class UIScene extends Phaser.Scene {
     if (!this.panel || !this.bubbleBg) return;
     const { w, h } = this.bubbleSize;
     const anchorOf = this.registry.get("speakerAnchor") as SpeakerAnchor | null;
-    const a = this.speaker?.id && anchorOf ? anchorOf(this.speaker.id) : null;
+    const talking = (!!this.bodyText && this.shown < this.fullText.length) || voice.talking;
+    const a = this.speaker?.id && anchorOf ? anchorOf(this.speaker.id, talking) : null;
     const m = BUBBLE.margin;
     let x: number;
     let y: number;

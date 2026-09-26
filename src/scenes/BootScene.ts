@@ -1,8 +1,6 @@
 import Phaser from "phaser";
 import { COLORS, CSS, FONT_TITLE, GAME_H, GAME_W, fitCamera } from "../config";
 import { SPRITES, SPRITE_KEYS, spritePath } from "../content/sprites";
-import { NPCS } from "../content/npcs";
-import { makeGhostTexture } from "../world/ghostArt";
 import { installBgLife } from "../world/bgLife";
 import { installActorLight } from "../world/lighting";
 import { makeLifeTextures } from "../world/lifeTextures";
@@ -44,8 +42,6 @@ export class BootScene extends Phaser.Scene {
     makeLifeTextures(this);
     installBgLife(this.game);
     installActorLight(this.game);
-    // Los criados fantasma se dibujan por código una sola vez.
-    for (const npc of NPCS) if (npc.art) makeGhostTexture(this, npc.sprite, npc.art);
     this.scene.start("title");
   }
 

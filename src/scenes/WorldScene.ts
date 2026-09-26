@@ -202,7 +202,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.releaseBack = pushBackHandler(() => this.onBack());
     // Los bocadillos de diálogo salen de la cabeza de quien habla.
-    this.registry.set("speakerAnchor", ((id: string) => this.anchorFor(id)) satisfies SpeakerAnchor);
+    this.registry.set("speakerAnchor", ((id: string, talking?: boolean) => this.anchorFor(id, talking)) satisfies SpeakerAnchor);
     this.using = undefined;
     this.game.events.emit(UI_EVENTS.using, null);
     this.game.events.on(UI_EVENTS.use, this.setUsing, this);
@@ -235,9 +235,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /** Cabeza de un personaje presente (para colocar su bocadillo), o null. */
-  private anchorFor(id: string): { x: number; y: number } | null {
+  private anchorFor(id: string, talking = false): { x: number; y: number } | null {
     const actor = id === "paula" ? this.paula : id === "gafe" ? this.gafe
       : this.npcs.find((n) => n.def.id === id && !n.gone)?.actor;
+    if (actor && talking) actor.speaking();
     return actor ? { x: actor.pos.x, y: actor.headY() } : null;
   }
 
@@ -595,7 +596,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private spawnActor(def: NpcDef, pos: Pt, fadeIn: boolean): NpcRuntime {
-    const emissive = def.glow ?? (def.art ? 0.7 : def.kind === "ghost" ? 0.3 : 0);
+    const emissive = def.glow ?? (def.kind === "ghost" ? 0.3 : 0);
     const actor = new Ghost(this, this.proj, pos, def.sprite, { floatM: def.floatM, alpha: def.alpha, tint: def.tint ?? this.tint, emissive });
     this.dressActor(actor, def.floatM <= 0);
     actor.walker.face(this.nav.nearestWalkable(toPx(this.zoneDef.spawn)));

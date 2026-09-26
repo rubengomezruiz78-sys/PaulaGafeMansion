@@ -15,7 +15,10 @@ export class Bubble {
   private readonly h: number;
   private dead = false;
 
+  private readonly born: number;
+
   constructor(private readonly scene: Phaser.Scene, private readonly owner: Actor, text: string) {
+    this.born = scene.time.now;
     const label = scene.add.text(0, 0, text, {
       fontFamily: FONT_UI, fontSize: fs(30), color: CSS.ink, align: "center",
       wordWrap: { width: MAX_W - 48, useAdvancedWrap: true }, lineSpacing: 4,
@@ -44,6 +47,8 @@ export class Bubble {
     const x = Phaser.Math.Clamp(this.owner.pos.x, this.w / 2 + 16, GAME_W - this.w / 2 - 16);
     const y = Math.max(this.h + 24, this.owner.headY() - 26);
     this.c.setPosition(x, y);
+    // Mientras está recién dicho, se le nota hablar.
+    if (this.scene.time.now - this.born < 1600) this.owner.speaking();
   }
 
   destroy(): void {
