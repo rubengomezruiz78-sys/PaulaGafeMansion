@@ -100,8 +100,8 @@ const recentZones: string[] = [];
 /** Salas sin mapa de profundidad (no se vuelve a pedir). */
 const missingDepth = new Set<string>();
 /**
- * Modo ligero: si la tablet no llega a ~36 fps en una sala, se quitan los
- * efectos decorativos (viñeta y motas) el resto de la sesión.
+ * Modo ligero: si la tablet va por debajo de 30 fps de forma sostenida, se
+ * quitan los efectos decorativos (y se recuerda; ver game/quality.ts).
  */
 let lowFx = startLowFx();
 const LOW_FPS = 30;
@@ -478,7 +478,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private resolvePending(): void {
-    if (!this.pending || this.paula.walker.moving) return;
+    // Con una ventana abierta (p. ej. el tutorial, que sale solo al empezar) se
+    // espera a que se cierre: si no, lo que Paula iba a mirar la sustituía y el
+    // tutorial se perdía para siempre tras su primera frase.
+    if (!this.pending || this.paula.walker.moving || this.registry.get("modal")) return;
     const pending = this.pending;
     this.pending = undefined;
     switch (pending.kind) {

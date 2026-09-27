@@ -257,3 +257,12 @@ tablet con la depuración del WebView activada un rato (ya quitada).
   voz española (`content/voices.ts`: eee/eea/eec de mujer, eed/eef de hombre,
   medidas a 218/197/183/120/109 Hz) y el tono solo baja. Puente nuevo
   `AndroidTTS.speakWith(…, voz)` y `AndroidTTS.voices()`.
+
+## 2.2.4 — Diagnóstico del código (2026-09-27)
+Diagnóstico completo (TypeScript estricto, pruebas, partida automática, 300
+toques al azar, 92 cambios de sala midiendo memoria, pérdida de la gráfica).
+Arreglos: el tutorial de la primera partida se cortaba si Paula llegaba a algo
+tocado antes (ahora lo pendiente espera a que se cierre la ventana); audio con
+`latencyHint: "balanced"` (cortes en la tablet al cargar salas); mochila,
+puzzles y final sueltan su marca de ventana abierta al cerrarse de cualquier
+forma.

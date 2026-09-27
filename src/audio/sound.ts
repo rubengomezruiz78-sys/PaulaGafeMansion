@@ -129,7 +129,13 @@ class SoundEngine {
     } else {
       const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
-      ctx = new AC();
+      // Búfer algo mayor que el de «respuesta inmediata»: en la tablet, al cargar
+      // una sala el audio se cortaba (el registro de Android lo llama «audio glitch»).
+      try {
+        ctx = new AC({ latencyHint: "balanced" });
+      } catch {
+        ctx = new AC();
+      }
     }
     this.ctx = ctx;
     this.master = ctx.createGain();

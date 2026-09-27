@@ -73,7 +73,10 @@ export class BagScene extends Phaser.Scene {
       this.close();
       return true;
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.releaseBack?.());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.releaseBack?.();
+      setModal(this, "bag", false);
+    });
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
       if (!p.isDown || !this.scroll) return;
       const sc = this.scroll;

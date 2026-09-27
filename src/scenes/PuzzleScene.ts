@@ -82,7 +82,10 @@ export class PuzzleScene extends Phaser.Scene {
       else if (e.key === "Backspace") this.press("⌫");
       else if (e.key === "Enter") this.press("OK");
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.releaseBack?.());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.releaseBack?.();
+      setModal(this, "puzzle", false);
+    });
     this.cameras.main.fadeIn(180, 2, 3, 4);
     this.showStep();
   }

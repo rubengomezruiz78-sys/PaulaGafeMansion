@@ -77,7 +77,10 @@ export class EndScene extends Phaser.Scene {
       this.close();
       return true;
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, release);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      release();
+      setModal(this, "end", false);
+    });
   }
 
   /** Luciérnagas de los farolillos flotando por la fiesta. */
