@@ -12,6 +12,8 @@ import { currentRenderScale, GAME_H, GAME_W, setRenderScale, VIEW_H } from "../c
 const KEY = "paula-gafe-calidad";
 /** Escala mínima respecto a la lógica (960 px de ancho). */
 const MIN_SCALE = 0.5;
+/** Nunca menos del 80 % de los píxeles de la pantalla. */
+export const MIN_OF_SCREEN = 0.8;
 
 interface Stored {
   lowFx?: boolean;
@@ -43,13 +45,15 @@ export function rememberLowFx(): void {
 }
 
 /**
- * Dibuja con menos píxeles (un 20 % menos). Devuelve false si ya está al mínimo.
- * Todo sigue en coordenadas lógicas: solo cambia el tamaño del lienzo y el zoom.
+ * Dibuja con menos píxeles: el 80 % de los de la pantalla, una sola vez (más
+ * abajo se veía borroso y Paula se perdía en la penumbra). Devuelve false si ya
+ * está así. Todo sigue en coordenadas lógicas: solo cambia el lienzo y el zoom.
  */
 export function shrinkResolution(game: Phaser.Game): boolean {
+  const prev = read().scale ?? 1;
   const s = currentRenderScale();
-  if (s <= MIN_SCALE + 0.01) return false;
-  const next = Math.max(MIN_SCALE, s * 0.8);
+  if (prev <= MIN_OF_SCREEN + 0.01 || s <= MIN_SCALE + 0.01) return false;
+  const next = Math.max(MIN_SCALE, (s * MIN_OF_SCREEN) / prev);
   const w = Math.round(GAME_W * next);
   const h = Math.round((w * VIEW_H) / GAME_W);
   setRenderScale(w / GAME_W);
@@ -58,7 +62,6 @@ export function shrinkResolution(game: Phaser.Game): boolean {
     scene.cameras.main.setSize(w, h).setZoom(w / GAME_W).centerOn(GAME_W / 2, GAME_H / 2);
   }
   // Se guarda como fracción del ancho de pantalla, para la próxima vez.
-  const prev = read().scale ?? 1;
-  write({ scale: Math.max(MIN_SCALE, prev * 0.8) });
+  write({ scale: MIN_OF_SCREEN });
   return true;
 }

@@ -8,7 +8,7 @@
  * Modos de los diálogos: «texto» (como un libro), «ambos» (texto y voz) o
  * «voz» (solo se oye: para cuando Paula no quiere leer).
  */
-import { PROFILES } from "../content/voices";
+import { PROFILES, voiceName } from "../content/voices";
 
 export type VoiceMode = "texto" | "ambos" | "voz";
 
@@ -17,6 +17,10 @@ const PREFS_KEY = "paula-gafe-voz";
 interface AndroidTTS {
   isReady(): boolean;
   speak(text: string, pitch: number, rate: number, id: string): void;
+  /** Con una voz concreta (desde la 2.2.3). */
+  speakWith?(text: string, pitch: number, rate: number, id: string, voice: string): void;
+  /** Voces españolas instaladas, separadas por comas (desde la 2.2.3). */
+  voices?(): string;
   stop(): void;
 }
 interface AndroidVoice {
@@ -58,6 +62,12 @@ function speakable(text: string): string {
 class VoiceService {
   mode: VoiceMode = "texto";
   mic = false;
+  /**
+   * La tablet no tiene el español descargado para escuchar sin Internet (el
+   * reconocimiento de Google lo rechaza al instante). Se recuerda para no
+   * enseñar un micrófono que siempre falla; al tocar «Micro» se vuelve a probar.
+   */
+  languageMissing = false;
   private readonly w = window as Win;
   private seq = 0;
   private pending = new Map<string, () => void>();
@@ -68,9 +78,10 @@ class VoiceService {
 
   constructor() {
     try {
-      const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { mode?: VoiceMode; mic?: boolean };
+      const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { mode?: VoiceMode; mic?: boolean; sinIdioma?: boolean };
       if (p.mode === "texto" || p.mode === "ambos" || p.mode === "voz") this.mode = p.mode;
       this.mic = p.mic === true;
+      this.languageMissing = p.sinIdioma === true;
     } catch {
       /* preferencias por defecto */
     }
@@ -84,7 +95,7 @@ class VoiceService {
 
   private save(): void {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ mode: this.mode, mic: this.mic }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ mode: this.mode, mic: this.mic, sinIdioma: this.languageMissing }));
     } catch {
       /* solo esta sesión */
     }
@@ -98,7 +109,14 @@ class VoiceService {
 
   setMic(on: boolean): void {
     this.mic = on;
+    // Encenderlo otra vez es volver a probar (quizá ya se descargó el español).
+    if (on) this.languageMissing = false;
     this.save();
+  }
+
+  /** ¿Enseñar el botón del micrófono? (encendido, hay reconocimiento y tiene el español). */
+  get micUsable(): boolean {
+    return this.mic && !this.languageMissing && this.canListen;
   }
 
   /** ¿Hay voz para leer en alto en este aparato? */
@@ -119,6 +137,22 @@ class VoiceService {
   }
 
   private active = 0;
+  /** Voces que tiene el aparato (se piden una vez, cuando el motor ya está listo). */
+  private installed?: Set<string>;
+
+  private hasVoice(name: string): boolean {
+    const tts = this.w.AndroidTTS;
+    if (!tts?.voices || !tts.speakWith) return false;
+    if (!this.installed) {
+      try {
+        if (!tts.isReady()) return false;
+        this.installed = new Set(tts.voices().split(",").filter(Boolean));
+      } catch {
+        this.installed = new Set();
+      }
+    }
+    return this.installed.has(name);
+  }
 
   /** ¿Está sonando alguna frase ahora mismo? */
   get talking(): boolean {
@@ -147,7 +181,11 @@ class VoiceService {
           window.clearTimeout(t);
           resolve();
         });
-        this.w.AndroidTTS!.speak(clean, p.pitch, p.rate, id);
+        const tts = this.w.AndroidTTS!;
+        const name = voiceName(p.voice);
+        // Tono 1 como mucho: más alto, la tablet tarda el doble en empezar a hablar.
+        if (this.hasVoice(name)) tts.speakWith!(clean, Math.min(1, p.pitch), p.rate, id, name);
+        else tts.speak(clean, Math.min(1, p.pitch), p.rate, id);
       });
     }
     if ("speechSynthesis" in window) {
@@ -198,6 +236,10 @@ class VoiceService {
         id,
         resolve: (alts, error) => {
           window.clearTimeout(t);
+          if (error === "sin-idioma") {
+            this.languageMissing = true;
+            this.save();
+          }
           resolve({ alts, error });
         },
       };
@@ -255,7 +297,8 @@ export function listenErrorText(error?: string): string {
   switch (error) {
     case "sin-permiso": return "El micrófono no tiene permiso. Puedes tocar la respuesta.";
     case "no-disponible": return "Esta tablet no puede escuchar. Toca la respuesta.";
-    case "sin-conexion": return "Para escuchar sin Internet hay que descargar el español sin conexión. Toca la respuesta.";
+    case "sin-conexion":
+    case "sin-idioma": return "Para escucharte sin Internet, un adulto tiene que descargar el español en la tablet. Mientras, toca la respuesta.";
     default: return "No te he entendido. Prueba otra vez o toca la respuesta.";
   }
 }

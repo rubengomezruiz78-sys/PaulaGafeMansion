@@ -51,3 +51,13 @@ describe("cada personaje está completo", () => {
     });
   }
 });
+
+describe("voces", () => {
+  it("nadie sube el tono por encima de 1 (en la tablet hacía esperar el doble)", () => {
+    for (const [id, p] of Object.entries(PROFILES)) {
+      expect(p.pitch, id).toBeLessThanOrEqual(1);
+      expect(p.pitch, id).toBeGreaterThanOrEqual(0.8);
+      expect(["eea", "eec", "eed", "eee", "eef"], id).toContain(p.voice);
+    }
+  });
+});

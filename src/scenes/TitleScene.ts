@@ -58,10 +58,11 @@ export class TitleScene extends Phaser.Scene {
       sound.setMuted(!sound.muted);
       soundBtn.label.setText(soundLabel());
     }, { fontSize: 30, radius: 26 });
-    const micLabel = () => (!voice.canListen ? "🎤  Micro: no hay" : voice.mic ? "🎤  Micro: sí" : "🎤  Micro: no");
+    const micLabel = () => (!voice.canListen ? "🎤  Micro: no hay" : voice.mic && voice.languageMissing ? "🎤  Falta español" : voice.mic ? "🎤  Micro: sí" : "🎤  Micro: no");
     const micBtn = makeButton(this, 440, GAME_H - 150, 290, 90, micLabel(), () => {
       if (!voice.canListen) return;
-      voice.setMic(!voice.mic);
+      // «Falta español»: tocarlo vuelve a probar (por si ya se descargó).
+      voice.setMic(voice.languageMissing ? true : !voice.mic);
       micBtn.label.setText(micLabel());
     }, { fontSize: 30, radius: 26 });
     const modes: VoiceMode[] = ["texto", "ambos", "voz"];

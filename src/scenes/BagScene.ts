@@ -337,13 +337,17 @@ export class BagScene extends Phaser.Scene {
     y += 20;
     title("Responder con la voz");
     const micOk = voice.canListen;
-    const mic = makeButton(this, x, y, 400, 96, !micOk ? "🎤  No disponible" : voice.mic ? "🎤  Sí" : "🎤  No", () => {
+    // «Falta español»: tocarlo vuelve a probar (por si ya se descargó).
+    const missing = micOk && voice.mic && voice.languageMissing;
+    const mic = makeButton(this, x, y, 400, 96, !micOk ? "🎤  No disponible" : missing ? "🎤  Falta español" : voice.mic ? "🎤  Sí" : "🎤  No", () => {
       if (!micOk) return;
-      voice.setMic(!voice.mic);
+      voice.setMic(missing ? true : !voice.mic);
       this.show("ajustes");
-    }, { fontSize: 32, fill: voice.mic && micOk ? 0x1d3a2a : COLORS.panel, edge: voice.mic && micOk ? 0x8fd6a0 : COLORS.copper });
+    }, { fontSize: 32, fill: voice.micUsable ? 0x1d3a2a : COLORS.panel, edge: voice.micUsable ? 0x8fd6a0 : COLORS.copper });
     this.keep(mic.container);
-    this.keep(this.add.text(x + 430, y + 8, "En los puzzles y al elegir qué decir aparece «🎤». Paula dice el\nnúmero o la frase. Con el español descargado, no sale nada de la tablet.", {
+    this.keep(this.add.text(x + 430, y + 8, missing
+      ? "Para escuchar sin Internet falta el español. Un adulto: app de Google ›\nAjustes › Voz › Reconocimiento sin conexión › Español (España)."
+      : "En los puzzles y al elegir qué decir aparece «🎤». Paula dice el\nnúmero o la frase. Con el español descargado, no sale nada de la tablet.", {
       fontFamily: FONT_UI, fontSize: fs(24), color: CSS.muted, lineSpacing: 6,
     }));
     y += 136;

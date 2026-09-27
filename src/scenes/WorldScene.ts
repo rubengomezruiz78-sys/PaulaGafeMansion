@@ -104,9 +104,11 @@ const missingDepth = new Set<string>();
  * efectos decorativos (viñeta y motas) el resto de la sesión.
  */
 let lowFx = startLowFx();
-const LOW_FPS = 36;
+const LOW_FPS = 30;
+/** Mediciones seguidas por debajo (una cada 3 s) antes de cambiar nada: un tirón suelto no cuenta. */
+const LOW_READINGS = 3;
 /** Por debajo de esto, ya en modo ligero, se dibuja con menos píxeles. */
-const VERY_LOW_FPS = 28;
+const VERY_LOW_FPS = 22;
 
 export class WorldScene extends Phaser.Scene {
   private zoneDef!: ZoneDef;
@@ -141,6 +143,8 @@ export class WorldScene extends Phaser.Scene {
   /** Todo lo que se mueve solo en la sala (luces, niebla, bichos, lluvia…). */
   private life?: ZoneLifeFx;
   private perfClock = 0;
+  /** Mediciones seguidas con pocos fotogramas por segundo. */
+  private lowReadings = 0;
   private probe?: LightProbe;
   private depth?: DepthField;
   private depthErrorsHooked = false;
@@ -1040,10 +1044,18 @@ export class WorldScene extends Phaser.Scene {
     // En las pruebas el tiempo lo lleva el arnés, no el reloj real.
     if ((window as unknown as { __test?: unknown }).__test || !this.game.loop.running) return;
     this.perfClock += dt;
-    if (this.perfClock < 6 || this.perfClock % 3 > dt) return;
+    if (this.perfClock < 8 || this.perfClock % 3 > dt) return;
     const fps = this.game.loop.actualFps;
+    // Con un diálogo abierto o la voz hablando hay tirones que no son de la sala.
+    if (this.registry.get("modalOwners")?.length) {
+      this.lowReadings = 0;
+      return;
+    }
+    const limit = lowFx ? VERY_LOW_FPS : LOW_FPS;
+    this.lowReadings = fps < limit ? this.lowReadings + 1 : 0;
+    if (this.lowReadings < LOW_READINGS) return;
+    this.lowReadings = 0;
     if (!lowFx) {
-      if (fps >= LOW_FPS) return;
       lowFx = true;
       rememberLowFx();
       this.life?.lighten();
@@ -1055,7 +1067,6 @@ export class WorldScene extends Phaser.Scene {
       this.perfClock = 0;
       return;
     }
-    if (fps >= VERY_LOW_FPS) return;
     if (shrinkResolution(this.game)) this.perfClock = 0;
   }
 

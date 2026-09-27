@@ -214,6 +214,11 @@ public class MainActivity extends Activity {
                     @Override public void onStop(String id, boolean interrupted) { js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")"); }
                 });
                 ready = true;
+                // Frase muda para despertar el motor: si no, la primera de verdad
+                // tardaba 4 o 5 segundos en empezar en la tablet.
+                Bundle quiet = new Bundle();
+                quiet.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0f);
+                tts.speak("Hola.", TextToSpeech.QUEUE_FLUSH, quiet, "calentar");
             });
         }
 
@@ -233,11 +238,53 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Voces en español ya instaladas y sin Internet (nombres separados por comas). */
+        @JavascriptInterface
+        public String voices() {
+            StringBuilder out = new StringBuilder();
+            try {
+                for (Voice v : tts.getVoices()) {
+                    if (!"es".equals(v.getLocale().getLanguage()) || v.isNetworkConnectionRequired()) continue;
+                    if (v.getFeatures() != null && v.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
+                    if (out.length() > 0) out.append(',');
+                    out.append(v.getName());
+                }
+            } catch (Exception ignored) {
+                // Sin lista: el juego usa la voz por defecto.
+            }
+            return out.toString();
+        }
+
         @JavascriptInterface
         public void speak(String text, float pitch, float rate, String id) {
+            speakWith(text, pitch, rate, id, "");
+        }
+
+        /**
+         * Como speak, con una voz concreta (nombre de voices()). Cambiar el tono
+         * obliga al motor a procesar la frase entera antes de empezar (en la
+         * tablet, más del doble de espera): mejor otra voz que otro tono.
+         */
+        @JavascriptInterface
+        public void speakWith(String text, float pitch, float rate, String id, String voiceName) {
             if (!ready) {
                 js("window.__onTtsDone&&window.__onTtsDone(" + JSONObject.quote(id) + ")");
                 return;
+            }
+            if (voiceName != null && !voiceName.isEmpty()) {
+                try {
+                    Voice cur = tts.getVoice();
+                    if (cur == null || !voiceName.equals(cur.getName())) {
+                        for (Voice v : tts.getVoices()) {
+                            if (voiceName.equals(v.getName())) {
+                                tts.setVoice(v);
+                                break;
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Se queda la voz que hubiera.
+                }
             }
             tts.setPitch(Math.max(0.5f, Math.min(2f, pitch)));
             tts.setSpeechRate(Math.max(0.5f, Math.min(2f, rate)));
@@ -338,7 +385,11 @@ public class MainActivity extends Activity {
                 case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: code = "sin-permiso"; break;
                 case SpeechRecognizer.ERROR_NETWORK:
                 case SpeechRecognizer.ERROR_NETWORK_TIMEOUT: code = "sin-conexion"; break;
-                default: code = "fallo";
+                // Falta el paquete de español sin conexión (12 y 13 desde Android 12).
+                case 12:
+                case 13: code = "sin-idioma"; break;
+                // El numero ayuda a saber que paso (Android 11 lo avisa con otros codigos).
+                default: code = "fallo-" + error;
             }
             sendError(code);
             destroy();

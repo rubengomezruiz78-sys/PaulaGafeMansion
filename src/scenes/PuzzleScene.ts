@@ -67,7 +67,7 @@ export class PuzzleScene extends Phaser.Scene {
 
     makeButton(this, LEFT.x, CARD.y + CARD.h - 120, 440, 90, "🐾  Pista de Gafe", () => this.showHint(), { fontSize: 34 });
     makeButton(this, LEFT.x + 470, CARD.y + CARD.h - 120, 260, 90, "Salir", () => this.close(false), { fontSize: 34 });
-    if (voice.mic && voice.canListen) {
+    if (voice.micUsable) {
       this.micButton = makeButton(this, LEFT.x + 760, CARD.y + CARD.h - 120, 250, 90, "🎤  Decirlo", () => void this.listenAnswer(), {
         fontSize: 32, fill: 0x1d3a2a, edge: 0x8fd6a0,
       });
@@ -339,6 +339,11 @@ export class PuzzleScene extends Phaser.Scene {
     const msg = alts ? listenErrorText("no-entendido") : listenErrorText(error);
     this.feedback?.setColor("#f0b0a0").setText(msg);
     if (voice.mode !== "texto") void voice.speak(msg, "narrador");
+    // Sin el español descargado no va a funcionar: fuera el botón.
+    if (!voice.micUsable && this.micButton === btn) {
+      btn.container.destroy();
+      this.micButton = undefined;
+    }
   }
 
   private close(solved: boolean): void {

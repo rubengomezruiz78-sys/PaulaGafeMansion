@@ -419,7 +419,7 @@ export class UIScene extends Phaser.Scene {
       box.add([bg, num, label, hit]);
       y -= CHOICE.gap;
     });
-    if (voice.mic && voice.canListen) {
+    if (voice.micUsable) {
       const mh = 62;
       y -= mh;
       this.micButton = makeButton(this, CHOICE.right - 250, y, 250, mh, "🎤  Dilo", () => void this.listenChoice(), {
@@ -456,6 +456,7 @@ export class UIScene extends Phaser.Scene {
     const msg = alts ? listenErrorText("no-entendido") : listenErrorText(error);
     this.showToast(msg);
     if (voice.mode !== "texto") void voice.speak(msg, "narrador");
+    if (!voice.micUsable) btn.container.setVisible(false);
   }
 
   private pick(id: string): void {

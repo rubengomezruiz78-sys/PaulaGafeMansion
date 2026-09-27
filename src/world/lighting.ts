@@ -154,11 +154,12 @@ void main() {
     float zEdge = uActorZ.x - (0.25 + 0.08 * uActorZ.x);
     shown = smoothstep(zEdge - 0.3, zEdge, sceneZ);
   }
-  // Lo tapado de Paula y Gafe se adivina como una silueta tenue (siempre se les encuentra).
-  float ghost = uActorZ.z * (1.0 - shown) * clamp(0.55 + 1.6 * outline, 0.0, 1.6);
-  vec3 ghostCol = mix(site, vec3(0.62, 0.7, 0.92), 0.6) * 1.1;
+  // Lo tapado de Paula y Gafe se sigue viendo a través del mueble, a media luz y
+  // con el contorno marcado: la niña nunca pierde de vista a su personaje.
   vec3 tint = outTint.bgr;
-  gl_FragColor = vec4((c * tint * shown + ghostCol * tex.a * ghost) * outTint.a, tex.a * outTint.a * (shown + ghost));
+  float ghost = uActorZ.z * (1.0 - shown) * clamp(0.6 + 1.2 * outline, 0.0, 1.0);
+  vec3 ghostCol = mix(c * tint, mix(site, vec3(0.62, 0.7, 0.92), 0.6) * 1.15 * tex.a, 0.45);
+  gl_FragColor = vec4((c * tint * shown + ghostCol * ghost) * outTint.a, tex.a * outTint.a * (shown + ghost));
 }
 `;
 

@@ -37,18 +37,38 @@ function storedScale(): number {
   if (typeof window === "undefined") return 1;
   if (new URLSearchParams(location.search).get("escala")) return 1;
   try {
+    // Solo 0,8 o 1: las versiones 2.2.1 y 2.2.2 llegaban a guardar 0,64 por un
+    // tirón al cargar una sala, y la tablet se quedaba borrosa para siempre.
     const v = Number(JSON.parse(localStorage.getItem("paula-gafe-calidad") ?? "{}").scale);
-    return v >= 0.5 && v <= 1 ? v : 1;
+    return v >= 0.79 && v <= 1 ? v : 1;
   } catch {
     return 1;
   }
+}
+
+/**
+ * Lo que mide la ventana al arrancar. Si la app se abre con la pantalla
+ * apagada (o el WebView aún se está montando) mide 0: entonces vale la de la
+ * pantalla. La app va siempre apaisada: si llega en vertical, se gira.
+ */
+function viewport(): { w: number; h: number } {
+  let w = window.innerWidth;
+  let h = window.innerHeight;
+  if (!(w > 0 && h > 0)) {
+    w = window.screen?.width ?? 0;
+    h = window.screen?.height ?? 0;
+  }
+  if ((window as { AndroidTTS?: unknown }).AndroidTTS && h > w) [w, h] = [h, w];
+  return { w, h };
 }
 
 function viewHeight(): number {
   if (typeof window === "undefined") return GAME_H;
   // Las grabaciones de vídeo (?escala=) son siempre 16:9.
   if (new URLSearchParams(location.search).get("escala")) return GAME_H;
-  const tall = (GAME_W * window.innerHeight) / Math.max(1, window.innerWidth);
+  const { w, h } = viewport();
+  if (!(w > 0 && h > 0)) return GAME_H;
+  const tall = (GAME_W * h) / w;
   return Math.round(Math.min(GAME_H + 2 * BLEED, Math.max(GAME_H, tall)));
 }
 
@@ -56,7 +76,8 @@ function renderWidth(): number {
   if (typeof window === "undefined") return GAME_W;
   const forced = Number(new URLSearchParams(location.search).get("escala"));
   if (forced > 0) return Math.round(GAME_W * Math.min(1, forced));
-  const shown = Math.min(window.innerWidth, (window.innerHeight * GAME_W) / VIEW_H) * (window.devicePixelRatio || 1);
+  const { w, h } = viewport();
+  const shown = Math.min(w, (h * GAME_W) / VIEW_H) * (window.devicePixelRatio || 1);
   if (!(shown > 0)) return GAME_W;
   return Math.round(clamp(shown, GAME_W / 2, GAME_W));
 }

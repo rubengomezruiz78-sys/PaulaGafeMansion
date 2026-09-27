@@ -215,9 +215,8 @@ para que Paula se lleve el juego hoy en la tablet.
   sombreados (dos pasadas a pantalla completa menos), haces de luz recortados
   a su caja, sombreados solo en ASCII (`world/glsl.ts`: algunas gráficas
   rechazaban una tilde en un comentario). Calidad adaptable
-  (`game/quality.ts`): por debajo de 36 fps, modo ligero; por debajo de 28,
-  un 20 % menos de píxeles cada vez (hasta la mitad). Se recuerda en
-  `localStorage` (`paula-gafe-calidad`).
+  (`game/quality.ts`, ver 2.2.3). Se recuerda en `localStorage`
+  (`paula-gafe-calidad`).
 - **Oclusión con los muebles**: mapas de profundidad de cada sala
   (`tools/depth_maps.py`: Depth Anything V2 en local, calibrado con el suelo
   caminable, `public/world/depth/<sala>.png`, 0,4/Z en 8 bits). El sombreado
@@ -233,3 +232,28 @@ para que Paula se lleve el juego hoy en la tablet.
   tapada (rojo = más de un 25 %).
 - Arnés: `untilReady` ya no depende de `setTimeout` (con la pestaña oculta el
   navegador lo frenaba y las salas «no cargaban» en las pruebas).
+
+## 2.2.3 — Lo que se vio en la tablet de verdad (2026-09-27)
+Ruben: «la voz funciona mal y Paula desaparece en pantalla». Se investigó en la
+tablet con la depuración del WebView activada un rato (ya quitada).
+- **Paula desaparecía** detrás de los muebles: la silueta de la 2.2.2 (0,22 de
+  opacidad) no se veía en la pantalla de la tablet. Ahora lo tapado de Paula y
+  Gafe se pinta a 0,6 con el contorno entero (`look.xray` 1 y 0,9).
+- **Borrosa**: la calidad adaptable guardó 0,64 de resolución por tirones al
+  cargar salas. Ahora hacen falta 3 medidas seguidas (9 s) por debajo de 30 fps
+  para el modo ligero y de 22 para bajar píxeles, no se mide con un diálogo
+  abierto, y nunca baja del 80 % de la pantalla (lo guardado por debajo se
+  ignora). A 1280×800 y modo ligero la tablet va a ~33 fps.
+- **Medidas al arrancar**: si la app se abre con la pantalla apagada el WebView
+  mide 0 y el juego se quedaba en 16:9 a 1920 px; ahora usa la de la pantalla.
+- **Micrófono**: fallaba siempre en un segundo. La tablet no tiene descargado el
+  español del reconocimiento sin conexión y el juego lo pide sin conexión (nada
+  sale de la tablet). Android avisa «sin-idioma»: el juego lo explica, quita el
+  botón 🎤 y en Ajustes pone «Falta español» con la ruta para descargarlo
+  (tocarlo vuelve a probar). **Hay que descargar Español (España) en la app de
+  Google › Ajustes › Voz › Reconocimiento sin conexión.**
+- **Voz lenta**: con el tono por encima de 1 el motor de Google procesa la
+  frase entera antes de hablar (7 s en vez de 3). Cada personaje tiene ahora su
+  voz española (`content/voices.ts`: eee/eea/eec de mujer, eed/eef de hombre,
+  medidas a 218/197/183/120/109 Hz) y el tono solo baja. Puente nuevo
+  `AndroidTTS.speakWith(…, voz)` y `AndroidTTS.voices()`.
