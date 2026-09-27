@@ -36,3 +36,6 @@ __pycache__/
 
 # Variantes generadas (se elige una y se guarda en art/salas-nuevas)
 art/nuevas/
+
+# Volcado de zonas para las herramientas de arte (se regenera)
+work/zones.json

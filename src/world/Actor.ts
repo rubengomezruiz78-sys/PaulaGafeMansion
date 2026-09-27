@@ -4,6 +4,7 @@ import { Walker, type Gait } from "../core/walker";
 import { SPRITES, type SpriteKey } from "../content/sprites";
 import { ACTOR_LIGHT, hex3, lighting, type ActorLightParams } from "./lighting";
 import type { LightProbe } from "./probe";
+import { occlusionMargin, type DepthField } from "./depthField";
 
 export interface ActorOptions {
   /** Anchura de la sombra de contacto (m). */
@@ -17,6 +18,8 @@ export interface ActorOptions {
     saturation?: number; contrast?: number; emissive?: number; rim?: number;
     /** Contorno de luna mínimo (color hex y fuerza 0..1), aunque no haya luz cerca. */
     rimMin?: [number, number];
+    /** Silueta a través de los muebles que le tapan (0..1). */
+    xray?: number;
   };
 }
 
@@ -58,6 +61,10 @@ export abstract class Actor {
   private env: ActorEnvironment = { reflect: 0, fog: 0, castShadow: false };
   /** Luz del sitio (la pone la sala). */
   private probe?: LightProbe;
+  /** Profundidad del cuadro (para saber si un mueble le tapa los pies). */
+  private depth?: DepthField;
+  /** 0..1: cuánto se ven sus pies (si un mueble los tapa, su sombra tampoco se pinta). */
+  private feetShown = 1;
   private readonly probeOut: [number, number, number] = [0, 0, 0];
   private castShadow?: Phaser.GameObjects.Sprite;
   private reflection?: Phaser.GameObjects.Sprite;
@@ -79,7 +86,7 @@ export abstract class Actor {
       keyDir: [0, -1], keyColor: [0, 0, 0],
       saturation: look.saturation ?? 0.9, contrast: look.contrast ?? 0.95, fog: 0, emissive: look.emissive ?? 0,
       rimTexels: 3, keyPower: 0, warp: [0, 0, 0, 0], ripple: [0, 0],
-      probe: [0, 0, 0, 0], rimMin: [0, 0, 0, 3],
+      probe: [0, 0, 0, 0], rimMin: [0, 0, 0, 3], depthZ: 0, xray: look.xray ?? 0,
     };
     if (look.rimMin) {
       const [r, g, b] = hex3(look.rimMin[0]);
@@ -90,15 +97,18 @@ export abstract class Actor {
   }
 
   /** La sala dice si el suelo refleja, cuánta niebla hay y si hay sombras proyectadas. */
-  setEnvironment(env: ActorEnvironment, probe?: LightProbe): void {
+  setEnvironment(env: ActorEnvironment, probe?: LightProbe, depth?: DepthField): void {
     this.env = env;
     this.probe = probe;
+    this.depth = depth;
     if (env.castShadow && !this.castShadow) {
       this.castShadow = this.scene.add.sprite(0, 0, "__DEFAULT").setTintFill(0x000000).setAlpha(0);
       this.container.addAt(this.castShadow, 1);
     }
     if (env.reflect > 0.01 && !this.reflection) {
       this.reflection = this.scene.add.sprite(0, 0, "__DEFAULT").setAlpha(0);
+      // El reflejo está en el suelo de delante: no se prueba contra la profundidad del cuadro.
+      (this.reflection as unknown as { noDepth: boolean }).noDepth = true;
       if (lighting.enabled) {
         this.reflection.setPipeline(ACTOR_LIGHT);
         (this.reflection as unknown as { lightParams: ActorLightParams }).lightParams = this.lightParams;
@@ -248,6 +258,13 @@ export abstract class Actor {
     }
     const Z = this.proj.toFloor(this.pos).Z;
     lp.fog = this.env.fog * Math.min(1, Math.max(0, (Z - 3) / 9));
+    lp.depthZ = Z;
+    // ¿Tapa un mueble sus pies? Entonces tampoco se ve su sombra en el suelo.
+    if (this.depth) {
+      const hidden = this.depth.z({ x: this.pos.x, y: this.pos.y - 4 }) < Z - occlusionMargin(Z) - 0.15;
+      this.feetShown += ((hidden ? 0 : 1) - this.feetShown) * 0.25;
+      this.shadow.setVisible(this.feetShown > 0.05).setAlpha((this.opts.shadowAlpha ?? 0.55) * this.feetShown);
+    }
 
     const mirror = (s: Phaser.GameObjects.Sprite) =>
       s.setTexture(obj.texture.key, obj.frame.name).setOrigin(obj.originX, obj.originY);
@@ -263,11 +280,11 @@ export abstract class Actor {
       const ang = Math.max(-1.1, Math.min(1.1, -Math.atan2(vx, vy)));
       const side = Math.abs(Math.sin(ang));
       cs.setScale(obj.scaleX, -obj.scaleY * (0.3 + 0.25 * side)).setRotation(ang)
-        .setAlpha(obj.alpha * this.body.alpha * Math.min(0.42, 0.1 + power * 0.45) * (1 - this.env.reflect * 0.6));
+        .setAlpha(obj.alpha * this.body.alpha * Math.min(0.42, 0.1 + power * 0.45) * (1 - this.env.reflect * 0.6) * this.feetShown);
     }
     if (this.reflection) {
       mirror(this.reflection).setScale(obj.scaleX, -obj.scaleY).setRotation(-this.body.rotation)
-        .setAlpha(obj.alpha * this.body.alpha * this.env.reflect * 0.55);
+        .setAlpha(obj.alpha * this.body.alpha * this.env.reflect * 0.55 * this.feetShown);
       this.reflection.y = this.liftM * ppm;
     }
   }

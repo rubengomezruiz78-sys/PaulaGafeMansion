@@ -31,7 +31,7 @@ export class Paula extends Actor {
 
   constructor(scene: Phaser.Scene, proj: Projection, pos: Pt, tint?: number) {
     // Es una foto: algo menos de saturación y contraste la acercan al cuadro.
-    super(scene, proj, pos, GAITS.paula, { shadowWidthM: 0.5, tint, look: { saturation: 0.82, contrast: 0.92, rim: 0.8, rimMin: [0x8fa4d8, 0.12] } });
+    super(scene, proj, pos, GAITS.paula, { shadowWidthM: 0.5, tint, look: { saturation: 0.82, contrast: 0.92, rim: 0.8, rimMin: [0x8fa4d8, 0.12], xray: 0.4 } });
     this.walk = this.addPose("walk", "paula-walk");
     this.idle = this.addPose("idle", "paula-idle");
     this.startled = this.addPose("startled", "paula-startled");
@@ -119,7 +119,7 @@ export class Gafe extends Actor {
     // Un gato negro en una casa oscura se pierde: brillo propio, contraluz fuerte y contorno de luna.
     super(scene, proj, pos, GAITS.gafe, {
       shadowWidthM: 0.46, shadowAlpha: 0.7, tint,
-      look: { saturation: 1, contrast: 1.12, rim: 0.85, emissive: 0.08, rimMin: [0x9fb8ff, 0.3] },
+      look: { saturation: 1, contrast: 1.12, rim: 0.85, emissive: 0.08, rimMin: [0x9fb8ff, 0.3], xray: 0.4 },
     });
     this.walk = this.addPose("walk", "gafe-walk");
     this.sit = this.addPose("sit", "gafe-sit");

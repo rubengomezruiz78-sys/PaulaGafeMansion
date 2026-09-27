@@ -18,6 +18,14 @@ export function installTestHarness(game: Phaser.Game): void {
   // avanzar fotogramas a mano, ese reloj también tiene que avanzar. Nunca va
   // hacia atrás respecto al real, así que el juego normal no se ve afectado.
   const realNow = Date.now.bind(Date);
+  // Cede el turno sin setTimeout: con la pestaña oculta el navegador lo frena
+  // hasta una vez por minuto y las salas «no cargaban» en las pruebas.
+  const pause = (): Promise<void> =>
+    new Promise((r) => {
+      const ch = new MessageChannel();
+      ch.port1.onmessage = () => r();
+      ch.port2.postMessage(0);
+    });
   let virtualNow = realNow();
   Date.now = () => Math.max(realNow(), virtualNow);
   const api = {
@@ -47,13 +55,18 @@ export function installTestHarness(game: Phaser.Game): void {
     /** Espera (tiempo real) a que la sala termine de cargar su imagen y montarse. */
     async untilReady(timeoutMs = 8000) {
       const t0 = realNow();
+      let last = 0;
       while (realNow() - t0 < timeoutMs) {
         if (game.scene.isActive("world") && api.world().ready) {
           api.step(0.3);
           return true;
         }
-        await new Promise((r) => setTimeout(r, 25));
-        api.step(1 / 60);
+        await pause();
+        // Un fotograma por cada 16 ms reales, como en la partida de verdad.
+        if (realNow() - last >= 16) {
+          last = realNow();
+          api.step(1 / 60);
+        }
       }
       return false;
     },

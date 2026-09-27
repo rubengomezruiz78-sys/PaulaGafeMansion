@@ -153,7 +153,7 @@ export const PLANTA_BAJA: Partial<Record<ZoneId, ZoneDef>> = {
       { id: "regadera", label: "Regadera", hotspot: [[0.8, 0.88], [0.9, 0.88], [0.9, 0.98], [0.8, 0.98]], approach: [0.8, 0.95] },
       { id: "macetas", label: "Macetas del banco", hotspot: [[0.7, 0.66], [0.88, 0.66], [0.88, 0.76], [0.7, 0.76]], approach: [0.79, 0.86] },
     ],
-    poi: [[0.26, 0.82], [0.66, 0.9], [0.45, 0.75], [0.75, 0.95], [0.3, 0.96]],
+    poi: [[0.26, 0.82], [0.66, 0.9], [0.3, 0.74], [0.75, 0.95], [0.3, 0.96]],
     spawn: [0.5, 0.96],
     actorTint: 0xa9c4c4,
   },

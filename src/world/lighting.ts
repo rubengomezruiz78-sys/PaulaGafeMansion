@@ -46,6 +46,11 @@ uniform vec4 uProbe;
 uniform vec4 uRimMin;
 /** Borde de abajo de lo que se ve (lógico) y tiempo, para la viñeta y el grano. */
 uniform vec2 uView;
+/** Mapa de profundidad de la sala (0,4/Z) y dónde está: arriba, alto, activo. */
+uniform sampler2D uDepth;
+uniform vec3 uDepthRect;
+/** Profundidad de los pies (m), si se le prueba contra el cuadro (1/0) y fuerza de su silueta tras los muebles. */
+uniform vec3 uActorZ;
 uniform float uFilm;
 varying vec2 outTexCoord;
 varying float outTintEffect;
@@ -132,15 +137,28 @@ void main() {
   float edge = clamp(tex.a - nb, 0.0, 1.0) * 1.8;
   vec3 site = mix(uAmbient, uProbe.rgb, uProbe.a);
   c = mix(c, site * 0.55 * tex.a, clamp(edge * 0.45, 0.0, 0.5));
+  float outline = edge;
   // Contorno mínimo (Gafe): luz de luna por detrás y arriba aunque no haya velas.
   vec2 up = clamp(wuv + vec2(-0.35, -1.0) * uTexel * uRimMin.w, uFrame.xy, uFrame.zw);
   float rimUp = tex.a * (1.0 - texture2D(uMainSampler, up).a);
   c += uRimMin.rgb * rimUp;
 
   c = mix(c, uFogColor * tex.a, uGrade.z);
-  c = filmFinish(c, vec2(frag.x, uView.x - frag.y), uView.y, tex.a);
+  vec2 lp = vec2(frag.x, uView.x - frag.y);
+  c = filmFinish(c, lp, uView.y, tex.a);
+  // Lo que en el cuadro está más cerca que el personaje (un mueble delante) lo tapa.
+  float shown = 1.0;
+  if (uActorZ.y > 0.5 && uDepthRect.z > 0.5) {
+    float v = texture2D(uDepth, vec2(lp.x / 1920.0, (lp.y - uDepthRect.x) / uDepthRect.y)).r;
+    float sceneZ = 0.4 / max(v, 0.0067);
+    float zEdge = uActorZ.x - (0.25 + 0.08 * uActorZ.x);
+    shown = smoothstep(zEdge - 0.3, zEdge, sceneZ);
+  }
+  // Lo tapado de Paula y Gafe se adivina como una silueta tenue (siempre se les encuentra).
+  float ghost = uActorZ.z * (1.0 - shown) * clamp(0.55 + 1.6 * outline, 0.0, 1.6);
+  vec3 ghostCol = mix(site, vec3(0.62, 0.7, 0.92), 0.6) * 1.1;
   vec3 tint = outTint.bgr;
-  gl_FragColor = vec4(c * tint * outTint.a, tex.a * outTint.a);
+  gl_FragColor = vec4((c * tint * shown + ghostCol * tex.a * ghost) * outTint.a, tex.a * outTint.a * (shown + ghost));
 }
 `;
 
@@ -167,6 +185,10 @@ export interface ActorLightParams {
   probe: [number, number, number, number];
   /** Contorno mínimo: color y grosor (texels). */
   rimMin: [number, number, number, number];
+  /** Profundidad de los pies (m) para que los muebles de delante lo tapen (0 = sin probar). */
+  depthZ: number;
+  /** Silueta que se ve a través de los muebles (0 = nada; Paula y Gafe algo). */
+  xray?: number;
 }
 
 export interface SceneLight {
@@ -198,6 +220,10 @@ export class LightingState {
   /** Grano de película (0 en modo ligero) y tiempo para animarlo. */
   film = 1;
   time = 0;
+  /** Mapa de profundidad de la sala (si lo hay) y dónde está en coordenadas lógicas. */
+  depth?: Phaser.Textures.Texture;
+  depthTop = 0;
+  depthHeight = 1080;
 
   clear(): void {
     this.count = 0;
@@ -234,9 +260,21 @@ export const lighting = new LightingState();
 const hex3 = (c: number): [number, number, number] => [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 export { hex3 };
 
-type Lit = Phaser.GameObjects.Sprite & { lightParams?: ActorLightParams };
+type Lit = Phaser.GameObjects.Sprite & { lightParams?: ActorLightParams; noDepth?: boolean };
 
 export class ActorLightPipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePipeline {
+  /** El mapa de profundidad va en la unidad 2 (la 0 es la del sprite; la 1, la máscara del fondo). */
+  onBeforeFlush(): void {
+    const gl = this.gl;
+    const glTex = lighting.depth?.source[0]?.glTexture as { webGLTexture?: WebGLTexture } | undefined;
+    if (glTex?.webGLTexture) {
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, glTex.webGLTexture);
+      gl.activeTexture(gl.TEXTURE0);
+      this.activeTextures.length = 0;
+    }
+  }
+
   constructor(game: Phaser.Game) {
     super({ game, fragShader: glsl(FRAG) } as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);
   }
@@ -263,6 +301,10 @@ export class ActorLightPipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePi
     this.set1f("uScale", camera.zoom);
     this.set2f("uView", lighting.height, lighting.time);
     this.set1f("uFilm", lighting.film);
+    const hasDepth = !!lighting.depth?.source[0]?.glTexture;
+    this.set3f("uDepthRect", lighting.depthTop, lighting.depthHeight, hasDepth ? 1 : 0);
+    this.set3f("uActorZ", p?.depthZ ?? 0, hasDepth && !go.noDepth && (p?.depthZ ?? 0) > 0 ? 1 : 0, p?.xray ?? 0);
+    this.set1i("uDepth", 2);
     const w = p?.warp;
     this.set4f("uWarp", w?.[0] ?? 0, w?.[1] ?? 0, w?.[2] ?? 0, w?.[3] ?? 0);
     this.set2f("uRipple", p?.ripple[0] ?? 0, p?.ripple[1] ?? 0);

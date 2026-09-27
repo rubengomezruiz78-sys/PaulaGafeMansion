@@ -31,6 +31,8 @@ import { ZoneLifeFx, type LifeActor } from "../world/zoneLife";
 import type { Actor } from "../world/Actor";
 import { lighting } from "../world/lighting";
 import { LightProbe } from "../world/probe";
+import { DepthField } from "../world/depthField";
+import { ZONE_OCCLUSION } from "../content/occlusion";
 import type { PuzzleRequest } from "./PuzzleScene";
 import { UI_EVENTS, type ConversationRequest, type DialogueRequest, type SpeakerAnchor } from "./UIScene";
 
@@ -95,6 +97,8 @@ const EARSHOT_M = 7;
  */
 const KEEP_ZONES = 3;
 const recentZones: string[] = [];
+/** Salas sin mapa de profundidad (no se vuelve a pedir). */
+const missingDepth = new Set<string>();
 /**
  * Modo ligero: si la tablet no llega a ~36 fps en una sala, se quitan los
  * efectos decorativos (viñeta y motas) el resto de la sesión.
@@ -138,6 +142,8 @@ export class WorldScene extends Phaser.Scene {
   private life?: ZoneLifeFx;
   private perfClock = 0;
   private probe?: LightProbe;
+  private depth?: DepthField;
+  private depthErrorsHooked = false;
   /** Dedo apretado sobre el suelo (para andar siguiéndolo). */
   private hold?: { t: number; active: boolean; plannedAt: number };
 
@@ -158,10 +164,21 @@ export class WorldScene extends Phaser.Scene {
     this.target = data.zone;
   }
 
-  /** Solo se carga la imagen de la sala a la que se entra (durante el fundido). */
+  /** Solo se carga la imagen de la sala a la que se entra (y su profundidad), durante el fundido. */
   preload(): void {
     const key = `zone-${this.target}`;
     if (!this.textures.exists(key)) this.load.image(key, getZone(this.target).image);
+    const dkey = `depth-${this.target}`;
+    if (!this.textures.exists(dkey) && !missingDepth.has(this.target)) {
+      this.load.image(dkey, `world/depth/${this.target}.png`);
+      // Si una sala no tiene mapa, se juega igual (sin que los muebles tapen) y no se vuelve a pedir.
+      if (!this.depthErrorsHooked) {
+        this.depthErrorsHooked = true;
+        this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (f: Phaser.Loader.File) => {
+          if (f.key.startsWith("depth-")) missingDepth.add(f.key.slice(6));
+        });
+      }
+    }
   }
 
   /** Olvida las imágenes de las salas que hace rato que no se visitan. */
@@ -171,7 +188,7 @@ export class WorldScene extends Phaser.Scene {
     recentZones.unshift(current);
     for (const old of recentZones.splice(KEEP_ZONES)) {
       // El cuadro y las texturas que se sacan de él (máscara de vida y haces de luz).
-      for (const key of [`zone-${old}`, `lifemask-${old}`, `shafts-${old}`]) if (this.textures.exists(key)) this.textures.remove(key);
+      for (const key of [`zone-${old}`, `lifemask-${old}`, `shafts-${old}`, `depth-${old}`]) if (this.textures.exists(key)) this.textures.remove(key);
     }
   }
 
@@ -206,6 +223,20 @@ export class WorldScene extends Phaser.Scene {
       this.probe.calibrate(ar * 0.2126 + ag * 0.7152 + ab * 0.0722);
     } catch {
       this.probe = undefined; // sin lectura de píxeles: se queda la luz ambiente de siempre
+    }
+    // Profundidad del cuadro: los muebles de delante tapan a quien pase por detrás.
+    const dkey = `depth-${this.zoneDef.id}`;
+    this.depth = undefined;
+    lighting.depth = undefined;
+    if (this.textures.exists(dkey) && ZONE_OCCLUSION[this.zoneDef.id] !== false) {
+      lighting.depth = this.textures.get(dkey);
+      lighting.depthTop = bg.y;
+      lighting.depthHeight = bg.displayHeight;
+      try {
+        this.depth = new DepthField(this.textures.get(dkey).getSourceImage() as HTMLImageElement, bg.y, bg.displayHeight);
+      } catch {
+        this.depth = undefined;
+      }
     }
     this.addGlints();
     this.setupAmbience();
@@ -281,7 +312,7 @@ export class WorldScene extends Phaser.Scene {
   private dressActor(actor: Actor, castShadow = true): void {
     const life = LIFE[this.zoneDef.id];
     if (!life) return;
-    actor.setEnvironment({ reflect: life.reflect, fog: life.fog.amount, castShadow }, this.probe);
+    actor.setEnvironment({ reflect: life.reflect, fog: life.fog.amount, castShadow }, this.probe, this.depth);
   }
 
   private placePaulaAndGafe(data: WorldData): void {

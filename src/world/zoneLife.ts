@@ -267,6 +267,7 @@ export class ZoneLifeFx {
       d.halo.setPosition(p.x, p.y - lift - h * 0.5).setScale((h * 1.8) / 256).setDepth(p.y - 1);
       const lp = (d.img as unknown as { lightParams?: ActorLightParams }).lightParams;
       if (lp) {
+        lp.depthZ = floor.Z;
         lp.ripple[1] = this.t;
         lp.warp[0] = 0.02 * Math.sin(d.spin * 0.5);
         lp.warp[1] = 0.01 * Math.sin(this.t * 2);
@@ -406,7 +407,7 @@ export class ZoneLifeFx {
         if (lighting.enabled) {
           const lp: ActorLightParams = {
             keyDir: [0, -1], keyColor: [0, 0, 0], saturation: 0.9, contrast: 0.95, fog: 0.1, emissive: 0.45,
-            rimTexels: 3, keyPower: 0, warp: [0, 0, 0, 0], ripple: [0.02, 0], probe: [0, 0, 0, 0], rimMin: [0, 0, 0, 3],
+            rimTexels: 3, keyPower: 0, warp: [0, 0, 0, 0], ripple: [0.02, 0], probe: [0, 0, 0, 0], rimMin: [0, 0, 0, 3], depthZ: 0,
           };
           img.setPipeline(ACTOR_LIGHT);
           (img as unknown as { lightParams: ActorLightParams }).lightParams = lp;

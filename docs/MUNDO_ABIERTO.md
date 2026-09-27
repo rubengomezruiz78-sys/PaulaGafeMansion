@@ -202,3 +202,34 @@ Gafe más definido y proporciones reales.
   el polvo reaccionan al paso.
 - Pruebas: 323 tests, `__test.autoplay()` completa (192 pasos), vídeo con
   `__test.recordSegunda()`.
+
+## 2.2.1 y 2.2.2 — «Lista para llevar» (2026-09-27)
+Petición: afinar el código, integrar mejor a los personajes y corregir fallos
+para que Paula se lleve el juego hoy en la tablet.
+- **Fallos**: las luces de las velas caían 60 px más abajo en pantallas 16:10
+  (la altura del sombreado era 1080 en vez de `VIEW_TOP + VIEW_H`); el borde
+  fundido se iba a negro sin sonda de luz. Prueba de estrés con toques al azar
+  (`game-web/caos-dev.js`) en las 23 salas sin errores ni bloqueos; partidas
+  guardadas de la 2.0 cargan bien.
+- **Rendimiento** (gráfica PowerVR de la tablet): viñeta y grano dentro de los
+  sombreados (dos pasadas a pantalla completa menos), haces de luz recortados
+  a su caja, sombreados solo en ASCII (`world/glsl.ts`: algunas gráficas
+  rechazaban una tilde en un comentario). Calidad adaptable
+  (`game/quality.ts`): por debajo de 36 fps, modo ligero; por debajo de 28,
+  un 20 % menos de píxeles cada vez (hasta la mitad). Se recuerda en
+  `localStorage` (`paula-gafe-calidad`).
+- **Oclusión con los muebles**: mapas de profundidad de cada sala
+  (`tools/depth_maps.py`: Depth Anything V2 en local, calibrado con el suelo
+  caminable, `public/world/depth/<sala>.png`, 0,4/Z en 8 bits). El sombreado
+  de los personajes oculta lo que queda detrás de un mueble (piano, sarcófago,
+  fuente, mesas…) y `world/depthField.ts` quita sombra y reflejo si los pies
+  quedan tapados. Paula y Gafe dejan ver una silueta tenue a través del mueble
+  (`look.xray`) para que la niña siempre los encuentre. Una sala se puede
+  excluir en `content/occlusion.ts`.
+- **Suelo recortado** donde el mapa demostró que se pisaban muebles: el banco
+  y la consola del jarrón en la galería, los escalones del altar y el armario
+  de velas en el archivo; puntos de paseo fuera de la fuente del invernadero.
+  Para revisar una sala: barrer todo el suelo y pintar dónde quedaría Paula
+  tapada (rojo = más de un 25 %).
+- Arnés: `untilReady` ya no depende de `setTimeout` (con la pestaña oculta el
+  navegador lo frenaba y las salas «no cargaban» en las pruebas).
