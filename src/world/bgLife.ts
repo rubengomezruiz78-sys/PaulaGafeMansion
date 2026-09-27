@@ -8,6 +8,7 @@
  * La máscara se dibuja por sala a partir de las anotaciones de `content/life.ts`.
  */
 import Phaser from "phaser";
+import { glsl } from "./glsl";
 import type { NPoly, ZoneLife } from "../content/life";
 
 const FRAG = `
@@ -25,11 +26,31 @@ uniform float uAspect;
 uniform vec4 uSpin[4];
 /** Fracción del alto del cuadro que es franja de más (arriba y abajo). */
 uniform float uBleed;
+/** Dónde está el cuadro en coordenadas lógicas: arriba y alto. */
+uniform vec2 uRect;
+/** 1 = con grano; 0 = sin (modo ligero). */
+uniform float uFilm;
 varying vec2 outTexCoord;
 varying float outTintEffect;
 varying vec4 outTint;
 
 float hash(float n) { return fract(sin(n) * 43758.5453); }
+
+/**
+ * Acabado de «película» común al fondo y a los personajes: viñeta (bordes más
+ * oscuros) y grano. Antes eran dos capas a pantalla completa encima de todo;
+ * hecho aquí no cuesta casi nada. «p» en píxeles lógicos (1920×1080, y hacia abajo).
+ */
+vec3 filmFinish(vec3 c, vec2 p, float t, float alpha) {
+  float d = distance(p, vec2(960.0, 486.0));
+  float k = clamp((d - 378.0) / 812.0, 0.0, 1.0);
+  float v = k < 0.6 ? k / 0.6 * 0.25 : 0.25 + (k - 0.6) / 0.4 * 0.55;
+  c = mix(c, vec3(0.008, 0.012, 0.02) * alpha, v * 0.6);
+  float n = fract(sin(dot(floor(p * 0.5) + floor(t * 24.0) * vec2(37.0, 17.0), vec2(12.9898, 78.233))) * 43758.5453);
+  c += n * 0.055 * (alpha - c) * uFilm;
+  return c;
+}
+
 
 void main() {
   // Todo se calcula en el cuadro 16:9 (donde están las anotaciones) y al final
@@ -74,6 +95,7 @@ void main() {
     col.rgb += w * uRain * streak * vec3(0.30, 0.36, 0.46);
     col.rgb += w * uFlash * vec3(0.85, 0.92, 1.0);
   }
+  col.rgb = filmFinish(col.rgb, vec2(outTexCoord.x * 1920.0, uRect.x + outTexCoord.y * uRect.y), t, 1.0);
   gl_FragColor = col;
 }
 `;
@@ -84,10 +106,13 @@ export class BgLifePipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePipeli
   flash = 0;
   rain = 0.8;
   bleed = 0;
+  /** Cuadro en coordenadas lógicas (arriba, alto). */
+  rect: [number, number] = [0, 1080];
+  film = 1;
   readonly spins = new Float32Array(16);
 
   constructor(game: Phaser.Game) {
-    super({ game, fragShader: FRAG } as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);
+    super({ game, fragShader: glsl(FRAG) } as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);
   }
 
   onBeforeFlush(): void {
@@ -108,6 +133,8 @@ export class BgLifePipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePipeli
     this.set1f("uAspect", 1920 / 1080);
     this.set4fv("uSpin", this.spins);
     this.set1f("uBleed", this.bleed);
+    this.set2f("uRect", this.rect[0], this.rect[1]);
+    this.set1f("uFilm", this.film);
   }
 }
 

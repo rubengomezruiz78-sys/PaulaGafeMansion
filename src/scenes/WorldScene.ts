@@ -22,6 +22,7 @@ import { MILESTONES } from "../content/quests";
 import { polyPx, toPx, walkAreaPx, zone as getZone, ZONES, type ExitDef, type PropDef, type ZoneDef, type ZoneId } from "../content/zones";
 import { session } from "../game/session";
 import { chatDirector, worldSim } from "../game/world";
+import { rememberLowFx, shrinkResolution, startLowFx } from "../game/quality";
 import { pushBackHandler } from "../platform";
 import { Bubble } from "../world/Bubble";
 import { Gafe, Ghost, Paula } from "../world/characters";
@@ -98,8 +99,10 @@ const recentZones: string[] = [];
  * Modo ligero: si la tablet no llega a ~36 fps en una sala, se quitan los
  * efectos decorativos (viñeta y motas) el resto de la sesión.
  */
-let lowFx = false;
+let lowFx = startLowFx();
 const LOW_FPS = 36;
+/** Por debajo de esto, ya en modo ligero, se dibuja con menos píxeles. */
+const VERY_LOW_FPS = 28;
 
 export class WorldScene extends Phaser.Scene {
   private zoneDef!: ZoneDef;
@@ -995,24 +998,34 @@ export class WorldScene extends Phaser.Scene {
     // Con alfa 0 no se dibuja (antes tenía el relleno a 0 y se pintaba siempre sin verse).
     this.flashRect = this.add.rectangle(0, VIEW_TOP, GAME_W, VIEW_H, 0xdde8ff).setOrigin(0).setDepth(4500)
       .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
-    if (lowFx) return;
-    // Viñeta: oscurece los bordes y da profundidad al cuadro.
-    this.fxObjects.push(this.add.image(0, VIEW_TOP, "vignette").setOrigin(0).setDisplaySize(GAME_W, VIEW_H).setDepth(4400).setAlpha(0.6));
+    // La viñeta y el grano los ponen los sombreados del fondo y de los personajes.
   }
 
-  /** Si va a tirones, pasa a modo ligero (se mide tras unos segundos en la sala). */
+  /**
+   * Si va a tirones, primero modo ligero y, si no basta, menos píxeles (se mide
+   * tras unos segundos en cada sala; lo decidido se recuerda para otra vez).
+   */
   private watchPerformance(dt: number): void {
-    if (lowFx) return;
+    // En las pruebas el tiempo lo lleva el arnés, no el reloj real.
+    if ((window as unknown as { __test?: unknown }).__test || !this.game.loop.running) return;
     this.perfClock += dt;
     if (this.perfClock < 6 || this.perfClock % 3 > dt) return;
-    if (this.game.loop.actualFps >= LOW_FPS) return;
-    lowFx = true;
-    this.life?.lighten();
-    for (const o of this.fxObjects) {
-      this.tweens.killTweensOf(o);
-      o.destroy();
+    const fps = this.game.loop.actualFps;
+    if (!lowFx) {
+      if (fps >= LOW_FPS) return;
+      lowFx = true;
+      rememberLowFx();
+      this.life?.lighten();
+      for (const o of this.fxObjects) {
+        this.tweens.killTweensOf(o);
+        o.destroy();
+      }
+      this.fxObjects = [];
+      this.perfClock = 0;
+      return;
     }
-    this.fxObjects = [];
+    if (fps >= VERY_LOW_FPS) return;
+    if (shrinkResolution(this.game)) this.perfClock = 0;
   }
 
   /** Un relámpago cada tanto (en las salas con ventanas) y su trueno después. */

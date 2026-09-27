@@ -3,13 +3,6 @@ export const GAME_W = 1920;
 export const GAME_H = 1080;
 
 /**
- * Píxeles que se dibujan de verdad: nunca más de los que enseña la pantalla.
- * La tablet (1280×800) muestra el juego a 1280×720, así que se dibuja a 2/3
- * (2,25 veces menos trabajo para su gráfica, y se ve igual de nítido). La
- * cámara de cada escena amplía/reduce para que todo siga en 1920×1080.
- * `?escala=1` fuerza el tamaño completo (para grabar vídeos).
- */
-/**
  * Los cuadros llevan una franja pintada de más arriba y abajo (BLEED px). En
  * pantallas más altas que 16:9 (la tablet es 16:10) se ve y llena la pantalla
  * sin franjas negras; en 16:9 o en el móvil queda fuera. Todo lo anotado sigue
@@ -19,9 +12,37 @@ export const BLEED = 60;
 export const VIEW_H = viewHeight();
 /** Primera fila visible (negativa si se ve la franja de arriba). */
 export const VIEW_TOP = (GAME_H - VIEW_H) / 2;
-export const RENDER_W = renderWidth();
+/**
+ * Píxeles que se dibujan de verdad: nunca más de los que enseña la pantalla
+ * (la tablet, 1280 de ancho, dibuja a 2/3 de 1920 y se ve igual de nítido), y
+ * menos aún si la gráfica no llega (calidad adaptable: ver game/quality.ts,
+ * que lo recuerda para la próxima vez). La cámara de cada escena amplía o
+ * reduce para que todo siga en 1920×1080. `?escala=1` fuerza el tamaño
+ * completo (para grabar vídeos).
+ */
+export const RENDER_W = Math.round(renderWidth() * storedScale());
 export const RENDER_H = Math.round((RENDER_W * VIEW_H) / GAME_W);
-export const RENDER_SCALE = RENDER_W / GAME_W;
+let renderScale = RENDER_W / GAME_W;
+
+/** Escala de dibujo actual (píxeles de verdad por píxel lógico). */
+export const currentRenderScale = (): number => renderScale;
+
+/** Cambia la escala de dibujo (la usa game/quality.ts). */
+export function setRenderScale(s: number): void {
+  renderScale = s;
+}
+
+/** Calidad guardada de otras veces (1 = completa; menos si la tablet no llegaba). */
+function storedScale(): number {
+  if (typeof window === "undefined") return 1;
+  if (new URLSearchParams(location.search).get("escala")) return 1;
+  try {
+    const v = Number(JSON.parse(localStorage.getItem("paula-gafe-calidad") ?? "{}").scale);
+    return v >= 0.5 && v <= 1 ? v : 1;
+  } catch {
+    return 1;
+  }
+}
 
 function viewHeight(): number {
   if (typeof window === "undefined") return GAME_H;
@@ -55,7 +76,7 @@ export function placeBackdrop(img: { width: number; height: number; setOrigin(x:
 
 /** Encaja la cámara de una escena en el tamaño lógico (llamar al principio de create). */
 export function fitCamera(scene: { cameras: { main: { setZoom(z: number): { centerOn(x: number, y: number): unknown } } } }): void {
-  scene.cameras.main.setZoom(RENDER_SCALE).centerOn(GAME_W / 2, GAME_H / 2);
+  scene.cameras.main.setZoom(renderScale).centerOn(GAME_W / 2, GAME_H / 2);
 }
 
 export const FONT_TITLE = "Cinzel";

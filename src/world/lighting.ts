@@ -9,6 +9,8 @@
  * pocos: el coste es despreciable).
  */
 import Phaser from "phaser";
+import { glsl } from "./glsl";
+import { VIEW_H, VIEW_TOP } from "../config";
 
 export const MAX_LIGHTS = 8;
 
@@ -42,9 +44,27 @@ uniform vec2 uRipple;
 uniform vec4 uProbe;
 /** Contorno mínimo aunque no haya luz cerca (para que un gato negro no se pierda en la oscuridad). */
 uniform vec4 uRimMin;
+/** Borde de abajo de lo que se ve (lógico) y tiempo, para la viñeta y el grano. */
+uniform vec2 uView;
+uniform float uFilm;
 varying vec2 outTexCoord;
 varying float outTintEffect;
 varying vec4 outTint;
+
+/**
+ * Acabado de «película» común al fondo y a los personajes: viñeta (bordes más
+ * oscuros) y grano. Antes eran dos capas a pantalla completa encima de todo;
+ * hecho aquí no cuesta casi nada. «p» en píxeles lógicos (1920×1080, y hacia abajo).
+ */
+vec3 filmFinish(vec3 c, vec2 p, float t, float alpha) {
+  float d = distance(p, vec2(960.0, 486.0));
+  float k = clamp((d - 378.0) / 812.0, 0.0, 1.0);
+  float v = k < 0.6 ? k / 0.6 * 0.25 : 0.25 + (k - 0.6) / 0.4 * 0.55;
+  c = mix(c, vec3(0.008, 0.012, 0.02) * alpha, v * 0.6);
+  float n = fract(sin(dot(floor(p * 0.5) + floor(t * 24.0) * vec2(37.0, 17.0), vec2(12.9898, 78.233))) * 43758.5453);
+  c += n * 0.055 * (alpha - c) * uFilm;
+  return c;
+}
 
 /** Deforma la figura como un títere de verdad (se lee la textura en el punto "de antes"). */
 vec2 warpUv(vec2 uv) {
@@ -110,13 +130,15 @@ void main() {
     texture2D(uMainSampler, clamp(wuv + vec2(0.0, uTexel.y) * 2.5, uFrame.xy, uFrame.zw)).a +
     texture2D(uMainSampler, clamp(wuv - vec2(0.0, uTexel.y) * 2.5, uFrame.xy, uFrame.zw)).a);
   float edge = clamp(tex.a - nb, 0.0, 1.0) * 1.8;
-  c = mix(c, uProbe.rgb * 0.55 * tex.a, clamp(edge * 0.45, 0.0, 0.5));
+  vec3 site = mix(uAmbient, uProbe.rgb, uProbe.a);
+  c = mix(c, site * 0.55 * tex.a, clamp(edge * 0.45, 0.0, 0.5));
   // Contorno mínimo (Gafe): luz de luna por detrás y arriba aunque no haya velas.
   vec2 up = clamp(wuv + vec2(-0.35, -1.0) * uTexel * uRimMin.w, uFrame.xy, uFrame.zw);
   float rimUp = tex.a * (1.0 - texture2D(uMainSampler, up).a);
   c += uRimMin.rgb * rimUp;
 
   c = mix(c, uFogColor * tex.a, uGrade.z);
+  c = filmFinish(c, vec2(frag.x, uView.x - frag.y), uView.y, tex.a);
   vec3 tint = outTint.bgr;
   gl_FragColor = vec4(c * tint * outTint.a, tex.a * outTint.a);
 }
@@ -165,10 +187,17 @@ export class LightingState {
   count = 0;
   /** Las mismas luces en coordenadas de pantalla (para calcular sombras y contraluz). */
   readonly screen: SceneLight[] = [];
-  /** Alto de la pantalla lógica (para pasar a coordenadas de GL, con y hacia arriba). */
-  height = 1080;
+  /**
+   * Borde de abajo de lo que se ve, en coordenadas lógicas (para pasar a las de
+   * GL, con la y hacia arriba desde el borde inferior del lienzo). En 16:9 es
+   * 1080; en la tablet (16:10) se ve un poco más abajo: 1140.
+   */
+  height = VIEW_TOP + VIEW_H;
   /** false en navegadores sin WebGL: se usa el tinte de siempre. */
   enabled = false;
+  /** Grano de película (0 en modo ligero) y tiempo para animarlo. */
+  film = 1;
+  time = 0;
 
   clear(): void {
     this.count = 0;
@@ -209,7 +238,7 @@ type Lit = Phaser.GameObjects.Sprite & { lightParams?: ActorLightParams };
 
 export class ActorLightPipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePipeline {
   constructor(game: Phaser.Game) {
-    super({ game, fragShader: FRAG } as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);
+    super({ game, fragShader: glsl(FRAG) } as Phaser.Types.Renderer.WebGL.WebGLPipelineConfig);
   }
 
   batchSprite(go: Lit, camera: Phaser.Cameras.Scene2D.Camera, parent?: Phaser.GameObjects.Components.TransformMatrix): void {
@@ -232,6 +261,8 @@ export class ActorLightPipeline extends Phaser.Renderer.WebGL.Pipelines.SinglePi
     this.set1f("uRimTexels", p?.rimTexels ?? 3);
     this.set1f("uKeyPower", p?.keyPower ?? 0);
     this.set1f("uScale", camera.zoom);
+    this.set2f("uView", lighting.height, lighting.time);
+    this.set1f("uFilm", lighting.film);
     const w = p?.warp;
     this.set4f("uWarp", w?.[0] ?? 0, w?.[1] ?? 0, w?.[2] ?? 0, w?.[3] ?? 0);
     this.set2f("uRipple", p?.ripple[0] ?? 0, p?.ripple[1] ?? 0);

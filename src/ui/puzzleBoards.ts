@@ -620,7 +620,7 @@ class ClockBoard extends BaseBoard {
 
   constructor(host: BoardHost, private readonly step: Step<"clock">) {
     super(host);
-    const { x, y, w, h } = host.area;
+    const { x, y, h } = host.area;
     const r = Math.min(h / 2 - 8, 190);
     this.c = { x: x + r + 60, y: y + h / 2, r };
     const face = host.keep(this.scene.add.graphics());

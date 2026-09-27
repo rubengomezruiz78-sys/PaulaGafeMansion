@@ -83,7 +83,6 @@ export class ZoneLifeFx {
   private shaftImgs: Phaser.GameObjects.Image[] = [];
   private fogBack?: Phaser.GameObjects.TileSprite;
   private fogFront?: Phaser.GameObjects.TileSprite;
-  private grain?: Phaser.GameObjects.TileSprite;
   private pipeline?: BgLifePipeline;
   private spinAngles: number[] = [];
   private t = 0;
@@ -109,16 +108,13 @@ export class ZoneLifeFx {
     this.setupFog();
     this.setupTwinkles();
     this.setupCritters();
-    if (!opts.lowFx) {
-      this.grain = scene.add.tileSprite(0, VIEW_TOP, W, VIEW_H, "grain").setOrigin(0).setDepth(4450).setAlpha(0.055)
-        .setBlendMode(Phaser.BlendModes.SCREEN);
-    }
+    lighting.film = opts.lowFx ? 0 : 1;
   }
 
-  /** Modo ligero (la gráfica no llega): fuera las capas a pantalla completa que menos se notan. */
+  /** Modo ligero (la gráfica no llega): fuera el grano y la niebla de delante. */
   lighten(): void {
-    this.grain?.destroy();
-    this.grain = undefined;
+    lighting.film = 0;
+    if (this.pipeline) this.pipeline.film = 0;
     this.fogFront?.destroy();
     this.fogFront = undefined;
   }
@@ -135,6 +131,8 @@ export class ZoneLifeFx {
     // Parte del cuadro que es franja de más (arriba y abajo), en fracción del alto.
     const src = bg.texture.getSourceImage() as { width: number; height: number };
     this.pipeline.bleed = Math.max(0, (src.height - (src.width * H) / W) / 2 / src.height);
+    this.pipeline.rect = [bg.y, bg.displayHeight];
+    this.pipeline.film = this.opts.lowFx ? 0 : 1;
     bg.setPipeline(BG_LIFE);
   }
 
@@ -238,7 +236,7 @@ export class ZoneLifeFx {
     }
     if (this.fogBack) this.fogBack.tilePositionX += 9 * dt;
     if (this.fogFront) this.fogFront.tilePositionX -= 15 * dt;
-    if (this.grain) this.grain.setTilePosition(Math.floor(this.rng() * 256), Math.floor(this.rng() * 256));
+    lighting.time = t;
 
     for (const tm of this.timers) {
       if (t < tm.at) continue;
@@ -322,6 +320,12 @@ export class ZoneLifeFx {
     const moon = this.life.lights.find((l) => l.flicker === 0)?.color ?? 0x9fb6ff;
     const img = this.scene.add.image(0, 0, key).setOrigin(0).setDisplaySize(W, H).setTint(moon)
       .setBlendMode(Phaser.BlendModes.ADD).setDepth(-880);
+    const all = this.life.shafts.map(bbox);
+    const cx0 = Math.max(0, Math.floor(Math.min(...all.map((b) => b.x0)) * 480) - 8);
+    const cy0 = Math.max(0, Math.floor(Math.min(...all.map((b) => b.y0)) * 270) - 8);
+    const cx1 = Math.min(480, Math.ceil(Math.max(...all.map((b) => b.x1)) * 480) + 8);
+    const cy1 = Math.min(270, Math.ceil(Math.max(...all.map((b) => b.y1)) * 270) + 8);
+    img.setCrop(cx0, cy0, cx1 - cx0, cy1 - cy0);
     img.setData("a", this.opts.calm ? 0.2 : 0.3).setData("p", this.rng() * 6);
     this.shaftImgs.push(img);
     if (this.opts.lowFx) return;
