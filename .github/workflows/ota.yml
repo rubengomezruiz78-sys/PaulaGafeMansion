@@ -25,8 +25,11 @@ jobs:
       # APK mínimo que sabe instalar actualizaciones (versionCode 31 = v2.3.0).
       # Súbelo si un cambio del juego necesita algo nuevo en la parte Android.
       MIN_APK: 31
-      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
-      FIREBASE_SITE: ${{ vars.FIREBASE_SITE_MANSION }}
+      # Proyecto de Firebase y sitio de Hosting propio de este juego (el sitio
+      # principal paula-gafe.web.app es del juego Mundo Abierto).
+      FIREBASE_PROJECT_ID: paula-gafe
+      FIREBASE_SITE: paula-mansion
+      HAY_CLAVE_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,8 +63,9 @@ jobs:
             sed -i "s#<string name=\"ota_manifest_url\" translatable=\"false\">.*</string>#<string name=\"ota_manifest_url\" translatable=\"false\">${url}</string>#" \
               android/app/src/main/res/values/ota.xml
             grep ota_manifest_url android/app/src/main/res/values/ota.xml
-          else
-            echo "::notice::Actualizaciones sin publicar: falta la variable FIREBASE_PROJECT_ID. Se comprueba todo igual."
+          fi
+          if [ "$HAY_CLAVE_FIREBASE" != "true" ]; then
+            echo "::notice::Actualización preparada pero sin publicar: falta el secreto FIREBASE_SERVICE_ACCOUNT."
           fi
 
       - name: Paquete de actualización
@@ -140,11 +144,11 @@ jobs:
           retention-days: 30
 
       - name: Publicar la actualización
-        if: github.ref == 'refs/heads/master' && vars.FIREBASE_PROJECT_ID != ''
+        if: github.ref == 'refs/heads/master' && env.HAY_CLAVE_FIREBASE == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+          projectId: ${{ env.FIREBASE_PROJECT_ID }}
           channelId: live
           entryPoint: ota_hosting

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Manifiesto de actualizaciones (lo publica la compilación de GitHub).
-         Vacío = actualizaciones desactivadas. -->
-    <string name="ota_manifest_url" translatable="false"></string>
+         Vacío = actualizaciones desactivadas.
+         Sitio paula-mansion del proyecto de Firebase paula-gafe. -->
+    <string name="ota_manifest_url" translatable="false">https://paula-mansion.web.app/mansion/manifest.json</string>
 </resources>

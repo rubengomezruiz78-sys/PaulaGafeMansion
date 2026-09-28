@@ -79,10 +79,11 @@ La tablet no necesita reinstalar el APK para recibir cambios del juego web:
 parte Android (Java), sube `versionCode` y `MIN_APK` en el workflow: las tablets
 con un APK anterior no instalarán esa actualización hasta tener el APK nuevo.
 
-**Configuración (una vez):** variable del repositorio `FIREBASE_PROJECT_ID`
-(y opcionalmente `FIREBASE_SITE_MANSION` si el sitio tiene otro nombre) y secreto
-`FIREBASE_SERVICE_ACCOUNT`. La dirección del manifiesto va en
-`android/app/src/main/res/values/ota.xml` (vacía = actualizaciones desactivadas).
+**Configuración:** proyecto de Firebase `paula-gafe`, sitio de Hosting `paula-mansion`
+(manifiesto en `https://paula-mansion.web.app/mansion/manifest.json`, también en
+`android/app/src/main/res/values/ota.xml`). Solo hace falta el secreto del
+repositorio `FIREBASE_SERVICE_ACCOUNT` (clave JSON de una cuenta de servicio);
+sin él, todo se comprueba igual pero no se publica.
 Opcional: secretos `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
 `ANDROID_KEY_ALIAS` y `ANDROID_KEY_PASSWORD` para que GitHub genere también el APK
 firmado con la clave de verdad.
