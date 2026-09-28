@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Solo para responder con la voz (opcional, se pide al usarlo). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Solo para descargar actualizaciones del juego (ver Actualizador.java).
+         El juego no puede salir a Internet ni se envía nada desde la tablet. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <queries>
         <intent><action android:name="android.speech.RecognitionService" /></intent>

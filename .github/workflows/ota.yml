@@ -1,0 +1,150 @@
+name: Actualización OTA del juego
+
+# En cada cambio en master: pruebas, juego web empaquetado como actualización
+# (zip + manifiesto con SHA-256) y comprobación de que la app Android compila.
+# Si está configurado Firebase, publica la actualización y la tablet la
+# descarga sola la próxima vez que se abra el juego.
+on:
+  push:
+    # En las ramas claude/* solo se comprueba (no se publica nada)
+    branches: [master, "claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ota-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ota:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # APK mínimo que sabe instalar actualizaciones (versionCode 31 = v2.3.0).
+      # Súbelo si un cambio del juego necesita algo nuevo en la parte Android.
+      MIN_APK: 31
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_SITE: ${{ vars.FIREBASE_SITE_MANSION }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # la versión es el número de commits
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Dependencias
+        run: npm ci
+
+      - name: Pruebas y tipos
+        run: |
+          npm test
+          npm run typecheck
+
+      - name: Juego web
+        run: |
+          echo "VERSION_WEB=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+          npm run build:apk-web
+          cat android/app/src/main/assets/version-web.json
+
+      - name: Dirección de las actualizaciones
+        run: |
+          sitio="${FIREBASE_SITE:-$FIREBASE_PROJECT_ID}"
+          if [ -n "$sitio" ]; then
+            url="https://${sitio}.web.app/mansion/manifest.json"
+            echo "OTA_BASE=https://${sitio}.web.app/mansion" >> "$GITHUB_ENV"
+            sed -i "s#<string name=\"ota_manifest_url\" translatable=\"false\">.*</string>#<string name=\"ota_manifest_url\" translatable=\"false\">${url}</string>#" \
+              android/app/src/main/res/values/ota.xml
+            grep ota_manifest_url android/app/src/main/res/values/ota.xml
+          else
+            echo "::notice::Actualizaciones sin publicar: falta la variable FIREBASE_PROJECT_ID. Se comprueba todo igual."
+          fi
+
+      - name: Paquete de actualización
+        run: |
+          mkdir -p ota_hosting/public/mansion
+          zip_nombre="juego-v${VERSION_WEB}.zip"
+          (cd android/app/src/main/assets && zip -q -r -X "$GITHUB_WORKSPACE/ota_hosting/public/mansion/$zip_nombre" .)
+          sha=$(sha256sum "ota_hosting/public/mansion/$zip_nombre" | cut -d' ' -f1)
+          tam=$(stat -c %s "ota_hosting/public/mansion/$zip_nombre")
+          cat > ota_hosting/public/mansion/manifest.json <<JSON
+          {
+            "version": ${VERSION_WEB},
+            "url": "${OTA_BASE:-https://example.invalid/mansion}/${zip_nombre}",
+            "sha256": "${sha}",
+            "tamano": ${tam},
+            "min_apk": ${MIN_APK},
+            "commit": "${GITHUB_SHA}"
+          }
+          JSON
+          cat ota_hosting/public/mansion/manifest.json
+          linea_sitio=""
+          if [ -n "$FIREBASE_SITE" ]; then linea_sitio="\"site\": \"$FIREBASE_SITE\","; fi
+          cat > ota_hosting/firebase.json <<JSON
+          {
+            "hosting": {
+              ${linea_sitio}
+              "public": "public",
+              "headers": [
+                {"source": "**/manifest.json", "headers": [{"key": "Cache-Control", "value": "no-cache"}]},
+                {"source": "**/*.zip", "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]}
+              ]
+            }
+          }
+          JSON
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: APK (comprueba que la parte Android compila)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p work android/keystore
+          if [ -n "$KEYSTORE_B64" ]; then
+            # La clave de verdad: el APK se instala encima del de la tablet
+            echo "$KEYSTORE_B64" | base64 -d > android/keystore/paula-gafe-release.jks
+            printf 'storeFile=keystore/paula-gafe-release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > work/android-signing.properties
+            echo "APK_NOMBRE=Paula-Gafe-Mansion.apk" >> "$GITHUB_ENV"
+          else
+            # Sin la clave (está solo en el PC): clave de usar y tirar, solo para
+            # comprobar que compila. Ese APK NO se instala encima del de la tablet.
+            keytool -genkeypair -v -keystore android/keystore/prueba.jks -alias prueba \
+              -keyalg RSA -keysize 2048 -validity 1 -storepass prueba -keypass prueba \
+              -dname "CN=Prueba" > /dev/null
+            printf 'storeFile=keystore/prueba.jks\nstorePassword=prueba\nkeyAlias=prueba\nkeyPassword=prueba\n' \
+              > work/android-signing.properties
+            echo "APK_NOMBRE=solo-comprobacion-NO-instalar.apk" >> "$GITHUB_ENV"
+          fi
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --console=plain --warning-mode=none
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/$APK_NOMBRE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-y-actualizacion
+          path: |
+            ${{ env.APK_NOMBRE }}
+            ota_hosting/public/mansion/
+          retention-days: 30
+
+      - name: Publicar la actualización
+        if: github.ref == 'refs/heads/master' && vars.FIREBASE_PROJECT_ID != ''
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+          channelId: live
+          entryPoint: ota_hosting

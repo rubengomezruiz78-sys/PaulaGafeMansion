@@ -64,6 +64,29 @@ $adb = "C:\Users\ruben\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 & $adb install -r .\Paula-Gafe-Mansion-release.apk
 ```
 
+## Actualizaciones automáticas (OTA) — desde la v2.3.0
+
+La tablet no necesita reinstalar el APK para recibir cambios del juego web:
+
+1. Se sube un cambio a `master` en GitHub.
+2. El workflow **Actualización OTA** (`.github/workflows/ota.yml`) pasa las pruebas,
+   compila el juego, lo empaqueta (`juego-v<N>.zip` + `manifest.json` con su
+   SHA-256) y lo publica en Firebase Hosting (`https://<sitio>.web.app/mansion/`).
+3. Al abrir el juego, la app (`Actualizador.java`) lo descarga en segundo plano,
+   lo verifica y lo usa en el siguiente arranque.
+
+`<N>` es el número de commits de la rama. Si un cambio necesita algo nuevo en la
+parte Android (Java), sube `versionCode` y `MIN_APK` en el workflow: las tablets
+con un APK anterior no instalarán esa actualización hasta tener el APK nuevo.
+
+**Configuración (una vez):** variable del repositorio `FIREBASE_PROJECT_ID`
+(y opcionalmente `FIREBASE_SITE_MANSION` si el sitio tiene otro nombre) y secreto
+`FIREBASE_SERVICE_ACCOUNT`. La dirección del manifiesto va en
+`android/app/src/main/res/values/ota.xml` (vacía = actualizaciones desactivadas).
+Opcional: secretos `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` y `ANDROID_KEY_PASSWORD` para que GitHub genere también el APK
+firmado con la clave de verdad.
+
 ## Notas
 
 - App independiente de Google Play; se instala como APK. `versionCode`/`versionName`

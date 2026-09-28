@@ -1,5 +1,20 @@
 # Historial de versiones — Paula, Gafe y el misterio de la mansión encantada
 
+## v2.3.0 (versionCode 31) — 2026-09-28 · ACTUALIZACIONES AUTOMÁTICAS (OTA)
+A partir de esta versión, el juego se actualiza solo: basta con instalar este
+APK una vez.
+
+- **NUEVO: el juego descarga sus novedades solo.** Al abrirlo, mira en segundo
+  plano si hay una versión nueva; si la hay, la descarga, comprueba que llegó
+  entera (SHA-256) y la usa **la próxima vez que se abra**. Nunca cambia el
+  juego a mitad de partida y la partida guardada se conserva.
+- Si no hay Internet o algo falla, se sigue jugando con lo que había.
+- **Privacidad:** la app necesita ahora el permiso de Internet, pero solo lo
+  usa el actualizador y solo para descargar; no se envía nada desde la tablet.
+  El juego en sí sigue sin poder salir a Internet.
+- Cada cambio subido a GitHub pasa las pruebas, empaqueta la actualización y
+  comprueba que la app Android compila (workflow «Actualización OTA»).
+
 ## v1.4.5 (versionCode 14) — 2026-07-28 · EL BOTÓN ATRÁS, POR FIN CONECTADO
 Probado en la tablet Lenovo real, no solo en el ordenador.
 

@@ -27,6 +27,8 @@ import android.webkit.WebViewClient;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
@@ -37,8 +39,10 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Envoltorio del juego. Todo se sirve desde los assets del APK (no hay permiso
- * de Internet). Voz de los personajes con el motor de voz del sistema (se
+ * Envoltorio del juego. Todo se sirve desde los assets del APK o, si llegó una
+ * actualización, desde la versión descargada (ver {@link Actualizador}, lo único
+ * que usa Internet, y solo para descargar). El juego en sí no puede salir a
+ * Internet: el WebView bloquea cualquier dirección que no sea paula.local. Voz de los personajes con el motor de voz del sistema (se
  * eligen voces sin conexión) y, si Paula quiere, respuestas por micrófono
  * (se pide reconocimiento sin conexión).
  */
@@ -49,6 +53,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private SpeechBridge speech;
     private VoiceBridge voice;
+    private Actualizador actualizador;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,15 +64,22 @@ public class MainActivity extends Activity {
         // Los botones de volumen suben y bajan el sonido del juego (no el del timbre).
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
+        // Juego descargado (si hay uno más nuevo que el del APK) y búsqueda de
+        // novedades en segundo plano para el próximo arranque.
+        actualizador = new Actualizador(this);
+        actualizador.limpiar();
+        File juegoDescargado = actualizador.carpetaActiva();
+
         webView = new WebView(this);
         webView.setBackgroundColor(0xFF050608);
-        configureWebView(webView);
+        configureWebView(webView, juegoDescargado);
         speech = new SpeechBridge();
         voice = new VoiceBridge();
         webView.addJavascriptInterface(speech, "AndroidTTS");
         webView.addJavascriptInterface(voice, "AndroidVoice");
         setContentView(webView);
         webView.loadUrl("https://" + LOCAL_HOST + "/index.html");
+        actualizador.comprobarEnSegundoPlano();
     }
 
     // Al salir de la app (botón de inicio, otra app) el juego se pausa de verdad:
@@ -87,7 +99,7 @@ public class MainActivity extends Activity {
         enterImmersiveMode();
     }
 
-    private void configureWebView(WebView view) {
+    private void configureWebView(WebView view, File juegoDescargado) {
         WebSettings settings = view.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -105,7 +117,7 @@ public class MainActivity extends Activity {
         view.setOnLongClickListener(v -> true);
         view.setHapticFeedbackEnabled(false);
         view.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        view.setWebViewClient(new LocalAssetClient(getAssets()));
+        view.setWebViewClient(new LocalAssetClient(getAssets(), juegoDescargado));
     }
 
     private void enterImmersiveMode() {
@@ -406,9 +418,11 @@ public class MainActivity extends Activity {
 
     private static final class LocalAssetClient extends WebViewClient {
         private final AssetManager assets;
+        private final File descargado;       // null: todo sale del APK
 
-        LocalAssetClient(AssetManager assets) {
+        LocalAssetClient(AssetManager assets, File descargado) {
             this.assets = assets;
+            this.descargado = descargado;
         }
 
         @Override
@@ -434,7 +448,7 @@ public class MainActivity extends Activity {
             if (path.isEmpty()) path = "index.html";
             if (path.contains("..")) return emptyResponse(400, "Invalid path");
             try {
-                InputStream stream = assets.open(path, AssetManager.ACCESS_STREAMING);
+                InputStream stream = abrir(path);
                 String mime = URLConnection.guessContentTypeFromName(path);
                 if (mime == null && path.endsWith(".webmanifest")) mime = "application/manifest+json";
                 if (mime == null && path.endsWith(".js")) mime = "application/javascript";
@@ -451,6 +465,17 @@ public class MainActivity extends Activity {
             } catch (IOException error) {
                 return emptyResponse(404, "Not found");
             }
+        }
+
+        /** Primero la versión descargada; si le falta el archivo, el del APK. */
+        private InputStream abrir(String path) throws IOException {
+            if (descargado != null) {
+                File f = new File(descargado, path);
+                if (f.isFile() && f.getCanonicalPath().startsWith(descargado.getCanonicalPath() + File.separator)) {
+                    return new FileInputStream(f);
+                }
+            }
+            return assets.open(path, AssetManager.ACCESS_STREAMING);
         }
 
         private static WebResourceResponse emptyResponse(int status, String reason) {
